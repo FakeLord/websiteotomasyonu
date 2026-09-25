@@ -3,8 +3,12 @@ import { tr } from "../i18n/tr";
 import { OnlineBanner } from "../components/online-banner";
 import { cn } from "../lib/cn";
 import { navItems } from "./nav-items";
+import { useAuthStore } from "../lib/auth-store";
+import { supabase } from "../lib/supabase-client";
 
 export function AppLayout() {
+  const email = useAuthStore((state) => state.session?.user.email);
+
   return (
     <div className="flex h-screen flex-col bg-slate-50">
       <OnlineBanner />
@@ -28,6 +32,16 @@ export function AppLayout() {
               </NavLink>
             ))}
           </nav>
+          <div className="space-y-1 border-t border-slate-200 px-4 py-3">
+            {email && <p className="truncate text-xs text-slate-400">{email}</p>}
+            <button
+              type="button"
+              onClick={() => void supabase.auth.signOut()}
+              className="text-xs font-medium text-slate-500 hover:underline"
+            >
+              {tr.auth.signOut}
+            </button>
+          </div>
         </aside>
         <main className="min-w-0 flex-1 overflow-auto p-6">
           <Outlet />
