@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  secret-scan:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Grep for known secret patterns
+        run: |
+          set -euo pipefail
+          # service_role/SUPABASE_SERVICE_ROLE eşleşmeleri yalnızca bir atama/değer
+          # bağlamında (=, :, "..." ile birlikte) aranır; supabase/config.toml gibi
+          # dosyalardaki rol adı açıklamaları (yorum satırları) yanlış pozitif üretmez.
+          if grep -RInE "(service_role|SUPABASE_SERVICE_ROLE)[[:space:]]*[:=][[:space:]]*['\"a-zA-Z0-9]|sk-[A-Za-z0-9]{20,}" \
+              --exclude-dir=node_modules \
+              --exclude-dir=.git \
+              --exclude-dir=target \
+              --exclude-dir=dist \
+              --exclude=pnpm-lock.yaml \
+              --exclude=ci.yml \
+              --exclude=config.toml \
+              .; then
+            echo "::error::Potential secret pattern found in repository"
+            exit 1
+          fi
+          echo "No known secret patterns found."
+
+  lint-typecheck-test:
+    name: Lint, typecheck, test (ubuntu)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+  tauri-build:
+    name: Tauri NSIS build (windows-latest)
+    runs-on: windows-latest
+    needs: [lint-typecheck-test]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Tauri app (NSIS)
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: pnpm --filter @lbf/desktop tauri build
+
+      - name: Upload setup.exe artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LocalBusinessFinder-setup
+          path: apps/desktop/src-tauri/target/release/bundle/nsis/*.exe
+          if-no-files-found: error

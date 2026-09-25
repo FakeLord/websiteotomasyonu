@@ -12,6 +12,7 @@
     "lint": "eslint .",
     "typecheck": "pnpm -r --if-present run typecheck",
     "test": "vitest run",
+    "test:db": "supabase test db",
     "tauri": "pnpm --filter @lbf/desktop tauri"
   },
   "devDependencies": {
@@ -19,6 +20,7 @@
     "eslint": "^9.15.0",
     "eslint-config-prettier": "^9.1.0",
     "prettier": "^3.3.3",
+    "supabase": "^2.118.0",
     "typescript": "^5.6.3",
     "typescript-eslint": "^8.15.0",
     "vitest": "^2.1.4"

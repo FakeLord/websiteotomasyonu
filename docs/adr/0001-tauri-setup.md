@@ -63,6 +63,10 @@ Tauri'nin varsayılan NSIS şablonu Welcome → Install Directory → Install �
 
 `docs/SPEC.md` ve `docs/phases/PHASE-00.md` içindeki `installMode: currentUser` ifadesi **doğru** çıktı; web dokümanına dayanan ilk "düzeltme" (`perUser`) `cargo check` ile yanlışlanıp geri alındı. Karar Kaydı'na (D14: Windows kurulumu, yönetici yetkisi gerekmez) bu ADR ile netlik getirildi; D14'ün davranışsal hedefi hiç değişmedi.
 
+### CI action sürümleri
+
+`.github/workflows/*.yml` yazılırken doğrulanan üçüncü taraf GitHub Action'lar: Rust kurulumu için `dtolnay/rust-toolchain@stable` (aranan `dtolnay/rust-action` diye bir action yok — yanlış hatırlama, gerçek isim `rust-toolchain`), release paketleme için `tauri-apps/tauri-action@v1`. PR'larda (release olmayan) `tauri-action` yerine doğrudan `pnpm tauri build` çalıştırılıp NSIS çıktısı `actions/upload-artifact` ile yükleniyor; bu, her PR'da gereksiz bir GitHub Release taslağı oluşturmayı önlüyor.
+
 ## Kaynaklar
 
 - [Windows Installer | Tauri v2](https://v2.tauri.app/distribute/windows-installer/)
