@@ -30,6 +30,18 @@ export { computeChecks } from "./website-analyzer/checks";
 export { classifyOpenWebsite, type ClassifyInput, type ClassifyResult } from "./website-analyzer/classify";
 export { isPathAllowed } from "./website-analyzer/robots";
 export { runWebsiteAnalysis } from "./website-analyzer/run-website-analysis";
+export { validateDraft, type ValidateDraftInput, type ValidateDraftResult } from "./ai/validate-draft";
+export type { AIMessage, AIPromptRequest, ServicePackageInfo, SalesRules, OutreachChannel } from "./ai/types";
+export { buildDraftFirstMessagePrompt, type DraftFirstMessageInput } from "./ai/prompts/draft-first-message";
+export {
+  buildClassifyReplyPrompt,
+  hasStopKeyword,
+  type ClassifyReplyInput,
+} from "./ai/prompts/classify-reply";
+export { buildDraftReplyPrompt, type DraftReplyInput, type KbSnippet } from "./ai/prompts/draft-reply";
+export { buildUpdateSummaryPrompt, type UpdateSummaryInput } from "./ai/prompts/update-summary";
+export { buildGenerateHandoffPrompt, type GenerateHandoffInput } from "./ai/prompts/generate-handoff";
+export { buildFollowupDraftPrompt, type FollowupDraftInput } from "./ai/prompts/followup-draft";
 export { computeScore } from "./scoring/compute-score";
 export type {
   ScoringRules,
