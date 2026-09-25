@@ -6,6 +6,7 @@ import {
   buildClassifyReplyPrompt,
   buildDraftReplyPrompt,
   buildUpdateSummaryPrompt,
+  computeFollowUpDueDate,
   hasStopKeyword,
   validateDraft,
   type Channel,
@@ -244,6 +245,8 @@ export function ConversationsPage() {
     mutationFn: async (message: MessageRow) => {
       if (!selected || !workspaceId) return;
 
+      const isFirstOutbound = !(messagesQuery.data ?? []).some((m) => m.direction === "OUT" && m.status === "SENT");
+
       await supabase.rpc("approve_message", { p_message_id: message.id });
 
       if (selected.channel === "EMAIL") {
@@ -287,6 +290,30 @@ export function ConversationsPage() {
 
       const contentHash = await sha256Hex(message.body);
       await supabase.rpc("mark_message_sent", { p_message_id: message.id, p_content_hash: contentHash, p_external_message_id: null });
+
+      if (isFirstOutbound) {
+        const { data: settings } = await supabase
+          .from("workspace_settings")
+          .select("followup_policy")
+          .eq("workspace_id", workspaceId)
+          .single();
+        const policy = settings?.followup_policy as {
+          steps: Array<{ afterDays: number }>;
+          sendWindow: { days: number[]; from: string };
+          skipHolidays: boolean;
+        };
+        const firstStep = policy?.steps?.[0];
+        if (firstStep) {
+          const dueAt = computeFollowUpDueDate(new Date(), firstStep.afterDays, policy.sendWindow, policy.skipHolidays);
+          await supabase.rpc("schedule_next_followup", {
+            ws: workspaceId,
+            p_business_id: selected.business_id,
+            p_conversation_id: selected.id,
+            p_step: 1,
+            p_due_at: dueAt.toISOString(),
+          });
+        }
+      }
     },
     onSuccess: invalidateThread,
     onError: async (err, message) => {

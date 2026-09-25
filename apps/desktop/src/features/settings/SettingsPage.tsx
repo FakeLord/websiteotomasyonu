@@ -4,6 +4,7 @@ import { supabase } from "../../lib/supabase-client";
 import { useWorkspaceMembership } from "../../lib/use-workspace-membership";
 import { ScoringSettingsSection } from "./ScoringSettingsSection";
 import { EmailAccountSection } from "./EmailAccountSection";
+import { DataExportSection } from "./DataExportSection";
 import { tr } from "../../i18n/tr";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -43,6 +44,7 @@ export function SettingsPage() {
 
         {isAdmin && workspaceId && <ScoringSettingsSection workspaceId={workspaceId} />}
         <EmailAccountSection />
+        {workspaceId && <DataExportSection workspaceId={workspaceId} />}
       </div>
     </div>
   );
