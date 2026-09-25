@@ -12,15 +12,15 @@ select public.bootstrap_workspace('Log Test Workspace');
 
 -- authenticated rolü: tablo düzeyinde REVOKE edildiği için UPDATE/DELETE
 -- doğrudan yetki hatası (42501) verir.
-select throws_ok(
+select throws_like(
   $$ update public.activity_logs set summary = 'hacked' where action = 'workspace.bootstrapped' $$,
-  '42501',
+  '%permission denied%',
   'authenticated rolü activity_logs UPDATE edemez (yetki reddi)'
 );
 
-select throws_ok(
+select throws_like(
   $$ delete from public.activity_logs where action = 'workspace.bootstrapped' $$,
-  '42501',
+  '%permission denied%',
   'authenticated rolü activity_logs DELETE edemez (yetki reddi)'
 );
 

@@ -8,12 +8,12 @@ begin;
 select plan(5);
 
 insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at)
-values ('00000000-0000-0000-0000-000000000000', 'og111111-1111-1111-1111-111111111111', 'authenticated', 'authenticated', 'og@test.local', crypt('password123', gen_salt('bf')), now(), now(), now());
+values ('00000000-0000-0000-0000-000000000000', 'ad111111-1111-1111-1111-111111111111', 'authenticated', 'authenticated', 'og@test.local', crypt('password123', gen_salt('bf')), now(), now(), now());
 
 create temporary table og_test_ids (label text primary key, id uuid);
 grant all on og_test_ids to authenticated;
 
-select set_config('request.jwt.claim.sub', 'og111111-1111-1111-1111-111111111111', true);
+select set_config('request.jwt.claim.sub', 'ad111111-1111-1111-1111-111111111111', true);
 set local role authenticated;
 select public.bootstrap_workspace('OG Workspace');
 
@@ -60,10 +60,10 @@ insert into public.stage_transitions (workspace_id, business_id, from_stage, to_
 select
   (select id from og_test_ids where label = 'workspace'),
   (select id from og_test_ids where label = 'normal_business'),
-  'NEW', 'CONTACTED', 'USER', 'og111111-1111-1111-1111-111111111111', now()
+  'NEW', 'CONTACTED', 'USER', 'ad111111-1111-1111-1111-111111111111', now()
 from generate_series(1, 40);
 
-select set_config('request.jwt.claim.sub', 'og111111-1111-1111-1111-111111111111', true);
+select set_config('request.jwt.claim.sub', 'ad111111-1111-1111-1111-111111111111', true);
 set local role authenticated;
 
 select ok(
@@ -72,18 +72,19 @@ select ok(
 );
 
 reset role;
+select set_config('request.jwt.claim.sub', '', true);
 
 -- Bob başka bir workspace'ten DNC işletmesine erişmeye çalışır.
 insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at)
-values ('00000000-0000-0000-0000-000000000000', 'og222222-2222-2222-2222-222222222222', 'authenticated', 'authenticated', 'og-bob@test.local', crypt('password123', gen_salt('bf')), now(), now(), now());
+values ('00000000-0000-0000-0000-000000000000', 'ad222222-2222-2222-2222-222222222222', 'authenticated', 'authenticated', 'og-bob@test.local', crypt('password123', gen_salt('bf')), now(), now(), now());
 insert into public.workspaces (id, name, created_by)
-values ('cccccccc-0000-0000-0000-000000000003', 'OG Workspace B', 'og222222-2222-2222-2222-222222222222');
+values ('cccccccc-0000-0000-0000-000000000003', 'OG Workspace B', 'ad222222-2222-2222-2222-222222222222');
 insert into public.workspace_members (workspace_id, user_id, role)
-values ('cccccccc-0000-0000-0000-000000000003', 'og222222-2222-2222-2222-222222222222', 'ADMIN');
+values ('cccccccc-0000-0000-0000-000000000003', 'ad222222-2222-2222-2222-222222222222', 'ADMIN');
 insert into public.workspace_settings (workspace_id)
 values ('cccccccc-0000-0000-0000-000000000003');
 
-select set_config('request.jwt.claim.sub', 'og222222-2222-2222-2222-222222222222', true);
+select set_config('request.jwt.claim.sub', 'ad222222-2222-2222-2222-222222222222', true);
 set local role authenticated;
 
 select throws_like(

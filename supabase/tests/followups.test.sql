@@ -6,12 +6,12 @@ begin;
 select plan(7);
 
 insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at)
-values ('00000000-0000-0000-0000-000000000000', 'fu111111-1111-1111-1111-111111111111', 'authenticated', 'authenticated', 'fu@test.local', crypt('password123', gen_salt('bf')), now(), now(), now());
+values ('00000000-0000-0000-0000-000000000000', 'fa111111-1111-1111-1111-111111111111', 'authenticated', 'authenticated', 'fu@test.local', crypt('password123', gen_salt('bf')), now(), now(), now());
 
 create temporary table fu_test_ids (label text primary key, id uuid);
 grant all on fu_test_ids to authenticated;
 
-select set_config('request.jwt.claim.sub', 'fu111111-1111-1111-1111-111111111111', true);
+select set_config('request.jwt.claim.sub', 'fa111111-1111-1111-1111-111111111111', true);
 set local role authenticated;
 select public.bootstrap_workspace('FU Workspace');
 insert into fu_test_ids values ('workspace', (select id from public.workspaces where name = 'FU Workspace'));
@@ -113,7 +113,7 @@ reset role;
 update public.businesses set stage = 'REPLIED' where id = (select id from fu_test_ids where label = 'business');
 update public.businesses set stage = 'ENGAGED' where id = (select id from fu_test_ids where label = 'business');
 
-select set_config('request.jwt.claim.sub', 'fu111111-1111-1111-1111-111111111111', true);
+select set_config('request.jwt.claim.sub', 'fa111111-1111-1111-1111-111111111111', true);
 set local role authenticated;
 
 select is(

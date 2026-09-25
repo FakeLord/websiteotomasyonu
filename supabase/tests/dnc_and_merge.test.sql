@@ -2,7 +2,7 @@
 -- taşıma ve DNC OR'lanması (SPEC.md → I.5, G.4).
 begin;
 
-select plan(6);
+select plan(5);
 
 insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at)
 values

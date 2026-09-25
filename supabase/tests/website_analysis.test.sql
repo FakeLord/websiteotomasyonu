@@ -64,17 +64,14 @@ select is(
   'save_website_analysis() analizde bulunan iletişim kanalını contact_channels''a ekler'
 );
 
-update public.businesses
-set website_status = 'GOOD_WEBSITE'
-where name = 'ABC Diş Kliniği';
-
-select is(
-  (select website_status from public.businesses where name = 'ABC Diş Kliniği'),
-  'LOW_QUALITY_WEBSITE',
-  'website_status doğrudan UPDATE ile değiştirilemez (REVOKE UPDATE); değer aynı kalır'
+select throws_like(
+  $$ update public.businesses set website_status = 'GOOD_WEBSITE' where name = 'ABC Diş Kliniği' $$,
+  '%permission denied%',
+  'website_status doğrudan UPDATE ile değiştirilemez (kolon bazlı GRANT reddi)'
 );
 
 reset role;
+select set_config('request.jwt.claim.sub', '', true);
 
 -- Bob, ikinci bir workspace'e postgres context'inde eklenir (izolasyon testi fixture'ı).
 insert into public.workspaces (id, name, created_by)

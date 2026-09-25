@@ -16,21 +16,26 @@ set local role authenticated;
 select public.bootstrap_workspace('Workspace A (guards)');
 reset role;
 
-select set_config('request.jwt.claim.sub', 'aaaaaaaa-0000-0000-0000-000000000002', true);
-set local role authenticated;
-select public.bootstrap_workspace('Workspace B (guards)');
-reset role;
+-- Not: uygulama tek workspace varsayar (SPEC.md D-kararı); bootstrap_workspace() ikinci
+-- kez çağrılamaz. Workspace B, izolasyon testlerindeki gibi doğrudan postgres context'inde
+-- fixture olarak eklenir.
+select set_config('request.jwt.claim.sub', '', true);
+insert into public.workspaces (id, name, created_by)
+values ('bbbbbbbb-0000-0000-0000-000000000099', 'Workspace B (guards)', 'aaaaaaaa-0000-0000-0000-000000000002');
+insert into public.workspace_members (workspace_id, user_id, role)
+values ('bbbbbbbb-0000-0000-0000-000000000099', 'aaaaaaaa-0000-0000-0000-000000000002', 'ADMIN');
+insert into public.workspace_settings (workspace_id)
+values ('bbbbbbbb-0000-0000-0000-000000000099');
 
 -- Workspace A'nın sahibi, doğrudan INSERT ile kendini Workspace B'ye ADMIN yapmaya
 -- çalışır (client'ın gönderdiği workspace_id ile spoofing denemesi).
 select set_config('request.jwt.claim.sub', 'aaaaaaaa-0000-0000-0000-000000000001', true);
 set local role authenticated;
 
-select throws_ok(
+select throws_like(
   $$ insert into public.workspace_members (workspace_id, user_id, role)
-       select id, 'aaaaaaaa-0000-0000-0000-000000000001', 'ADMIN'
-       from public.workspaces where name = 'Workspace B (guards)' $$,
-  '42501',
+       values ('bbbbbbbb-0000-0000-0000-000000000099', 'aaaaaaaa-0000-0000-0000-000000000001', 'ADMIN') $$,
+  '%row-level security policy%',
   'Client, doğrudan INSERT ile başka bir workspace''e üye ekleyemez (RLS reddi)'
 );
 
@@ -41,11 +46,11 @@ reset role;
 select set_config('request.jwt.claim.sub', 'aaaaaaaa-0000-0000-0000-000000000001', true);
 set local role authenticated;
 
-select throws_ok(
+select throws_like(
   $$ insert into public.workspace_invites (workspace_id, email, role, token_hash, invited_by, expires_at)
        select id, 'invitee@test.local', 'MEMBER', 'deadbeef', 'aaaaaaaa-0000-0000-0000-000000000001', now() + interval '7 days'
        from public.workspaces where name = 'Workspace A (guards)' $$,
-  '42501',
+  '%row-level security policy%',
   'Admin bile client''tan doğrudan workspace_invites INSERT edemez'
 );
 
