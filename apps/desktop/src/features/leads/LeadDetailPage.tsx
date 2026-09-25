@@ -3,15 +3,20 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   allowedNextStages,
+  buildDraftFirstMessagePrompt,
   chooseChannel,
+  validateDraft,
   type BusinessStage,
   type Channel,
   type ChannelMode,
+  type OutreachChannel,
   type RoutingChannelCandidate,
+  type ServicePackageInfo,
 } from "@lbf/core";
 import { supabase } from "../../lib/supabase-client";
 import { useWorkspaceMembership } from "../../lib/use-workspace-membership";
 import { analyzeBusiness } from "../../workers/website-analysis-runner";
+import { callAiGateway } from "../../lib/ai-gateway-client";
 import { tr } from "../../i18n/tr";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -21,6 +26,137 @@ interface WorkspaceRoutingSettings {
   channel_priority: Channel[];
   channel_modes: Record<Channel, ChannelMode>;
   outreach_limits: { daily_total: number; channels: Record<string, number>; channel_cooldown_hours: number };
+}
+
+interface DraftResult {
+  ok: boolean;
+  subject?: string;
+  body: string;
+  reasons: string[];
+}
+
+function DraftFirstMessageCard({ business, workspaceId }: { business: BusinessDetail; workspaceId: string }) {
+  const [draft, setDraft] = useState<DraftResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const mutation = useMutation({
+    mutationFn: async (): Promise<DraftResult> => {
+      const [{ data: analysis }, { data: packages }, { data: salesRuleEntries }, { data: referenceEntries }] =
+        await Promise.all([
+          supabase
+            .from("website_analyses")
+            .select("issues")
+            .eq("business_id", business.id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+          supabase
+            .from("service_packages")
+            .select("id, name, summary, price_min, price_max, delivery_days_min, delivery_days_max")
+            .eq("workspace_id", workspaceId)
+            .eq("is_active", true),
+          supabase.from("kb_entries").select("title, body, data").eq("workspace_id", workspaceId).eq("type", "SALES_RULE").eq("is_active", true),
+          supabase
+            .from("kb_entries")
+            .select("title")
+            .eq("workspace_id", workspaceId)
+            .eq("type", "REFERENCE")
+            .eq("is_verified_real", true),
+        ]);
+
+      const websiteIssues = (analysis?.issues ?? []) as string[];
+      const servicePackages: ServicePackageInfo[] = (packages ?? []).map((p) => ({
+        id: p.id as string,
+        name: p.name as string,
+        summary: (p.summary as string | null) ?? "",
+        priceMin: p.price_min as number | null,
+        priceMax: p.price_max as number | null,
+        deliveryDaysMin: p.delivery_days_min as number | null,
+        deliveryDaysMax: p.delivery_days_max as number | null,
+      }));
+      const salesRulesSummary = (salesRuleEntries ?? []).map((e) => `${e.title}: ${e.body}`).join(" ");
+      const allowDiscountMention = (salesRuleEntries ?? []).some(
+        (e) => (e.data as { allowDiscountMention?: boolean } | null)?.allowDiscountMention === true,
+      );
+      const verifiedReferenceNames = (referenceEntries ?? []).map((e) => e.title as string);
+      const channel: OutreachChannel = "EMAIL";
+
+      const promptRequest = buildDraftFirstMessagePrompt({
+        businessName: business.name,
+        category: business.category,
+        district: business.district,
+        websiteIssues,
+        channel,
+        relevantPackages: servicePackages,
+        salesRulesSummary,
+      });
+
+      const result = await callAiGateway(workspaceId, promptRequest, { entityType: "business", entityId: business.id });
+      const parsed = result.json as { subject?: string; body: string };
+
+      const validation = validateDraft({
+        body: parsed.body,
+        channel,
+        packages: servicePackages,
+        salesRules: { allowDiscountMention, forbiddenWords: ["indirim", "%", "bedava", "garanti"] },
+        verifiedReferenceNames,
+        recipientBusinessName: business.name,
+        stopRequest: business.do_not_contact,
+      });
+
+      return { ok: validation.ok, subject: parsed.subject, body: parsed.body, reasons: validation.reasons };
+    },
+    onSuccess: (result) => {
+      setError(null);
+      setDraft(result);
+    },
+    onError: (err) => {
+      setError(err instanceof Error ? err.message : tr.draft.error);
+    },
+  });
+
+  return (
+    <section className="rounded-lg border border-slate-200 bg-white p-4">
+      <div className="mb-2 flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-slate-700">{tr.draft.title}</h2>
+        <Button size="sm" variant="outline" disabled={mutation.isPending} onClick={() => mutation.mutate()}>
+          {mutation.isPending ? tr.draft.generating : tr.draft.generateButton}
+        </Button>
+      </div>
+
+      {error && <p className="text-xs text-red-600">{error}</p>}
+
+      {draft && !draft.ok && (
+        <div>
+          <p className="mb-1 text-xs font-medium text-red-700">{tr.draft.rejectedTitle}</p>
+          <ul className="list-inside list-disc text-xs text-red-600">
+            {draft.reasons.map((r) => (
+              <li key={r}>{r}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {draft?.ok && (
+        <div className="space-y-2 text-sm">
+          {draft.subject && (
+            <p>
+              <span className="text-slate-500">{tr.draft.subjectLabel}: </span>
+              <span className="font-medium">{draft.subject}</span>
+            </p>
+          )}
+          <p className="whitespace-pre-wrap rounded-md bg-slate-50 p-2 text-slate-800">{draft.body}</p>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => void navigator.clipboard.writeText(draft.body)}
+          >
+            {tr.draft.copyButton}
+          </Button>
+        </div>
+      )}
+    </section>
+  );
 }
 
 function RecommendedChannelCard({ business, workspaceId }: { business: BusinessDetail; workspaceId: string }) {
@@ -407,6 +543,7 @@ export function LeadDetailPage() {
             <>
               <WebsiteAnalysisSection business={business} workspaceId={membership.data.workspaceId} />
               <RecommendedChannelCard business={business} workspaceId={membership.data.workspaceId} />
+              <DraftFirstMessageCard business={business} workspaceId={membership.data.workspaceId} />
             </>
           )}
 
