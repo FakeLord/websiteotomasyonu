@@ -2,6 +2,7 @@ import { placeToBusinessPayload, runSearchJob, type SearchJobClock } from "@lbf/
 import type { ImportBusinessResult } from "@lbf/contracts";
 import { supabase } from "../lib/supabase-client";
 import { createPlacesSearchAdapter } from "../lib/places-provider";
+import { recomputeScore } from "./score-runner";
 
 const JOB_TYPE = "places_search";
 const LEASE_TTL_SECONDS = 120;
@@ -97,11 +98,19 @@ async function runOneJob(workspaceId: string, jobId: string, params: SearchJobPa
       });
       if (error) throw error;
 
-      const status = (data as ImportBusinessResult | null)?.status;
+      const importResult = data as ImportBusinessResult | null;
+      const status = importResult?.status;
       if (status === "DUPLICATE_MERGED") {
         duplicateCount += 1;
       } else {
         newCount += 1;
+        if (importResult) {
+          try {
+            await recomputeScore(workspaceId, importResult.businessId);
+          } catch {
+            // Skor hesaplanamazsa iş akışı durmaz.
+          }
+        }
       }
     }
 

@@ -1,6 +1,7 @@
 import { runWebsiteAnalysis, type WebsiteAnalysisResult } from "@lbf/core";
 import { supabase } from "../lib/supabase-client";
 import { tauriWebsiteFetcher } from "../lib/website-fetcher";
+import { recomputeScore } from "./score-runner";
 
 export interface AnalyzeTarget {
   id: string;
@@ -27,6 +28,8 @@ export async function analyzeBusiness(workspaceId: string, target: AnalyzeTarget
     p_result: result,
   });
   if (error) throw error;
+
+  await recomputeScore(workspaceId, target.id);
 
   return result;
 }

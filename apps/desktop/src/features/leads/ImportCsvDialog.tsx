@@ -9,6 +9,7 @@ import {
   type DedupeCandidate,
 } from "@lbf/core";
 import { supabase } from "../../lib/supabase-client";
+import { recomputeScore } from "../../workers/score-runner";
 import { tr } from "../../i18n/tr";
 import { Button } from "../../components/ui/button";
 
@@ -118,11 +119,19 @@ export function ImportCsvDialog({ workspaceId, onClose }: ImportCsvDialogProps) 
   const confirmImport = async () => {
     setImporting(true);
     for (const row of rows) {
-      await supabase.rpc("import_business", {
+      const { data, error } = await supabase.rpc("import_business", {
         ws: workspaceId,
         p_payload: row.payload,
         p_search_job_id: null,
       });
+      const result = data as { businessId: string; status: string } | null;
+      if (!error && result && result.status !== "DUPLICATE_MERGED") {
+        try {
+          await recomputeScore(workspaceId, result.businessId);
+        } catch {
+          // Skor hesaplanamazsa import akışı durmaz; lead 0 skorla görünür.
+        }
+      }
     }
     setImporting(false);
     setDone(true);

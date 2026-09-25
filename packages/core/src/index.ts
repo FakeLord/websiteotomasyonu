@@ -30,6 +30,26 @@ export { computeChecks } from "./website-analyzer/checks";
 export { classifyOpenWebsite, type ClassifyInput, type ClassifyResult } from "./website-analyzer/classify";
 export { isPathAllowed } from "./website-analyzer/robots";
 export { runWebsiteAnalysis } from "./website-analyzer/run-website-analysis";
+export { computeScore } from "./scoring/compute-score";
+export type {
+  ScoringRules,
+  ScoringInput,
+  ScoringContactSignals,
+  ScoreReason,
+  ScoreResult,
+} from "./scoring/types";
+export { chooseChannel } from "./routing/choose-channel";
+export type {
+  Channel,
+  ChannelMode,
+  ChannelStatus,
+  RoutingChannelCandidate,
+  RoutingSettings,
+  RoutingHistory,
+  RoutingInput,
+  RoutingRejection,
+  RoutingResult,
+} from "./routing/types";
 export {
   ANALYZER_VERSION,
   type WebsiteStatus,
