@@ -58,6 +58,34 @@ jobs:
       - name: Test
         run: pnpm test
 
+  pgtap:
+    name: pgTAP (lokal Supabase)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start local Supabase and run pgTAP tests
+        run: |
+          supabase start
+          supabase test db
+
+  deno-tests:
+    name: Edge Function testleri (Deno)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Test admin-invite yardımcı fonksiyonları
+        run: deno test supabase/functions/admin-invite/validate.test.ts
+
   tauri-build:
     name: Tauri NSIS build (windows-latest)
     runs-on: windows-latest
