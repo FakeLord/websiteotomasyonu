@@ -30,6 +30,8 @@ export { computeChecks } from "./website-analyzer/checks";
 export { classifyOpenWebsite, type ClassifyInput, type ClassifyResult } from "./website-analyzer/classify";
 export { isPathAllowed } from "./website-analyzer/robots";
 export { runWebsiteAnalysis } from "./website-analyzer/run-website-analysis";
+export { parseEmlHeaders, type EmailHeaders } from "./email/parse-eml-headers";
+export { matchEmailThread, type ConversationThreadRef } from "./email/match-thread";
 export { validateDraft, type ValidateDraftInput, type ValidateDraftResult } from "./ai/validate-draft";
 export type { AIMessage, AIPromptRequest, ServicePackageInfo, SalesRules, OutreachChannel } from "./ai/types";
 export { buildDraftFirstMessagePrompt, type DraftFirstMessageInput } from "./ai/prompts/draft-first-message";

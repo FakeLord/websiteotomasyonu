@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../../lib/supabase-client";
 import { useWorkspaceMembership } from "../../lib/use-workspace-membership";
 import { ScoringSettingsSection } from "./ScoringSettingsSection";
+import { EmailAccountSection } from "./EmailAccountSection";
 import { tr } from "../../i18n/tr";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -41,6 +42,7 @@ export function SettingsPage() {
         )}
 
         {isAdmin && workspaceId && <ScoringSettingsSection workspaceId={workspaceId} />}
+        <EmailAccountSection />
       </div>
     </div>
   );
