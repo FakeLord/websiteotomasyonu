@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import type { BusinessStage } from "@lbf/core";
 import { supabase } from "../../lib/supabase-client";
 import { useWorkspaceMembership } from "../../lib/use-workspace-membership";
 import { useRealtimeTable } from "../../lib/use-realtime-table";
+import { analyzeBusinessesInBatches } from "../../workers/website-analysis-runner";
 import { tr } from "../../i18n/tr";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -17,6 +18,7 @@ type StageFilter = "ALL" | "POSSIBLE_DUP" | BusinessStage;
 
 export function LeadsPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const membership = useWorkspaceMembership();
   const workspaceId = membership.data?.workspaceId;
 
@@ -26,6 +28,7 @@ export function LeadsPage() {
   const [page, setPage] = useState(0);
   const [showAdd, setShowAdd] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [bulkAnalyzeProgress, setBulkAnalyzeProgress] = useState<{ done: number; total: number } | null>(null);
 
   useRealtimeTable("businesses", workspaceId, ["businesses", workspaceId]);
 
@@ -67,11 +70,40 @@ export function LeadsPage() {
 
   const totalPages = Math.max(1, Math.ceil((query.data?.count ?? 0) / PAGE_SIZE));
 
+  const runBulkAnalyze = async () => {
+    if (!workspaceId) return;
+    const { data, error } = await supabase
+      .from("businesses")
+      .select("id, website_url, category")
+      .eq("workspace_id", workspaceId)
+      .is("merged_into", null)
+      .is("website_status", null)
+      .limit(200);
+    if (error || !data || data.length === 0) return;
+
+    setBulkAnalyzeProgress({ done: 0, total: data.length });
+    await analyzeBusinessesInBatches(
+      workspaceId,
+      data.map((row) => ({ id: row.id as string, websiteUrl: row.website_url as string | null, category: row.category as string | null })),
+      (done, total) => setBulkAnalyzeProgress({ done, total }),
+    );
+    setBulkAnalyzeProgress(null);
+    void queryClient.invalidateQueries({ queryKey: ["businesses", workspaceId] });
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-slate-900">{tr.leads.title}</h1>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          {bulkAnalyzeProgress && (
+            <span className="text-xs text-slate-500">
+              {tr.websiteAnalysis.bulkAnalyzeProgress(bulkAnalyzeProgress.done, bulkAnalyzeProgress.total)}
+            </span>
+          )}
+          <Button variant="outline" disabled={!!bulkAnalyzeProgress} onClick={() => void runBulkAnalyze()}>
+            {tr.websiteAnalysis.bulkAnalyzeButton}
+          </Button>
           <Button variant="outline" onClick={() => setShowImport(true)}>
             {tr.leads.importCsv}
           </Button>

@@ -4,10 +4,114 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { allowedNextStages, type BusinessStage } from "@lbf/core";
 import { supabase } from "../../lib/supabase-client";
 import { useWorkspaceMembership } from "../../lib/use-workspace-membership";
+import { analyzeBusiness } from "../../workers/website-analysis-runner";
 import { tr } from "../../i18n/tr";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import type { BusinessDetail } from "./types";
+
+interface WebsiteAnalysisRow {
+  id: string;
+  status: "NO_WEBSITE" | "BROKEN_WEBSITE" | "LOW_QUALITY_WEBSITE" | "GOOD_WEBSITE";
+  issues: string[];
+  created_at: string;
+}
+
+const STALE_DAYS = 30;
+
+function WebsiteAnalysisSection({ business, workspaceId }: { business: BusinessDetail; workspaceId: string }) {
+  const queryClient = useQueryClient();
+  const [error, setError] = useState<string | null>(null);
+
+  const analysisQuery = useQuery({
+    queryKey: ["website-analysis", business.id],
+    queryFn: async (): Promise<WebsiteAnalysisRow | null> => {
+      const { data, error: queryError } = await supabase
+        .from("website_analyses")
+        .select("id, status, issues, created_at")
+        .eq("business_id", business.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (queryError) throw queryError;
+      return data as WebsiteAnalysisRow | null;
+    },
+  });
+
+  const analyzeMutation = useMutation({
+    mutationFn: async () => {
+      await analyzeBusiness(workspaceId, {
+        id: business.id,
+        websiteUrl: business.website_url,
+        category: business.category,
+      });
+    },
+    onSuccess: () => {
+      setError(null);
+      void queryClient.invalidateQueries({ queryKey: ["website-analysis", business.id] });
+      void queryClient.invalidateQueries({ queryKey: ["business", business.id] });
+    },
+    onError: (err) => {
+      setError(err instanceof Error ? err.message : tr.websiteAnalysis.analyzeError);
+    },
+  });
+
+  const analysis = analysisQuery.data;
+  const isStale = analysis
+    ? Date.now() - new Date(analysis.created_at).getTime() > STALE_DAYS * 24 * 60 * 60 * 1000
+    : false;
+
+  return (
+    <section className="rounded-lg border border-slate-200 bg-white p-4">
+      <div className="mb-2 flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-slate-700">{tr.websiteAnalysis.title}</h2>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={analyzeMutation.isPending}
+          onClick={() => analyzeMutation.mutate()}
+        >
+          {analyzeMutation.isPending
+            ? tr.websiteAnalysis.analyzing
+            : analysis
+              ? tr.websiteAnalysis.reanalyzeButton
+              : tr.websiteAnalysis.analyzeButton}
+        </Button>
+      </div>
+
+      {error && <p className="mb-2 text-xs text-red-600">{error}</p>}
+
+      {!analysis && !analyzeMutation.isPending && (
+        <p className="text-xs text-slate-400">{tr.websiteAnalysis.neverAnalyzed}</p>
+      )}
+
+      {analysis && (
+        <div className="space-y-2 text-sm">
+          <p>
+            <span className="text-slate-500">{tr.websiteAnalysis.statusLabel}: </span>
+            <span className="font-medium text-slate-900">{tr.websiteAnalysis.status[analysis.status]}</span>
+          </p>
+          <p className="text-xs text-slate-400">
+            {tr.websiteAnalysis.lastAnalyzedAt}: {new Date(analysis.created_at).toLocaleString("tr-TR")}
+          </p>
+          {isStale && <p className="text-xs text-amber-600">{tr.websiteAnalysis.staleWarning}</p>}
+          <div>
+            <p className="mb-1 text-xs font-medium text-slate-600">{tr.websiteAnalysis.issuesTitle}</p>
+            {analysis.issues.length === 0 ? (
+              <p className="text-xs text-slate-400">{tr.websiteAnalysis.noIssues}</p>
+            ) : (
+              <ul className="list-inside list-disc space-y-1 text-xs text-slate-600">
+                {analysis.issues.map((issue, idx) => (
+                  <li key={idx}>{issue}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
 
 interface NoteRow {
   id: string;
@@ -210,9 +314,17 @@ export function LeadDetailPage() {
             <dl className="space-y-1 text-sm">
               <Row label={tr.leads.phoneLabel} value={business.primary_phone_e164} />
               <Row label={tr.leads.websiteLabel} value={business.website_url} />
+              <Row
+                label={tr.websiteAnalysis.statusLabel}
+                value={business.website_status ? tr.websiteAnalysis.status[business.website_status] : null}
+              />
               <Row label={tr.leads.columns.score} value={String(business.lead_score)} />
             </dl>
           </section>
+
+          {membership.data?.workspaceId && (
+            <WebsiteAnalysisSection business={business} workspaceId={membership.data.workspaceId} />
+          )}
 
           <section className="rounded-lg border border-slate-200 bg-white p-4">
             <h2 className="mb-2 text-sm font-semibold text-slate-700">Aşama</h2>
