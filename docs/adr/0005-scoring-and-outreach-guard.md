@@ -55,6 +55,22 @@ gerçek teslim durumunu (`messages.delivery_status`) bilmeyi gerektirir.
 - pgTAP testi (`supabase/tests/outreach_guard.test.sql`) yalnızca bu fazda uygulanan kontrolleri
   doğrular; MAX_FOLLOWUPS/DUPLICATE_MESSAGE_PROTECTION testleri Faz 7/8'e ertelendi.
 
+## Güncelleme (Faz 7, 2026-09-26)
+
+`conversations`/`messages` tabloları eklenince `outreach_guard()` `20260925196000_conversations.sql`
+migration'ında `CREATE OR REPLACE` ile tamamlandı:
+
+- `CHANNEL_COOLDOWN` artık kanal bazlı (`conversations.last_outbound_at`, kanal başına ayrı satır).
+- `DAILY_CHANNEL_LIMIT` eklendi (`outreach_limits.channels` içindeki kanal başına günlük sınır,
+  gerçek `messages` SENT sayısına göre).
+- `DUPLICATE_MESSAGE_PROTECTION`, `outreach_guard()`'a değil `mark_message_sent()` RPC'sine eklendi
+  (içerik hash'i belirli bir mesaja ait olduğu için kanal-seviyeli guard'dan ayrı ele alındı).
+- `MAX_FOLLOWUPS` hâlâ ertelenmiştir; `follow_ups` tablosu Faz 8'de eklenince tamamlanacak.
+
+`chooseChannel()`'daki `OTHER_CHANNEL_ALREADY_CONTACTED` sınırlaması ve fallback modellememesi
+maddesi değişmedi; gerçek teslim durumu (`messages` üzerinden) Faz 8/10'da fallback mantığına
+bağlanabilir.
+
 ## Kaynaklar
 
 - SPEC.md → I.4, I.5
