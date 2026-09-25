@@ -7,6 +7,7 @@ import { InvitePendingPage } from "../features/auth/InvitePendingPage";
 import { DashboardPage } from "../features/dashboard/DashboardPage";
 import { DiscoverPage } from "../features/discover/DiscoverPage";
 import { LeadsPage } from "../features/leads/LeadsPage";
+import { LeadDetailPage } from "../features/leads/LeadDetailPage";
 import { ConversationsPage } from "../features/conversations/ConversationsPage";
 import { FollowUpsPage } from "../features/followups/FollowUpsPage";
 import { ActivityLogPage } from "../features/activity-log/ActivityLogPage";
@@ -33,6 +34,7 @@ export const router = createHashRouter([
           { path: "/", element: <DashboardPage /> },
           { path: "/discover", element: <DiscoverPage /> },
           { path: "/leads", element: <LeadsPage /> },
+          { path: "/leads/:businessId", element: <LeadDetailPage /> },
           { path: "/conversations", element: <ConversationsPage /> },
           { path: "/follow-ups", element: <FollowUpsPage /> },
           { path: "/activity-log", element: <ActivityLogPage /> },
