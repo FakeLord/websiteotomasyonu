@@ -1,6 +1,8 @@
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 use tauri::Manager;
 
+mod commands;
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let mut builder = tauri::Builder::default();
@@ -22,6 +24,11 @@ pub fn run() {
                 .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepAll)
                 .build(),
         )
+        .invoke_handler(tauri::generate_handler![
+            commands::secrets::secret_get,
+            commands::secrets::secret_set,
+            commands::secrets::secret_delete,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
