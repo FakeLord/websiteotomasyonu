@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { importBusinessInputSchema, type ImportBusinessInput } from "@lbf/contracts";
 import { supabase } from "../../lib/supabase-client";
+import { recomputeScore } from "../../workers/score-runner";
 import { tr } from "../../i18n/tr";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -26,12 +27,16 @@ export function ManualAddDialog({ workspaceId, onClose }: ManualAddDialogProps) 
 
   const mutation = useMutation({
     mutationFn: async (values: ImportBusinessInput) => {
-      const { error } = await supabase.rpc("import_business", {
+      const { data, error } = await supabase.rpc("import_business", {
         ws: workspaceId,
         p_payload: values,
         p_search_job_id: null,
       });
       if (error) throw error;
+      const result = data as { businessId: string; status: string } | null;
+      if (result && result.status !== "DUPLICATE_MERGED") {
+        await recomputeScore(workspaceId, result.businessId);
+      }
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["businesses", workspaceId] });

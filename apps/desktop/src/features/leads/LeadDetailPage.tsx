@@ -1,7 +1,14 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { allowedNextStages, type BusinessStage } from "@lbf/core";
+import {
+  allowedNextStages,
+  chooseChannel,
+  type BusinessStage,
+  type Channel,
+  type ChannelMode,
+  type RoutingChannelCandidate,
+} from "@lbf/core";
 import { supabase } from "../../lib/supabase-client";
 import { useWorkspaceMembership } from "../../lib/use-workspace-membership";
 import { analyzeBusiness } from "../../workers/website-analysis-runner";
@@ -9,6 +16,80 @@ import { tr } from "../../i18n/tr";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import type { BusinessDetail } from "./types";
+
+interface WorkspaceRoutingSettings {
+  channel_priority: Channel[];
+  channel_modes: Record<Channel, ChannelMode>;
+  outreach_limits: { daily_total: number; channels: Record<string, number>; channel_cooldown_hours: number };
+}
+
+function RecommendedChannelCard({ business, workspaceId }: { business: BusinessDetail; workspaceId: string }) {
+  const query = useQuery({
+    queryKey: ["recommended-channel", business.id],
+    queryFn: async () => {
+      const [{ data: channels, error: channelsError }, { data: settings, error: settingsError }] = await Promise.all([
+        supabase
+          .from("contact_channels")
+          .select("channel, status, confidence")
+          .eq("business_id", business.id),
+        supabase
+          .from("workspace_settings")
+          .select("channel_priority, channel_modes, outreach_limits")
+          .eq("workspace_id", workspaceId)
+          .single(),
+      ]);
+      if (channelsError) throw channelsError;
+      if (settingsError) throw settingsError;
+
+      const typedSettings = settings as unknown as WorkspaceRoutingSettings;
+      const candidates: RoutingChannelCandidate[] = (channels ?? []).map((c) => ({
+        channel: c.channel as Channel,
+        status: c.status as RoutingChannelCandidate["status"],
+        confidence: Number(c.confidence),
+      }));
+
+      return chooseChannel({
+        doNotContact: business.do_not_contact,
+        candidates,
+        settings: {
+          channelPriority: typedSettings.channel_priority,
+          channelModes: typedSettings.channel_modes,
+        },
+        history: {
+          lastMessageAtByChannel: {},
+          firstMessageChannelWithin30Days: null,
+          dailyCountByChannel: {},
+          dailyCountTotal: 0,
+        },
+        limits: {
+          dailyTotal: typedSettings.outreach_limits.daily_total,
+          dailyByChannel: typedSettings.outreach_limits.channels as Partial<Record<Channel, number>>,
+          channelCooldownHours: typedSettings.outreach_limits.channel_cooldown_hours,
+        },
+        now: new Date(),
+      });
+    },
+  });
+
+  if (!query.data) return null;
+  const result = query.data;
+
+  return (
+    <section className="rounded-lg border border-slate-200 bg-white p-4">
+      <h2 className="mb-2 text-sm font-semibold text-slate-700">{tr.routing.title}</h2>
+      {result.ok ? (
+        <p className="text-sm">
+          <span className="font-medium text-slate-900">{result.channel}</span>{" "}
+          <span className="text-slate-500">({result.mode})</span>
+        </p>
+      ) : result.doNotContact ? (
+        <p className="text-xs text-red-600">{tr.routing.doNotContact}</p>
+      ) : (
+        <p className="text-xs text-slate-400">{tr.routing.noChannel}</p>
+      )}
+    </section>
+  );
+}
 
 interface WebsiteAnalysisRow {
   id: string;
@@ -323,7 +404,10 @@ export function LeadDetailPage() {
           </section>
 
           {membership.data?.workspaceId && (
-            <WebsiteAnalysisSection business={business} workspaceId={membership.data.workspaceId} />
+            <>
+              <WebsiteAnalysisSection business={business} workspaceId={membership.data.workspaceId} />
+              <RecommendedChannelCard business={business} workspaceId={membership.data.workspaceId} />
+            </>
           )}
 
           <section className="rounded-lg border border-slate-200 bg-white p-4">
