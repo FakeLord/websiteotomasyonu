@@ -38,7 +38,9 @@ Kaynak: `docs/SPEC.md` → M (Follow-Up Automation), D (Dashboard), Faz 8 özeti
 
 ## Bu ortamda çalıştırılamayanlar (kullanıcı tarafından doğrulanmalı)
 
-- [ ] **pgTAP testi** (`followups.test.sql`): Docker yok, `pnpm test:db` çalıştırılamadı.
+- [x] **pgTAP testi** (`followups.test.sql`): Docker kurulup gerçek Postgres'e karşı çalıştırıldı
+      (2026-09-26); test fixture'ındaki geçersiz UUID hatası düzeltildi, ürün mantığında bu
+      dosyaya özgü bir bug bulunmadı. 16/16 dosya, 82/82 test PASS.
 - [ ] **"Cevap gelen lead'in follow-up'ı kalmaz"** (acceptance kriteri): gerçek bir Supabase
       projesinde bir follow-up bekleyen lead'e `record_inbound()` ile bir mesaj kaydedilip
       follow-up'ın gerçekten `CANCELLED` olduğu, "Bugünün İşleri"/Follow-Ups listesinden

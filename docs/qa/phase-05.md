@@ -28,7 +28,10 @@ sınırlaması).
 
 ## Bu ortamda çalıştırılamayanlar (kullanıcı tarafından doğrulanmalı)
 
-- [ ] **pgTAP testi** (`outreach_guard.test.sql`): Docker yok, `pnpm test:db` çalıştırılamadı.
+- [x] **pgTAP testi** (`outreach_guard.test.sql`): Docker kurulup gerçek Postgres'e karşı
+      çalıştırıldı (2026-09-26); test fixture'larındaki (geçersiz UUID, stale JWT claim) hatalar
+      düzeltildi, ürün mantığında (`outreach_guard()`) bu dosyaya özgü bir bug bulunmadı. 16/16
+      dosya, 82/82 test PASS.
 - [ ] **"DNC'li lead için hiçbir yol gönderime izin vermez"** (acceptance kriteri): gerçek bir
       Supabase projesinde `outreach_guard()` çağrısıyla, ve ayrıca "Önerilen Kanal" kartının DNC
       işaretli bir lead'de hiçbir kanal önermediği doğrulanmalı.

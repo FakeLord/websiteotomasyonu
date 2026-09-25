@@ -30,8 +30,14 @@ Kaynak: `docs/SPEC.md` → H (Website Analysis Engine), I.2 (Contact Discovery) 
 
 ## Bu ortamda çalıştırılamayanlar (kullanıcı tarafından doğrulanmalı)
 
-- [ ] **pgTAP testi** (`website_analysis.test.sql`): Docker yok, `pnpm test:db` çalıştırılamadı.
-      Docker Desktop kurulup doğrulanmalı.
+- [x] **pgTAP testi** (`website_analysis.test.sql`): Docker kurulup gerçek Postgres'e karşı
+      çalıştırıldı (2026-09-26). **Gerçek bir güvenlik açığı bulundu**: `website_status` (ve
+      Faz 2/7'deki `stage`/`lead_score`/`messages.status`) için kolon bazlı `REVOKE UPDATE`
+      hiç etkili değildi, çünkü `authenticated` rolü tablo genelinde zaten UPDATE yetkisine
+      sahipti (Postgres'te tablo-geneli yetki kolon reddinden önceliklidir) — bu kolonlar
+      doğrudan client UPDATE'iyle değiştirilebiliyordu. Düzeltildi
+      (`20260926100100_fix_protected_column_grants.sql`: tablo-geneli UPDATE kaldırılıp yalnızca
+      korumasız kolonlara GRANT verildi). 16/16 dosya, 82/82 test PASS.
 - [ ] **`cargo test`**: `fetch_page`'in gerçek ağ davranışı (timeout, redirect zinciri, özel IP
       reddi) yalnızca kod incelemesiyle doğrulandı; SPEC.md → U "Rust: fetch sınırları, özel IP
       engeli" testleri bu fazda yazılmadı (zaman kısıtı) — ayrı bir görev olarak eklenmeli.

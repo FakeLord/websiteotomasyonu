@@ -27,8 +27,11 @@ bkz. `docs/adr/0004-places-vault.md`).
 
 ## Bu ortamda çalıştırılamayanlar (kullanıcı tarafından doğrulanmalı)
 
-- [ ] **pgTAP testleri** (`worker_lease_and_quota.test.sql`): Docker yok, `pnpm test:db`
-      çalıştırılamadı. Docker Desktop kurulup doğrulanmalı.
+- [x] **pgTAP testleri** (`worker_lease_and_quota.test.sql`): Docker kurulup gerçek Postgres'e
+      karşı çalıştırıldı (2026-09-26). İlk çalıştırmada `enqueue_search_job()`'da gerçek bir bug
+      bulundu (`outreach_limits->'places_monthly_cap'` explicit JSON null'ı `::integer`'a cast
+      edemiyordu) ve düzeltildi (`20260926100200_fix_enqueue_search_job_null_cap.sql`). 16/16
+      dosya, 82/82 test PASS.
 - [ ] **Deno testleri** (`admin-invite`, gerekirse yeni Edge Function testleri): Deno kurulu
       değil.
 - [ ] **Gerçek Google Places araması uçtan uca**: Settings'te admin bir Google Places API

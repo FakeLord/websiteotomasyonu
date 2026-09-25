@@ -40,7 +40,11 @@ Bkz. `docs/adr/0006-ai-integration.md` (NVIDIA VERIFY_CURRENT_DOCS bulgusu ve op
 
 ## Bu ortamda çalıştırılamayanlar (kullanıcı tarafından doğrulanmalı)
 
-- [ ] **pgTAP testi** (`kb_and_ai.test.sql`): Docker yok, `pnpm test:db` çalıştırılamadı.
+- [x] **pgTAP testi** (`kb_and_ai.test.sql`): Docker kurulup gerçek Postgres'e karşı çalıştırıldı
+      (2026-09-26). Bu çalıştırma sırasında `kb_write_log()` trigger'ının `name`/`title` kolonu
+      olmayan tablolara (`conversations`, `followups`) da bağlı olduğu ve "record new has no
+      field" hatasıyla patladığı bulundu; `to_jsonb(...)->>'...'` ile düzeltildi
+      (`20260926100000_fix_kb_write_log_generic_fields.sql`). 16/16 dosya, 82/82 test PASS.
 - [ ] **Deno testi** (`ai-gateway/validate.test.ts`): Deno kurulu değil.
 - [ ] **Gerçek NVIDIA çağrısı uçtan uca**: Settings'te bir NVIDIA API anahtarı girilip lead
       detayından "Taslak Oluştur" ile gerçek bir taslak üretilip `validateDraft`'ın gerçek model

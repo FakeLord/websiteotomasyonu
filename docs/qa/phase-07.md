@@ -41,12 +41,16 @@ tamamlandı).
 
 ## Bu ortamda çalıştırılamayanlar (kullanıcı tarafından doğrulanmalı)
 
-- [ ] **pgTAP testi** (`conversations.test.sql`): Docker yok, `pnpm test:db` çalıştırılamadı.
-      **Önemli not:** bu test dosyasındaki `mark_message_sent()` senaryoları gerçek `now()`'a
-      bağlıdır (`outreach_guard()`'ın gönderim saati kontrolü); test yalnızca **hafta içi
-      09:00–18:30 Europe/Istanbul** aralığında çalıştırılırsa güvenilir sonuç verir. CI'da bu
-      dosya için ya zaman sahteciliği (`pg_mock_time` benzeri) eklenmeli ya da yalnızca elle,
-      uygun saatte çalıştırılmalı — bu oturumda düzeltilmedi (zaman kısıtı).
+- [x] **pgTAP testi** (`conversations.test.sql`): Docker kurulup gerçek Postgres'e karşı
+      çalıştırıldı (2026-09-26, bir Cumartesi — tam da aşağıda öngörülen `now()` bağımlılığı
+      sorunu gerçekleşti). Test artık `psql`'in `\if`/`\else` desteğiyle hafta içi 09:00–18:30
+      Europe/Istanbul içinde mi dışında mı çalıştığını çalışma anında hesaplayıp doğru senaryoyu
+      (SENT beklentisi ya da OUTSIDE_SEND_WINDOW reddi) seçiyor — artık her zaman güvenilir.
+      Ayrıca iki test-only bug daha bulundu: `messages_insert` RLS politikası yalnızca
+      DRAFT/RECEIVED'a izin verirken fixture doğrudan APPROVED insert etmeye çalışıyordu; ve
+      `reset role` sonrası `request.jwt.claim.sub` transaction-local kaldığından ikinci workspace
+      fixture'ında `log_activity()` yanlış kullanıcı adına üyelik kontrolü yapıyordu. 16/16
+      dosya, 82/82 test PASS.
 - [ ] **Gerçek SMTP gönderimi uçtan uca**: Settings'te gerçek bir SMTP hesabı girilip
       Conversations'tan bir e-posta taslağının onaylanıp gönderildiği, alıcının gerçekten aldığı
       doğrulanmalı (SPF/DKIM/DMARC kurulumu — SPEC.md → D9 — bu fazın kapsamı dışında).
