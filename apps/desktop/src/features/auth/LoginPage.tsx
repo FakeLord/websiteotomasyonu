@@ -18,8 +18,14 @@ export function LoginPage() {
 
   const onSubmit = async (values: LoginInput) => {
     setAuthError(null);
-    const { error } = await supabase.auth.signInWithPassword(values);
-    if (error) {
+    try {
+      const { error } = await supabase.auth.signInWithPassword(values);
+      if (error) {
+        setAuthError(tr.auth.loginError);
+      }
+    } catch {
+      // secureStorage (Windows Credential Manager) veya ağ katmanındaki
+      // beklenmeyen bir hata kullanıcıyı sessizce ekranda bırakmasın.
       setAuthError(tr.auth.loginError);
     }
   };
