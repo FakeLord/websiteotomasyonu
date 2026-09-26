@@ -2,9 +2,11 @@
 //! Oturum token'ı ve kişisel SMTP/IMAP şifreleri yalnızca burada, düz metin
 //! olarak localStorage/dosyaya asla yazılmadan tutulur.
 //!
-//! Windows Credential Manager, tek bir credential blob'unu UTF-16 kodlamada
-//! ~2560 karakterle sınırlar (`keyring` crate bunu aşınca hata döner). Gerçek
-//! bir Supabase oturumu (access_token + refresh_token + kullanıcı nesnesi) bu
+//! Windows Credential Manager, tek bir credential blob'unu 2560 BAYT'la
+//! sınırlar (`CRED_MAX_CREDENTIAL_BLOB_SIZE`) — UTF-16 kodlamada bu, 1280 kod
+//! birimine denk gelir (`keyring` crate'in hata mesajı yanıltıcı biçimde
+//! "2560 chars" der, ama aslında bayt sayısını karşılaştırır). Gerçek bir
+//! Supabase oturumu (access_token + refresh_token + kullanıcı nesnesi) bu
 //! sınırı kolayca aşıyor — bu yüzden değer, sabit boyutlu parçalara bölünüp
 //! `{key}__0`, `{key}__1`, ... altında ayrı credential'lar olarak saklanır;
 //! parça sayısı `{key}__chunks` içinde tutulur. Kısa değerler (ör. SMTP şifresi)
@@ -13,8 +15,12 @@
 use keyring::Entry;
 
 const SERVICE_NAME: &str = "com.hostlysisletme.localbusinessfinder";
-// Windows'un ~2560 UTF-16 karakter sınırının altında güvenli bir pay bırakır.
-const CHUNK_SIZE: usize = 2000;
+// Windows'un CRED_MAX_CREDENTIAL_BLOB_SIZE sınırı 2560 BAYT'tır (UTF-16 kod
+// birimi değil — `keyring` crate'in hata mesajı "2560 chars" dese de, aslında
+// UTF-16 kodlanmış BAYT sayısını 2560 ile karşılaştırıyor). Yani gerçek sınır
+// 2560 / 2 = 1280 UTF-16 kod birimidir; güvenli bir pay bırakmak için 1200
+// kullanılıyor.
+const CHUNK_SIZE: usize = 1200;
 
 /// `value`'yu, hiçbir parçanın UTF-16 kod birimi cinsinden `max_units`'i
 /// aşmayacağı ve sürrogat çiftlerinin bölünmeyeceği (char sınırlarına
