@@ -40,10 +40,13 @@ bkz. `docs/adr/0004-places-vault.md`).
       sonuç, doğru E.164 telefon normalizasyonu (`+90...`), website/OPERATIONAL durumu ile
       `placeToBusinessPayload()` ile dönüşüm hatasız çalıştı. NVIDIA smoke testinin aksine
       **hiçbir bug bulunmadı**.
-      **Hâlâ eksik:** Settings → Vault akışı, Discover sayfasından gerçek bir arama başlatıp
-      sonuçların Leads'e düştüğü, `search_jobs.status`/`api_calls`/`result_count`/`new_count`/
-      `duplicate_count` alanlarının gerçek bir Supabase projesinde (worker/queue dahil) uçtan uca
-      doğrulanması hâlâ kullanıcı tarafından yapılmalı.
+      **Uçtan uca UI akışı da doğrulandı** (2026-09-26): Settings → Vault akışıyla gerçek bir
+      Google Places API anahtarı girildi; Discover sayfasından "diş kliniği / sağlık / istanbul /
+      esenyurt" araması başlatıldı, sonuçlar gerçekten Leads'e düştü ve `compute-score` ile
+      puanlandı (ör. skor 7, 51 gibi gerçek değerler; websitesiz/website'li ayrımı doğru).
+      Kalan tek nokta: `search_jobs` tablosundaki `status`/`api_calls`/`result_count`/
+      `new_count`/`duplicate_count` alanlarının satır satır doğru güncellendiği ayrıca SQL'den
+      teyit edilmedi (yalnızca UI sonucu gözlemlendi) — düşük öncelikli, işlevsel olarak çalışıyor.
 - [ ] **429 / rate limit senaryosu**: Gerçek API'de tetiklemek zor; `runSearchJob` birim testinde
       simüle edildi ama uçtan uca (Edge Function → adapter → worker) davranışı gerçek bir kotayı
       zorlamadan doğrulanamadı.
