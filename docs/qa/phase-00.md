@@ -18,11 +18,18 @@ Kaynak: `docs/phases/PHASE-00.md` → Acceptance criteria.
 ## Kullanıcı tarafından elle doğrulanması gerekenler
 
 - [x] `pnpm tauri build` (2026-09-26): gerçek bir Windows makinesinde lokal olarak çalıştırıldı,
-      `Local Business Finder_0.1.0_x64-setup.exe` (NSIS, imzasız) hatasız üretildi. **Hâlâ eksik:**
-      installer'ın yönetici yetkisi istemeden kurulup Başlat menüsünden açıldığı ve Program
-      Ekle/Kaldır'dan temiz kaldırıldığı fiilen denenmedi (dosya kullanıcıya teslim edildi, kurulum
-      kullanıcı tarafından yapılmalı). CI'daki (`windows-latest` runner) artifact ayrıca
-      doğrulanmamıştır.
+      `Local Business Finder_0.1.0_x64-setup.exe` (NSIS, imzasız) hatasız üretildi ve gerçekten
+      kurulup çalıştırıldı. **Bulunan gerçek bug:** ilk build kök dizinde `.env` olmadan (yalnızca
+      boş `.env.example`) yapılmıştı; `supabase-client.ts` eksik `VITE_SUPABASE_URL`/
+      `VITE_SUPABASE_ANON_KEY`'de bir `Error` fırlatıyor, bu da React'in hiç mount olmadan
+      çökmesine ve **kullanıcıya hiçbir hata mesajı gösterilmeden bembeyaz bir pencereye**
+      (Tauri/WebView2'nin varsayılan boş sayfası) yol açıyor. Kök dizine gerçek `.env` (lokal
+      Supabase URL/anon key) eklenip yeniden build edilince düzeltildi. **Ayrı bir iyileştirme
+      önerisi (henüz uygulanmadı):** `supabase-client.ts`'deki bu throw, kullanıcıya görünür bir
+      hata ekranı yerine sessiz bir beyaz ekrana düşüyor — bir React error boundary veya
+      başlangıç-durumu kontrolü eklenmesi, gelecekte benzer bir yapılandırma hatasını çok daha
+      hızlı teşhis edilebilir kılar.
+      CI'daki (`windows-latest` runner) artifact ayrıca doğrulanmamıştır.
 - [x] `supabase start` + `supabase test db` (2026-09-26): Docker Desktop kurulup lokal Supabase
       ayağa kaldırıldı, `smoke.test.sql` dahil **16/16 pgTAP dosyası (82/82 test) PASS**. Bu
       süreçte 3 gerçek üretim bug'ı bulunup düzeltildi (bkz. Faz 3/4/6 QA notları).
