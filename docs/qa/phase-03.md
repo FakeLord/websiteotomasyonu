@@ -34,10 +34,16 @@ bkz. `docs/adr/0004-places-vault.md`).
       dosya, 82/82 test PASS.
 - [ ] **Deno testleri** (`admin-invite`, gerekirse yeni Edge Function testleri): Deno kurulu
       değil.
-- [ ] **Gerçek Google Places araması uçtan uca**: Settings'te admin bir Google Places API
-      anahtarı girip, Discover sayfasından bir arama başlatıp sonuçların Leads'e düştüğü,
-      `search_jobs.status`'ün DONE olduğu, `api_calls`/`result_count`/`new_count`/`duplicate_count`
-      alanlarının doğru güncellendiği gerçek bir Supabase projesinde doğrulanmalı.
+- [x] **Gerçek Google Places çağrısı, arama+dönüşüm katmanı** (2026-09-26, `scripts/smoke/
+      google-places.ts`, gerçek API key ile): `places:searchText` (New) uç noktasına
+      `places-search` Edge Function'ıyla birebir aynı field mask'la çağrı yapıldı — 5 gerçek
+      sonuç, doğru E.164 telefon normalizasyonu (`+90...`), website/OPERATIONAL durumu ile
+      `placeToBusinessPayload()` ile dönüşüm hatasız çalıştı. NVIDIA smoke testinin aksine
+      **hiçbir bug bulunmadı**.
+      **Hâlâ eksik:** Settings → Vault akışı, Discover sayfasından gerçek bir arama başlatıp
+      sonuçların Leads'e düştüğü, `search_jobs.status`/`api_calls`/`result_count`/`new_count`/
+      `duplicate_count` alanlarının gerçek bir Supabase projesinde (worker/queue dahil) uçtan uca
+      doğrulanması hâlâ kullanıcı tarafından yapılmalı.
 - [ ] **429 / rate limit senaryosu**: Gerçek API'de tetiklemek zor; `runSearchJob` birim testinde
       simüle edildi ama uçtan uca (Edge Function → adapter → worker) davranışı gerçek bir kotayı
       zorlamadan doğrulanamadı.
