@@ -17,9 +17,15 @@ Kaynak: `docs/phases/PHASE-00.md` → Acceptance criteria.
 
 ## Kullanıcı tarafından elle doğrulanması gerekenler
 
-- [ ] CI'daki setup.exe temiz bir Windows 10/11'de yönetici yetkisi istemeden kurulur, Başlat menüsünden açılır ve Program Ekle/Kaldır'dan kaldırılır.
-  - GitHub Actions `ci.yml` her PR'da `windows-latest` runner'da NSIS installer üretip artifact olarak yüklüyor; bu artifact indirilip gerçek bir Windows makinede denenmeli.
-- [ ] `supabase start` ile lokal Supabase'in ayağa kalktığı doğrulanmalı (bu geliştirme ortamında Docker/Podman kurulu değildi; `DockerLifecycleInspectError` alındı). Docker Desktop kurulu bir makinede `supabase start` ve `supabase test db` çalıştırılıp `smoke.test.sql`'in geçtiği teyit edilmeli.
+- [x] `pnpm tauri build` (2026-09-26): gerçek bir Windows makinesinde lokal olarak çalıştırıldı,
+      `Local Business Finder_0.1.0_x64-setup.exe` (NSIS, imzasız) hatasız üretildi. **Hâlâ eksik:**
+      installer'ın yönetici yetkisi istemeden kurulup Başlat menüsünden açıldığı ve Program
+      Ekle/Kaldır'dan temiz kaldırıldığı fiilen denenmedi (dosya kullanıcıya teslim edildi, kurulum
+      kullanıcı tarafından yapılmalı). CI'daki (`windows-latest` runner) artifact ayrıca
+      doğrulanmamıştır.
+- [x] `supabase start` + `supabase test db` (2026-09-26): Docker Desktop kurulup lokal Supabase
+      ayağa kaldırıldı, `smoke.test.sql` dahil **16/16 pgTAP dosyası (82/82 test) PASS**. Bu
+      süreçte 3 gerçek üretim bug'ı bulunup düzeltildi (bkz. Faz 3/4/6 QA notları).
 - [ ] Uygulama logları `%APPDATA%\com.hostlysisletme.localbusinessfinder\logs\` altında oluşuyor mu (native `pnpm tauri dev`/`pnpm tauri build` sonrası kontrol edilmeli — bu ortamda native pencere çalıştırılamadı).
 
 ## Notlar

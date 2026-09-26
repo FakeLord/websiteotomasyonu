@@ -48,9 +48,11 @@ Kaynak: `docs/SPEC.md` → M (Follow-Up Automation), D (Dashboard), Faz 8 özeti
 - [ ] **"Wi-Fi kapatılıp açıldığında uygulama çökmez ve veri tutarlıdır"**: gerçek Windows
       makinesinde ağ kesintisi simülasyonu (manuel test listesi, SPEC.md → U) bu ortamda
       yapılamadı.
-- [ ] **Kurulum dosyası uçtan uca**: CI'dan indirilen `setup.exe`'nin temiz bir Windows
-      makinesinde kurulup Türkçe arayüzle açıldığı doğrulanmalı (installer ikonu hâlâ Tauri
-      varsayılanı — özel bir ikon tasarım varlığı sağlanmadı, bkz. Notlar).
+- [ ] **Kurulum dosyası uçtan uca**: `pnpm tauri build` 2026-09-26'da lokal olarak hatasız çalıştı
+      ve `Local Business Finder_0.1.0_x64-setup.exe` üretildi (kullanıcıya teslim edildi), ama
+      installer'ın gerçekten kurulup Türkçe arayüzle açıldığı, Başlat menüsü/kaldırma akışının
+      çalıştığı henüz denenmedi (installer ikonu hâlâ Tauri varsayılanı — özel bir ikon tasarım
+      varlığı sağlanmadı, bkz. Notlar). CI'daki (`windows-latest`) artifact ayrı bir doğrulama.
 - [ ] **Veri dışa aktarımının Tauri webview'ında gerçekten dosya indirdiği**: `Blob` +
       `<a download>` yaklaşımının Tauri'nin WebView2 tabanında (tarayıcıdan farklı olarak)
       beklenen "Downloads" klasörüne kaydettiği gerçek bir Windows makinesinde doğrulanmalı;
