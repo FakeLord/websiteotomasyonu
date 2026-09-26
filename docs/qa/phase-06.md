@@ -51,10 +51,20 @@ Bkz. `docs/adr/0006-ai-integration.md` (NVIDIA VERIFY_CURRENT_DOCS bulgusu ve op
       `validateDraft()` ucu ucuna çalıştırıldı; bu sırada **varsayılan modelin emekliye ayrıldığı
       bulundu ve düzeltildi** (yukarıya bakın). `validateDraft()` modelin uydurduğu referansı
       doğru reddetti.
-      **Hâlâ eksik:** Settings → admin-secrets Vault akışı (gerçek anahtarın Supabase'e
-      kaydedilip `ai-gateway` Edge Function'ının onu okuması) ve masaüstündeki "Taslak Oluştur"
-      butonundan uçtan uca UI akışı bu smoke test'in kapsamı dışında kaldı; gerçek bir workspace'te
-      ayrıca doğrulanmalı.
+      **Uçtan uca UI akışı da denendi** (2026-09-26, gerçek kullanıcı): Settings → Vault'a NVIDIA
+      anahtarı girilip lead detayından "Taslak Oluştur" tıklandı. **İki gerçek sorun bulundu:**
+      1) `mistralai/mistral-nemotron` bu hesapta çok yavaş (~190-234 sn) ve güvenilmez (bir
+         denemede HTTP 500 ile bitti — `ai_runs` tablosunda kayıtlı); daha hızlı alternatif
+         `meta/llama-3.2-11b-vision-instruct` (~6 sn) denendi ama `response_format: json_object`'i
+         hiç dikkate almayıp düz metin döndürdü — ai-gateway'in JSON ayrıştırması bunu kabul etmez.
+         Bu hesapta erişilebilir modeller arasında hem hızlı hem JSON-uyumlu bir seçenek
+         bulunamadı; model seçimi D5 kararına göre (SPEC.md) pilot sonrası yeniden
+         değerlendirilecek bir husus olarak kalıyor.
+      2) `ai-gateway-client.ts`'de istemci tarafında hiçbir zaman aşımı yoktu — model süresiz
+         yanıt vermeyince (veya bağlantı sessizce koptuğunda) arayüz sonsuza dek "Oluşturuluyor..."
+         gösteriyordu, kullanıcıya hiçbir hata mesajı çıkmıyordu. `AbortController` ile 60 saniyelik
+         bir zaman aşımı eklendi; artık her çağrı ya başarılı olur ya da açık bir hata mesajıyla
+         sonuçlanır.
 - [ ] **"30 örnekte taslakların ≥ %90'ı düzenleme gerekmeden kullanılabilir"** (acceptance
       kriteri): gerçek model çıktılarıyla elle değerlendirilecek bir eval seti bu fazda
       oluşturulmadı (SPEC.md → J.4: "Faz 6'da 30 örnekli bir değerlendirme seti" — zaman kısıtı

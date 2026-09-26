@@ -17,6 +17,12 @@ export interface CallAiGatewayResult {
  * hash'ini istemcide hesaplar (SPEC.md → J.4: 24 saatlik cache). Prompt metni
  * hiçbir zaman `ai_runs`'a yazılmaz — yalnızca bu çağrının kendisi loglanır.
  */
+// Bazı OpenAI-uyumlu modeller (ör. NVIDIA free tier'daki büyük modeller)
+// dakikalarca sürebiliyor veya hiç yanıt vermeyebiliyor; bu durumda çağrı
+// süresiz beklemek yerine açık bir zaman aşımı hatasıyla sonuçlanmalı
+// (kullanıcı arayüzde sonsuza kadar "Oluşturuluyor..." görmemeli).
+const REQUEST_TIMEOUT_MS = 60_000;
+
 export async function callAiGateway(
   workspaceId: string,
   request: AIPromptRequest,
@@ -24,16 +30,32 @@ export async function callAiGateway(
 ): Promise<CallAiGatewayResult> {
   const inputHash = await sha256Hex(JSON.stringify({ system: request.system, messages: request.messages }));
 
-  const { data, error } = await supabase.functions.invoke("ai-gateway", {
-    body: {
-      workspaceId,
-      request,
-      inputHash,
-      entityType: entity?.entityType,
-      entityId: entity?.entityId,
-    },
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  let data: { json: unknown; cached?: boolean } | null;
+  let error: unknown;
+  try {
+    ({ data, error } = await supabase.functions.invoke("ai-gateway", {
+      body: {
+        workspaceId,
+        request,
+        inputHash,
+        entityType: entity?.entityType,
+        entityId: entity?.entityId,
+      },
+      signal: controller.signal,
+    }));
+  } catch (err) {
+    if (controller.signal.aborted) {
+      throw new Error("AI sağlayıcısı zaman aşımına uğradı (60 sn içinde yanıt vermedi).");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
   if (error) throw error;
+  if (!data) throw new Error("AI sağlayıcısından boş yanıt alındı.");
 
   return { json: data.json, cached: !!data.cached };
 }
