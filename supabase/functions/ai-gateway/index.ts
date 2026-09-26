@@ -87,7 +87,10 @@ Deno.serve(async (req) => {
   }
 
   const { operation, promptVersion } = rawBody.request;
-  const model = aiConfig.routes?.[operation] ?? aiConfig.model ?? "meta/llama-3.1-70b-instruct";
+  // meta/llama-3.1-70b-instruct, NVIDIA tarafından 2026-08-26'da emekliye ayrıldı (smoke test
+  // ile bulundu, bkz. scripts/smoke/nvidia.ts). mistralai/mistral-nemotron, bu hesapta erişilebilir
+  // olduğu doğrulanan güncel bir genel amaçlı model.
+  const model = aiConfig.routes?.[operation] ?? aiConfig.model ?? "mistralai/mistral-nemotron";
 
   const { data: cached } = await adminClient
     .from("ai_output_cache")

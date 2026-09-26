@@ -46,9 +46,15 @@ Bkz. `docs/adr/0006-ai-integration.md` (NVIDIA VERIFY_CURRENT_DOCS bulgusu ve op
       field" hatasıyla patladığı bulundu; `to_jsonb(...)->>'...'` ile düzeltildi
       (`20260926100000_fix_kb_write_log_generic_fields.sql`). 16/16 dosya, 82/82 test PASS.
 - [ ] **Deno testi** (`ai-gateway/validate.test.ts`): Deno kurulu değil.
-- [ ] **Gerçek NVIDIA çağrısı uçtan uca**: Settings'te bir NVIDIA API anahtarı girilip lead
-      detayından "Taslak Oluştur" ile gerçek bir taslak üretilip `validateDraft`'ın gerçek model
-      çıktısını doğru şekilde kabul/reddettiği gerçek bir workspace'te doğrulanmalı.
+- [x] **Gerçek NVIDIA çağrısı, prompt+validasyon katmanı** (2026-09-26, `scripts/smoke/nvidia.ts`,
+      gerçek API key ile): `buildDraftFirstMessagePrompt()` → gerçek NVIDIA çağrısı →
+      `validateDraft()` ucu ucuna çalıştırıldı; bu sırada **varsayılan modelin emekliye ayrıldığı
+      bulundu ve düzeltildi** (yukarıya bakın). `validateDraft()` modelin uydurduğu referansı
+      doğru reddetti.
+      **Hâlâ eksik:** Settings → admin-secrets Vault akışı (gerçek anahtarın Supabase'e
+      kaydedilip `ai-gateway` Edge Function'ının onu okuması) ve masaüstündeki "Taslak Oluştur"
+      butonundan uçtan uca UI akışı bu smoke test'in kapsamı dışında kaldı; gerçek bir workspace'te
+      ayrıca doğrulanmalı.
 - [ ] **"30 örnekte taslakların ≥ %90'ı düzenleme gerekmeden kullanılabilir"** (acceptance
       kriteri): gerçek model çıktılarıyla elle değerlendirilecek bir eval seti bu fazda
       oluşturulmadı (SPEC.md → J.4: "Faz 6'da 30 örnekli bir değerlendirme seti" — zaman kısıtı
@@ -66,13 +72,28 @@ Bkz. `docs/adr/0006-ai-integration.md` (NVIDIA VERIFY_CURRENT_DOCS bulgusu ve op
   negatif üretebilir. Bilinçli bir mühendislik kısayolu — false positive (gereksiz red) tercih
   edilir, çünkü guardrail'in amacı uydurma referansı asla göstermemektir (CLAUDE.md #10).
 - **Model seçimi:** `ai_config.routes[operation] ?? ai_config.model` ile operasyon bazlı model
-  routing (J.4: "sınıflandırma/özet küçük modelde, mesaj yazma büyük modelde") mümkün ama
-  varsayılan tek bir model adı (`meta/llama-3.1-70b-instruct`) kod içinde fallback olarak durur;
-  gerçek model seçimi admin tarafından `workspace_settings.ai_config`'te yapılmalı.
-- **`response_format: json_object`**, OpenAI-uyumlu her sağlayıcıda desteklenmeyebilir; NVIDIA
-  NIM'in bunu desteklediği bu oturumda gerçek bir çağrı ile doğrulanamadı (ağ/anahtar yok).
+  routing (J.4: "sınıflandırma/özet küçük modelde, mesaj yazma büyük modelde") mümkün; gerçek
+  model seçimi admin tarafından `workspace_settings.ai_config`'te yapılmalı. Kod içindeki fallback
+  varsayılan model 2026-09-26'da gerçek bir smoke test (`scripts/smoke/nvidia.ts`, NVIDIA API key
+  ile) çalıştırılınca **`meta/llama-3.1-70b-instruct`'ın 2026-08-26'da NVIDIA tarafından emekliye
+  ayrıldığı** (HTTP 410) bulundu — `ai_config`'i hiç ayarlamamış bir workspace'te AI özellikleri
+  tamamen çalışmaz durumdaydı. `mistralai/mistral-nemotron`'a güncellendi (bu hesapta erişilebilir
+  olduğu doğrulandı); `nvidia/llama-3.1-nemotron-70b-instruct` gibi bazı katalogda listelenen
+  modeller de 404 (hesapta etkin değil) döndü — model kataloğu hesaba/zamana göre değişebildiğinden
+  bu varsayılan periyodik olarak yeniden doğrulanmalı.
+- **`response_format: json_object`**: NVIDIA NIM'in bunu desteklediği smoke test ile doğrulandı
+  (`mistral-nemotron` geçerli JSON döndürdü). Ancak `ai-gateway`, `AIPromptRequest.jsonSchema`
+  alanını API çağrısına hiç göndermiyor — yalnızca sistem promptu üzerinden şema isteniyor, model
+  gerçekten şemaya (`used_facts` zorunlu alanı gibi) uymayabilir; smoke test çıktısında model
+  `used_facts` alanını atlayıp yerine `signature`/`ps` eklemişti. `validateDraft()` bu şekil
+  sapmasını kontrol etmiyor (yalnızca guardrail'leri kontrol ediyor) — ayrı bir iyileştirme konusu.
   Desteklenmezse `ai-gateway` yine de ham metni JSON.parse etmeye çalışır ve başarısız olursa
   `PARSE_ERROR` döner (J.3 madde 1'deki "1 kez yeniden dene" orkestrasyonu bu fazda istemci
   tarafında uygulanmadı — tek deneme var, retry Faz 7'de eklenebilir).
+- **Gerçek NVIDIA smoke testi (2026-09-26):** `draft_first_message` operasyonu gerçek bir NVIDIA
+  modeliyle uçtan uca çalıştırıldı; `validateDraft()` modelin ürettiği doğrulanmamış referansları
+  (paket adı dahil) doğru şekilde reddetti — guardrail'in kendisi çalışıyor. Model yanıt süresi bu
+  hesap/model kombinasyonunda yüksekti (~4 dk); production'da kullanıcıya "oluşturuluyor" durumu
+  gösterilmeden önce gerçek bir workspace'te tipik gecikme ölçülmeli.
 - **KB sayfası** basit bir CRUD'dur; düzenleme/silme UI'ı yok (yalnızca ekleme + listeleme).
   Gerekirse ayrı bir görev olarak genişletilebilir.
