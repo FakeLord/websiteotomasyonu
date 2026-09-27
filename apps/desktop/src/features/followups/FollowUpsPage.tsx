@@ -1,12 +1,32 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { buildFollowupDraftPrompt, computeFollowUpDueDate } from "@lbf/core";
-import { followupDraftOutputSchema, type FollowupDraftOutput } from "@lbf/contracts";
+import { CalendarClock, Clock, Eye, Loader2, MoreHorizontal, Send, SkipForward, Sparkles } from "lucide-react";
+import { buildFollowupDraftPrompt } from "@lbf/core";
+import { followupDraftOutputSchema } from "@lbf/contracts";
 import { supabase } from "../../lib/supabase-client";
 import { useWorkspaceMembership } from "../../lib/use-workspace-membership";
+import { useWorkspaceMembers } from "../../lib/use-workspace-members";
 import { callAiGateway } from "../../lib/ai-gateway-client";
+import { formatDateTime, formatRelative } from "../../lib/format";
 import { tr } from "../../i18n/tr";
+import { cn } from "../../lib/cn";
 import { Button } from "../../components/ui/button";
+import { Textarea } from "../../components/ui/input";
+import { Card } from "../../components/ui/card";
+import { Badge } from "../../components/ui/badge";
+import { Avatar, EmptyState, PageHeader, Table, Td, Th, Tr } from "../../components/ui/data-display";
+import {
+  CountPill,
+  Dialog,
+  DialogContent,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../../components/ui/primitives";
+import { ChannelIcon } from "../../components/domain/channel-icon";
+import { loadFollowupPolicy, nextFollowUpDate, rpc, sendDraftMessage } from "../outreach/outreach";
 
 interface FollowUpRow {
   id: string;
@@ -15,216 +35,328 @@ interface FollowUpRow {
   step: number;
   due_at: string;
   status: "PENDING" | "DRAFTED" | "SENT" | "CANCELLED" | "SKIPPED";
+  cancel_reason: string | null;
   message_id: string | null;
-  businesses: { name: string } | null;
+  updated_at: string;
+  businesses: { name: string; category: string | null; assigned_to: string | null } | null;
+  conversations: { channel: string; last_outbound_at: string | null } | null;
+}
+
+type TabKey = "pending" | "sent" | "completed" | "stopped";
+
+function tabFor(row: FollowUpRow): TabKey {
+  if (row.status === "PENDING" || row.status === "DRAFTED") return "pending";
+  if (row.status === "SENT") return "sent";
+  // Müşteri cevap verdiyse veya süreç ilerlediyse sekans amacına ulaşmıştır.
+  if (row.status === "CANCELLED" && row.cancel_reason && !/DNC|LOST|DISQUALIFIED/.test(row.cancel_reason)) return "completed";
+  return "stopped";
 }
 
 export function FollowUpsPage() {
-  const membership = useWorkspaceMembership();
-  const workspaceId = membership.data?.workspaceId;
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [error, setError] = useState<string | null>(null);
+  const workspaceId = useWorkspaceMembership().data?.workspaceId;
+  const { byId } = useWorkspaceMembers();
+  const [tab, setTab] = useState<TabKey>("pending");
+  const [notice, setNotice] = useState<{ tone: "ok" | "warn" | "error"; text: string } | null>(null);
+  const [preview, setPreview] = useState<{ row: FollowUpRow; body: string; subject: string | null } | null>(null);
 
-  const followUpsQuery = useQuery({
+  const policyQuery = useQuery({
+    queryKey: ["followup-policy", workspaceId],
+    enabled: !!workspaceId,
+    queryFn: () => loadFollowupPolicy(workspaceId as string),
+  });
+
+  const query = useQuery({
     queryKey: ["follow-ups", workspaceId],
     enabled: !!workspaceId,
     queryFn: async (): Promise<FollowUpRow[]> => {
-      const { data, error: queryError } = await supabase
+      const { data, error } = await supabase
         .from("follow_ups")
-        .select("id, business_id, conversation_id, step, due_at, status, message_id, businesses(name)")
+        .select(
+          "id, business_id, conversation_id, step, due_at, status, cancel_reason, message_id, updated_at, businesses(name, category, assigned_to), conversations(channel, last_outbound_at)",
+        )
         .eq("workspace_id", workspaceId as string)
-        .in("status", ["PENDING", "DRAFTED"])
-        .order("due_at", { ascending: true });
-      if (queryError) throw queryError;
+        .order("due_at", { ascending: true })
+        .limit(500);
+      if (error) throw error;
       return (data ?? []) as unknown as FollowUpRow[];
     },
   });
 
-  const invalidate = () => void queryClient.invalidateQueries({ queryKey: ["follow-ups", workspaceId] });
+  const rows = query.data ?? [];
+  const counts = useMemo(() => {
+    const c: Record<TabKey, number> = { pending: 0, sent: 0, completed: 0, stopped: 0 };
+    rows.forEach((r) => (c[tabFor(r)] += 1));
+    return c;
+  }, [rows]);
+  const visible = rows.filter((r) => tabFor(r) === tab);
+  const totalSteps = policyQuery.data?.maxFollowUps ?? 2;
 
-  const draftMutation = useMutation({
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ["follow-ups", workspaceId] });
+    void queryClient.invalidateQueries({ queryKey: ["shell-counters", workspaceId] });
+  };
+  const fail = (err: unknown, fallback: string) => setNotice({ tone: "error", text: err instanceof Error ? err.message : fallback });
+
+  const draft = useMutation({
     mutationFn: async (row: FollowUpRow) => {
       if (!workspaceId) return;
-
-      const { data: firstMessage } = await supabase
+      const { data: first, error: firstError } = await supabase
         .from("messages")
-        .select("body")
+        .select("body, subject")
         .eq("conversation_id", row.conversation_id)
         .eq("direction", "OUT")
+        .eq("status", "SENT")
         .order("created_at", { ascending: true })
         .limit(1)
         .maybeSingle();
-
-      const request = buildFollowupDraftPrompt({
-        firstMessageBody: firstMessage?.body ?? "",
-        stepNumber: row.step,
-        businessName: row.businesses?.name ?? "",
-      });
-      const result = await callAiGateway(workspaceId, request, { entityType: "follow_up", entityId: row.id });
-      const parsed = followupDraftOutputSchema.parse(result.json) as FollowupDraftOutput;
-
-      const { data: message, error: insertError } = await supabase
+      if (firstError) throw firstError;
+      const result = await callAiGateway(
+        workspaceId,
+        buildFollowupDraftPrompt({ firstMessageBody: first?.body ?? "", stepNumber: row.step, businessName: row.businesses?.name ?? "" }),
+        { entityType: "follow_up", entityId: row.id },
+      );
+      const parsed = followupDraftOutputSchema.parse(result.json);
+      const subject = row.conversations?.channel === "EMAIL" && first?.subject ? `Re: ${first.subject as string}` : null;
+      const { data: message, error } = await supabase
         .from("messages")
         .insert({
           workspace_id: workspaceId,
           conversation_id: row.conversation_id,
           direction: "OUT",
           status: "DRAFT",
+          subject,
           body: parsed.body,
           author_type: "AI",
         })
         .select("id")
         .single();
-      if (insertError) throw insertError;
-
-      await supabase.rpc("mark_followup_drafted", { p_followup_id: row.id, p_message_id: message.id });
+      if (error) throw error;
+      await rpc("mark_followup_drafted", { p_followup_id: row.id, p_message_id: message.id });
     },
     onSuccess: () => {
-      setError(null);
+      setNotice(null);
       invalidate();
     },
-    onError: (err) => setError(err instanceof Error ? err.message : tr.draft.error),
+    onError: (err) => fail(err, tr.draft.error),
   });
 
-  const sendMutation = useMutation({
-    mutationFn: async (row: FollowUpRow) => {
-      if (!row.message_id) throw new Error(tr.followUps.noDraft);
-      if (!workspaceId) return;
+  const openPreview = async (row: FollowUpRow) => {
+    if (!row.message_id) return;
+    const { data, error } = await supabase.from("messages").select("body, subject").eq("id", row.message_id).single();
+    if (error) return fail(error, tr.common.error);
+    setPreview({ row, body: data.body as string, subject: (data.subject as string | null) ?? null });
+  };
 
-      await supabase.rpc("approve_message", { p_message_id: row.message_id });
-
-      const { data: message } = await supabase.from("messages").select("body, subject").eq("id", row.message_id).single();
-      const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(message?.body ?? ""));
-      const contentHash = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
-
-      await supabase.rpc("mark_message_sent", { p_message_id: row.message_id, p_content_hash: contentHash, p_external_message_id: null });
-
-      const { data: settings } = await supabase
-        .from("workspace_settings")
-        .select("followup_policy")
-        .eq("workspace_id", workspaceId)
-        .single();
-      const policy = settings?.followup_policy as {
-        steps: Array<{ afterDays: number }>;
-        maxFollowUps: number;
-        sendWindow: { days: number[]; from: string };
-        skipHolidays: boolean;
-      };
-      const nextStepIndex = row.step; // steps[0] -> step 1'in gecikmesi, dolayısıyla steps[row.step] -> sıradaki adım
-      const nextStepPolicy = policy?.steps?.[nextStepIndex];
-      const nextDueAt =
-        nextStepPolicy && row.step < (policy?.maxFollowUps ?? 0)
-          ? computeFollowUpDueDate(new Date(), nextStepPolicy.afterDays, policy.sendWindow, policy.skipHolidays)
-          : null;
-
-      await supabase.rpc("mark_followup_sent", {
-        p_followup_id: row.id,
-        p_message_id: row.message_id,
-        p_next_due_at: nextDueAt?.toISOString() ?? null,
+  const send = useMutation({
+    mutationFn: async (input: { row: FollowUpRow; body: string; subject: string | null }) => {
+      if (!workspaceId || !input.row.message_id || !input.row.conversations) throw new Error(tr.followUps.noDraft);
+      const { error: updateError } = await supabase.from("messages").update({ body: input.body.trim() }).eq("id", input.row.message_id);
+      if (updateError) throw updateError;
+      const mode = await sendDraftMessage(
+        workspaceId,
+        { conversationId: input.row.conversation_id, businessId: input.row.business_id, channel: input.row.conversations.channel },
+        { id: input.row.message_id, body: input.body.trim(), subject: input.subject },
+        { scheduleFirstFollowUp: false },
+      );
+      const nextDue = nextFollowUpDate(policyQuery.data ?? null, input.row.step);
+      await rpc("mark_followup_sent", {
+        p_followup_id: input.row.id,
+        p_message_id: input.row.message_id,
+        p_next_due_at: nextDue?.toISOString() ?? null,
       });
+      return mode;
     },
-    onSuccess: invalidate,
-    onError: (err) => setError(err instanceof Error ? err.message : tr.followUps.sendError),
+    onSuccess: (mode) => {
+      setPreview(null);
+      setNotice({
+        tone: mode === "SMTP" ? "ok" : "warn",
+        text: mode === "SMTP" ? tr.conversations.sentEmail : mode === "ASSISTED" ? tr.conversations.sentAssisted : tr.conversations.sentManual,
+      });
+      invalidate();
+    },
+    onError: (err) => {
+      fail(err, tr.followUps.sendError);
+      invalidate();
+    },
   });
 
-  const skipMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await supabase.rpc("skip_followup", { p_followup_id: id, p_reason: null });
-    },
+  const skip = useMutation({
+    mutationFn: (id: string) => rpc("skip_followup", { p_followup_id: id, p_reason: null }),
     onSuccess: invalidate,
+    onError: (err) => fail(err, tr.common.error),
   });
 
-  const snoozeMutation = useMutation({
-    mutationFn: async (row: FollowUpRow) => {
-      const newDate = new Date(row.due_at);
-      newDate.setDate(newDate.getDate() + 3);
-      await supabase.rpc("snooze_followup", { p_followup_id: row.id, p_new_due_at: newDate.toISOString() });
+  const snooze = useMutation({
+    mutationFn: ({ row, days }: { row: FollowUpRow; days: number }) => {
+      const next = new Date(Math.max(Date.now(), new Date(row.due_at).getTime()));
+      next.setDate(next.getDate() + days);
+      return rpc("snooze_followup", { p_followup_id: row.id, p_new_due_at: next.toISOString() });
     },
     onSuccess: invalidate,
+    onError: (err) => fail(err, tr.common.error),
   });
 
-  if (!workspaceId) return <p className="text-sm text-slate-500">{tr.common.loading}</p>;
-
-  const rows = followUpsQuery.data ?? [];
-  const overdue = rows.filter((r) => new Date(r.due_at) < new Date());
-  const upcoming = rows.filter((r) => new Date(r.due_at) >= new Date());
+  const now = Date.now();
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-slate-900">{tr.nav.followUps}</h1>
-      {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+    <div>
+      <PageHeader title={tr.followUps.title} description={tr.followUps.description} />
 
-      <FollowUpGroup
-        title={tr.followUps.overdueTitle}
-        rows={overdue}
-        onDraft={(r) => draftMutation.mutate(r)}
-        onSend={(r) => sendMutation.mutate(r)}
-        onSkip={(id) => skipMutation.mutate(id)}
-        onSnooze={(r) => snoozeMutation.mutate(r)}
-      />
-      <FollowUpGroup
-        title={tr.followUps.upcomingTitle}
-        rows={upcoming}
-        onDraft={(r) => draftMutation.mutate(r)}
-        onSend={(r) => sendMutation.mutate(r)}
-        onSkip={(id) => skipMutation.mutate(id)}
-        onSnooze={(r) => snoozeMutation.mutate(r)}
-      />
-    </div>
-  );
-}
+      {notice && (
+        <div
+          className={cn(
+            "mb-4 rounded-lg px-3 py-2 text-sm",
+            notice.tone === "ok" && "bg-success/10 text-[#4ade80]",
+            notice.tone === "warn" && "bg-warning/10 text-[#fbbf24]",
+            notice.tone === "error" && "bg-danger/10 text-[#f87171]",
+          )}
+        >
+          {notice.text}
+        </div>
+      )}
 
-function FollowUpGroup({
-  title,
-  rows,
-  onDraft,
-  onSend,
-  onSkip,
-  onSnooze,
-}: {
-  title: string;
-  rows: FollowUpRow[];
-  onDraft: (row: FollowUpRow) => void;
-  onSend: (row: FollowUpRow) => void;
-  onSkip: (id: string) => void;
-  onSnooze: (row: FollowUpRow) => void;
-}) {
-  return (
-    <section className="space-y-2 rounded-lg border border-slate-200 bg-white p-4">
-      <h2 className="text-sm font-semibold text-slate-700">{title}</h2>
-      {rows.length === 0 && <p className="text-xs text-slate-400">{tr.followUps.empty}</p>}
-      <ul className="space-y-2">
-        {rows.map((row) => (
-          <li key={row.id} className="flex items-center justify-between rounded-md bg-slate-50 p-2 text-sm">
-            <div>
-              <p className="font-medium text-slate-800">
-                {row.businesses?.name ?? "—"} · {tr.followUps.stepLabel} {row.step}
-              </p>
-              <p className="text-xs text-slate-400">
-                {new Date(row.due_at).toLocaleString("tr-TR")} · {row.status}
-              </p>
-            </div>
-            <div className="flex gap-2">
-              {row.status === "PENDING" && (
-                <Button size="sm" variant="outline" onClick={() => onDraft(row)}>
-                  {tr.draft.generateButton}
-                </Button>
+      <Card>
+        <div className="flex items-center gap-1 overflow-x-auto border-b border-border px-3">
+          {(["pending", "sent", "completed", "stopped"] as const).map((key) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setTab(key)}
+              className={cn(
+                "-mb-px flex items-center gap-2 border-b-2 px-3 py-3 text-sm font-medium whitespace-nowrap",
+                tab === key ? "border-primary text-text" : "border-transparent text-muted hover:text-text",
               )}
-              {row.status === "DRAFTED" && (
-                <Button size="sm" onClick={() => onSend(row)}>
+            >
+              {tr.followUps.tabs[key]}
+              <CountPill>{counts[key]}</CountPill>
+            </button>
+          ))}
+        </div>
+
+        {visible.length === 0 ? (
+          <EmptyState icon={CalendarClock} title={tr.followUps.empty} description={tab === "pending" ? tr.followUps.emptyHint : undefined} />
+        ) : (
+          <Table>
+            <thead>
+              <tr>
+                <Th>{tr.followUps.columns.business}</Th>
+                <Th>{tr.followUps.columns.lastMessage}</Th>
+                <Th>{tr.followUps.columns.channel}</Th>
+                <Th>{tr.followUps.columns.step}</Th>
+                <Th>{tr.followUps.columns.due}</Th>
+                <Th>{tr.followUps.columns.status}</Th>
+                <Th>{tr.leads.columns.assigned}</Th>
+                <Th className="w-10">
+                  <span className="sr-only">{tr.common.actions}</span>
+                </Th>
+              </tr>
+            </thead>
+            <tbody>
+              {visible.map((row) => {
+                const overdue = row.status !== "SENT" && tab === "pending" && new Date(row.due_at).getTime() < now;
+                const assignee = row.businesses?.assigned_to ? byId.get(row.businesses.assigned_to)?.name : null;
+                return (
+                  <Tr key={row.id}>
+                    <Td>
+                      <button type="button" onClick={() => navigate(`/leads/${row.business_id}`)} className="flex items-center gap-3 text-left">
+                        <Avatar name={row.businesses?.name ?? "?"} size="sm" square />
+                        <span>
+                          <span className="block max-w-56 truncate font-medium text-text">{row.businesses?.name ?? "—"}</span>
+                          <span className="block text-xs text-muted">{row.businesses?.category ?? ""}</span>
+                        </span>
+                      </button>
+                    </Td>
+                    <Td className="text-muted">{row.conversations?.last_outbound_at ? formatRelative(row.conversations.last_outbound_at) : "—"}</Td>
+                    <Td>
+                      <span className="flex items-center gap-2 text-muted">
+                        <ChannelIcon channel={row.conversations?.channel ?? "EMAIL"} />
+                        {tr.channels[(row.conversations?.channel ?? "EMAIL") as keyof typeof tr.channels]}
+                      </span>
+                    </Td>
+                    <Td className="tabular-nums">
+                      {row.step} / {Math.max(totalSteps, row.step)}
+                    </Td>
+                    <Td className={cn("whitespace-nowrap", overdue ? "text-[#f87171]" : "text-muted")}>
+                      <span className="flex items-center gap-1.5">
+                        <Clock className="size-3.5" />
+                        {formatDateTime(row.due_at)}
+                      </span>
+                    </Td>
+                    <Td>
+                      {overdue ? (
+                        <Badge tone="red">{tr.followUps.overdueTitle}</Badge>
+                      ) : (
+                        <Badge tone={row.status === "DRAFTED" ? "violet" : row.status === "SENT" ? "green" : row.status === "PENDING" ? "orange" : "gray"}>
+                          {tr.followUps.statuses[row.status]}
+                        </Badge>
+                      )}
+                      {row.cancel_reason && tab !== "pending" && <p className="mt-1 text-xs text-subtle">{row.cancel_reason}</p>}
+                    </Td>
+                    <Td className="text-muted">{assignee ?? "—"}</Td>
+                    <Td>
+                      {tab === "pending" && (
+                        <div className="flex items-center gap-1">
+                          {row.status === "PENDING" && (
+                            <Button size="sm" variant="outline" disabled={draft.isPending} onClick={() => draft.mutate(row)}>
+                              {draft.isPending && draft.variables?.id === row.id ? <Loader2 className="animate-spin" /> : <Sparkles />}
+                              {tr.draft.generateButton}
+                            </Button>
+                          )}
+                          {row.status === "DRAFTED" && (
+                            <Button size="sm" onClick={() => void openPreview(row)}>
+                              <Eye />
+                              {tr.followUps.reviewAndSend}
+                            </Button>
+                          )}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger className="rounded-md p-1.5 text-muted hover:bg-surface-3 hover:text-text" aria-label={tr.common.actions}>
+                              <MoreHorizontal className="size-4" />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                              {[1, 3, 7].map((days) => (
+                                <DropdownMenuItem key={days} onSelect={() => snooze.mutate({ row, days })}>
+                                  <Clock />
+                                  {tr.followUps.snoozeDays(days)}
+                                </DropdownMenuItem>
+                              ))}
+                              <DropdownMenuItem onSelect={() => skip.mutate(row.id)}>
+                                <SkipForward />
+                                {tr.followUps.skip}
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      )}
+                    </Td>
+                  </Tr>
+                );
+              })}
+            </tbody>
+          </Table>
+        )}
+      </Card>
+
+      <Dialog open={!!preview} onOpenChange={(open) => !open && setPreview(null)}>
+        {preview && (
+          <DialogContent title={tr.followUps.reviewTitle} description={preview.row.businesses?.name ?? ""} size="lg">
+            <div className="space-y-3">
+              {preview.subject && <p className="text-sm text-muted">{preview.subject}</p>}
+              <Textarea rows={9} value={preview.body} onChange={(e) => setPreview({ ...preview, body: e.target.value })} />
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setPreview(null)}>
+                  {tr.common.cancel}
+                </Button>
+                <Button disabled={!preview.body.trim() || send.isPending} onClick={() => send.mutate(preview)}>
+                  {send.isPending ? <Loader2 className="animate-spin" /> : <Send />}
                   {tr.conversations.approveAndSend}
                 </Button>
-              )}
-              <Button size="sm" variant="outline" onClick={() => onSnooze(row)}>
-                {tr.followUps.snooze}
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => onSkip(row.id)}>
-                {tr.followUps.skip}
-              </Button>
+              </div>
             </div>
-          </li>
-        ))}
-      </ul>
-    </section>
+          </DialogContent>
+        )}
+      </Dialog>
+    </div>
   );
 }

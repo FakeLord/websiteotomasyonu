@@ -21,7 +21,11 @@ export function useWorkspaceMembers() {
     queryFn: async (): Promise<WorkspaceMemberEntry[]> => {
       const { data, error } = await supabase.rpc("workspace_member_directory", { ws: workspaceId as string });
       if (error) throw error;
-      return (data ?? []) as WorkspaceMemberEntry[];
+      // Profil adı hiç girilmemişse kayıt tetikleyicisi e-postayı ad olarak yazar.
+      return ((data ?? []) as WorkspaceMemberEntry[]).map((m) => ({
+        ...m,
+        name: m.name.includes("@") ? (m.name.split("@")[0] ?? m.name) : m.name,
+      }));
     },
   });
   const byId = new Map((query.data ?? []).map((m) => [m.user_id, m]));

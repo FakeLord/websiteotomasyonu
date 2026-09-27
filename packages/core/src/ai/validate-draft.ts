@@ -8,6 +8,8 @@ export interface ValidateDraftInput {
   verifiedReferenceNames: string[];
   /** Mesajın gönderildiği işletmenin adı; referans kontrolünden muaftır. */
   recipientBusinessName?: string | undefined;
+  /** Alıcının ilçe/şehir/kategori gibi referans sayılmaması gereken özel adları. */
+  contextNames?: string[] | undefined;
   stopRequest: boolean;
 }
 
@@ -40,6 +42,8 @@ function parseMoneyAmount(match: string): number | null {
   if (Number.isNaN(value)) return null;
   return isBin ? value * 1000 : value;
 }
+
+const GREETING_WORDS = new Set(["merhaba", "merhabalar", "selam", "sayın", "değerli", "günaydın", "iyi", "kolay", "saygılarımla"]);
 
 function findReferenceCandidates(body: string): string[] {
   // İki veya daha fazla ardışık Büyük-Harf-Başlangıçlı kelimeyi olası
@@ -92,11 +96,20 @@ export function validateDraft(input: ValidateDraftInput): ValidateDraftResult {
   }
 
   const referenceCandidates = findReferenceCandidates(input.body);
-  const verifiedLower = new Set(input.verifiedReferenceNames.map((n) => n.toLowerCase()));
-  const recipientLower = input.recipientBusinessName?.toLowerCase();
+  const lower = (value: string) => value.toLocaleLowerCase("tr-TR");
+  const verifiedLower = new Set(input.verifiedReferenceNames.map(lower));
+  // Alıcının kendi adı (kısaltılmış hali dahil) ve bağlamındaki yer/kategori
+  // adları referans değildir: adayın tüm kelimeleri bu kümedeyse atlanır.
+  const ownWords = new Set(
+    [input.recipientBusinessName ?? "", ...(input.contextNames ?? [])].flatMap((name) => lower(name).split(/\s+/)).filter(Boolean),
+  );
   for (const candidate of referenceCandidates) {
-    const candidateLower = candidate.toLowerCase();
-    if (candidateLower === recipientLower) continue;
+    // Cümle başındaki selamlama kelimeleri ("Merhaba Dişhekimi Tenzil") adaya karışır.
+    const words = lower(candidate)
+      .split(/\s+/)
+      .filter((word) => !GREETING_WORDS.has(word));
+    if (words.length < 2 || words.every((word) => ownWords.has(word))) continue;
+    const candidateLower = words.join(" ");
     if (!verifiedLower.has(candidateLower)) {
       reasons.push(`UNVERIFIED_REFERENCE:${candidate}`);
     }

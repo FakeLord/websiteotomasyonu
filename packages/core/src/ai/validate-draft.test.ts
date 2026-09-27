@@ -115,4 +115,32 @@ describe("validateDraft", () => {
     expect(result.ok).toBe(false);
     expect(result.reasons.length).toBeGreaterThanOrEqual(3);
   });
+
+  it("does not flag a shortened form of the recipient's own name as a reference", () => {
+    const result = validateDraft({
+      ...baseInput,
+      body: "Merhaba Dişhekimi Tenzil ekibi, web sitenizle ilgili bir fikrimiz var.",
+      recipientBusinessName: "Dişhekimi Tenzil ADSIZ ÖZMEN",
+    });
+    expect(result.reasons.filter((r) => r.startsWith("UNVERIFIED_REFERENCE"))).toEqual([]);
+  });
+
+  it("does not flag the recipient's district, city or category as references", () => {
+    const result = validateDraft({
+      ...baseInput,
+      body: "Esenyurt İstanbul bölgesindeki Diş Kliniği işletmeleri için çalışıyoruz.",
+      recipientBusinessName: "Yöney Ağız",
+      contextNames: ["Esenyurt", "İstanbul", "Diş Kliniği"],
+    });
+    expect(result.reasons.filter((r) => r.startsWith("UNVERIFIED_REFERENCE"))).toEqual([]);
+  });
+
+  it("still flags an unrelated brand mentioned next to the recipient", () => {
+    const result = validateDraft({
+      ...baseInput,
+      body: "Daha önce Mavi Gülüş Kliniği için de site yaptık.",
+      recipientBusinessName: "Dişhekimi Tenzil",
+    });
+    expect(result.reasons).toContainEqual(expect.stringContaining("UNVERIFIED_REFERENCE"));
+  });
 });
