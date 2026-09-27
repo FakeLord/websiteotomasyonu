@@ -11,11 +11,14 @@ interface FunctionsErrorWithContext {
  * `rateLimited:true` olarak eşlenir ki core'daki üstel geri çekilme çalışsın
  * (bkz. docs/adr/0004-places-vault.md).
  */
-export function createPlacesSearchAdapter(workspaceId: string): SearchJobProvider {
+export function createPlacesSearchAdapter(
+  workspaceId: string,
+  location?: { lat: number; lng: number; radiusMeters: number },
+): SearchJobProvider {
   return {
     async search({ textQuery, pageToken }): Promise<SearchJobPage> {
       const { data, error } = await supabase.functions.invoke("places-search", {
-        body: { workspaceId, textQuery, pageToken },
+        body: { workspaceId, textQuery, pageToken, location },
       });
 
       if (error) {

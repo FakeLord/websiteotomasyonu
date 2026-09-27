@@ -28,10 +28,27 @@ const FIELD_MASK = [
   "nextPageToken",
 ].join(",");
 
+interface LocationBias {
+  lat: number;
+  lng: number;
+  radiusMeters: number;
+}
+
 interface RequestBody {
   workspaceId: string;
   textQuery: string;
   pageToken?: string;
+  location?: LocationBias;
+}
+
+function isValidLocation(value: unknown): value is LocationBias {
+  if (typeof value !== "object" || value === null) return false;
+  const loc = value as Record<string, unknown>;
+  return (
+    typeof loc.lat === "number" && loc.lat >= -90 && loc.lat <= 90 &&
+    typeof loc.lng === "number" && loc.lng >= -180 && loc.lng <= 180 &&
+    typeof loc.radiusMeters === "number" && loc.radiusMeters > 0 && loc.radiusMeters <= 50000
+  );
 }
 
 function json(body: unknown, status: number): Response {
@@ -49,7 +66,8 @@ function isValidBody(value: unknown): value is RequestBody {
     body.workspaceId.length > 0 &&
     typeof body.textQuery === "string" &&
     body.textQuery.trim().length > 0 &&
-    (body.pageToken === undefined || typeof body.pageToken === "string")
+    (body.pageToken === undefined || typeof body.pageToken === "string") &&
+    (body.location === undefined || isValidLocation(body.location))
   );
 }
 
@@ -113,6 +131,18 @@ Deno.serve(async (req) => {
       regionCode: "TR",
       pageSize: 20,
       ...(rawBody.pageToken ? { pageToken: rawBody.pageToken } : {}),
+      // Harita üzerinden seçilen merkez + yarıçap; Places bunu sonuçları o
+      // bölgeye yakın olanlara ağırlık vermek için kullanır (sert filtre değil).
+      ...(rawBody.location
+        ? {
+            locationBias: {
+              circle: {
+                center: { latitude: rawBody.location.lat, longitude: rawBody.location.lng },
+                radius: rawBody.location.radiusMeters,
+              },
+            },
+          }
+        : {}),
     }),
   });
 

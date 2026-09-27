@@ -86,7 +86,7 @@ async function runOneJob(workspaceId: string, jobId: string, params: SearchJobPa
   if (runningError) throw runningError;
 
   try {
-    const provider = createPlacesSearchAdapter(workspaceId);
+    const provider = createPlacesSearchAdapter(workspaceId, params.location);
     const result = await runSearchJob(provider, realClock, params.textQuery);
 
     let newCount = 0;
@@ -103,16 +103,15 @@ async function runOneJob(workspaceId: string, jobId: string, params: SearchJobPa
 
       const importResult = data as ImportBusinessResult | null;
       const status = importResult?.status;
-      if (status === "DUPLICATE_MERGED") {
-        duplicateCount += 1;
-      } else {
-        newCount += 1;
-        if (importResult) {
-          try {
-            await recomputeScore(workspaceId, importResult.businessId);
-          } catch {
-            // Skor hesaplanamazsa iş akışı durmaz.
-          }
+      if (status === "DUPLICATE_MERGED") duplicateCount += 1;
+      else newCount += 1;
+      // Tekrar bulunan kayıtta da puan/yorum/durum tazelenmiş olabilir; skor
+      // her iki durumda yeniden hesaplanır.
+      if (importResult) {
+        try {
+          await recomputeScore(workspaceId, importResult.businessId);
+        } catch {
+          // Skor hesaplanamazsa iş akışı durmaz.
         }
       }
     }
