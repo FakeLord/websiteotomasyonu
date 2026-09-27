@@ -14,6 +14,7 @@
     "test": "vitest run",
     "test:db": "supabase test db",
     "sync:edge": "node scripts/sync-edge-shared.mjs",
+    "test:edge": "npx -y deno@2 test --no-config --no-lock supabase/functions",
     "tauri": "pnpm --filter @lbf/desktop tauri"
   },
   "devDependencies": {

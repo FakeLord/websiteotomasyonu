@@ -32,8 +32,7 @@ bkz. `docs/adr/0004-places-vault.md`).
       bulundu (`outreach_limits->'places_monthly_cap'` explicit JSON null'ı `::integer`'a cast
       edemiyordu) ve düzeltildi (`20260926100200_fix_enqueue_search_job_null_cap.sql`). 16/16
       dosya, 82/82 test PASS.
-- [ ] **Deno testleri** (`admin-invite`, gerekirse yeni Edge Function testleri): Deno kurulu
-      değil.
+- [x] **Deno testleri** (`admin-invite`): `pnpm test:edge` ile 2026-09-27'de çalıştırıldı, geçti.
 - [x] **Gerçek Google Places çağrısı, arama+dönüşüm katmanı** (2026-09-26, `scripts/smoke/
       google-places.ts`, gerçek API key ile): `places:searchText` (New) uç noktasına
       `places-search` Edge Function'ıyla birebir aynı field mask'la çağrı yapıldı — 5 gerçek
@@ -64,6 +63,8 @@ bkz. `docs/adr/0004-places-vault.md`).
       yapılmadığı doğrulanmalı.
 
 ## Notlar
+
+- 2026-09-27: `places_monthly_cap` artık Ayarlar → Puanlama ve Limitler'den düzenlenebiliyor (ADR 0007).
 
 - `places_monthly_cap`'i ayarlamak için Faz 3'te ayrı bir UI yok (SPEC'te bu fazın kapsamında
   belirtilmemiş); admin şimdilik `workspace_settings.outreach_limits` içindeki değeri SQL'den

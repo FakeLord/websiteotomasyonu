@@ -26,7 +26,7 @@ Açık soruların tamamı kapandı; ★ işaretliler sizin cevabınız, diğerle
 | D2 ★ | Coğrafya | İlk sürüm yalnızca Türkiye | `regionCode=TR`, `languageCode=tr`, TR telefon kuralları, TR resmi tatil takvimi, arayüz Türkçe. Çok ülke desteği için alanlar (country, tz) şimdiden şemada. |
 | D3 ★ | Outreach hesapları | Ajansın ana hesapları (Instagram, Facebook, e-posta, WhatsApp) | Ana marka hesabı kısıtlanma riskine karşı düşük limitler: Instagram 15/gün, Facebook 15/gün, WhatsApp 10/gün ilk mesaj. Hesap ortak olduğu için "kim gönderdi" yalnızca uygulamadaki `mark_message_sent` kaydından izlenir. |
 | D4 ★ | Google Cloud | Billing hesabı açılacak; 300 $ deneme kredisi bitince CSV'ye geçilecek | Uygulama içi sayaç hem krediyi hem SKU başına aylık ücretsiz kotayı izler; kredi bittiğinde keşif otomatik "yalnızca ücretsiz kota" moduna, kota da bittiğinde CSV/manuel moda düşer. Cloud'da 1 $ bütçe alarmı + günlük API kotası kurulur. VERIFY\_CURRENT\_DOCS: 300 $ kredinin süresi (genelde 90 gün) ve deneme bitince hesabın ücretli hesaba yükseltilmeden Maps kullanımına izin verip vermediği. |
-| D5 ★ | AI sağlayıcı | Pilotta NVIDIA; kazanç başlayınca yeniden değerlendirilecek | `OpenAICompatibleProvider` + NVIDIA varsayılan. Ollama ve paralı sağlayıcı Faz 6'da yalnızca konfigürasyon olarak hazır; geçiş kod değişikliği gerektirmez. |
+| D5 ★ | AI sağlayıcı | Pilotta NVIDIA; kazanç başlayınca yeniden değerlendirilecek | `OpenAICompatibleProvider` + NVIDIA varsayılan. Ollama ve paralı sağlayıcı Faz 6'da yalnızca konfigürasyon olarak hazır; geçiş kod değişikliği gerektirmez. **Güncelleme 2026-09-27 (ADR 0007):** sıralı sağlayıcı zinciri — varsayılan OpenAI API → NVIDIA fallback. |
 | D6 | Hedef kategoriler | Web sitesine dönüşümü yüksek işletmeler | Varsayılan liste: diş kliniği, estetik/güzellik merkezi, veteriner, kuaför/berber, fizyoterapi/psikolog/diyetisyen, spor salonu/pilates, restoran/kafe, oto servis/galeri, emlak ofisi, hukuk bürosu, eğitim kurumu/kurs, düğün/fotoğrafçı. "Randevu gerektirir" işareti: sağlık, güzellik, kuaför, veteriner, spor, oto servis. Liste Settings'ten düzenlenir. |
 | D7 | KB içeriği ve fiyat | Paketler, fiyat aralıkları, teslim süreleri ve gerçek referanslar Faz 6 başlamadan girilir | AI fiyatı yalnızca müşteri sorduğunda (PRICE\_REQUEST) ve aralık olarak söyler; ilk mesajda fiyat yok. |
 | D8 | Handoff sonrası | Teklif/sözleşme uygulama dışında; WON/LOST yeterli | Teklif modülü yok. |
@@ -133,12 +133,14 @@ VERIFY\_CURRENT\_DOCS: Tauri 2 plugin adları ve sürümleri; NVIDIA endpoint'in
 | Conversations | Kanal bazlı konuşmalar, AI taslak, onayla/gönder, gelen cevabı yapıştır/içe al, intent etiketi, özet, gereksinimler | Evet |
 | Follow-Ups | Bugün/gecikmiş follow-up listesi, hazır taslakla tek tık gönderim | Evet |
 | Proposal Ready / Handoffs | Handoff özetleri, devralan kişi, durum | Evet (Leads filtresi + handoff kartı) |
-| Customers | WON stage'indeki işletmeler | Evet (filtre) |
-| Campaigns | Hedef segment + kanal + sekans + limitler, kampanya performansı | Hayır (Faz 11) |
+| Customers | WON stage'indeki işletmeler | Evet — ayrı ekran + `customer_deals` (ADR 0007) |
+| Campaigns | Hedef segment + kanal + sekans + limitler, kampanya performansı | Kısmen — otomatik gönderimsiz (ADR 0007); Level 2 Faz 11 |
 | Activity Log | Kim, ne, ne zaman; actor tipi filtresi | Evet |
 | Team | Üyeler, davet, rol | Evet (sade) |
 | Knowledge Base | Şirket profili, hizmetler, paketler/fiyatlar, FAQ, referanslar, satış kuralları | Evet |
 | Settings | Skor kuralları, kanal önceliği ve modları, limitler, follow-up sekansı, AI modeli, kişisel e-posta bağlantısı, secret yönetimi (admin), tanılama logları | Evet |
+
+**ADR 0007 ile eklenenler (2026-09-27):** Reports (tarih aralıklı metrikler), Teklif Aşaması kanbanı, salt-okunur Jarvis AI asistan paneli, Discover haritası.
 
 **Eklenmesi önerilen modül içi özellikler:** lead'i kişiye atama (`assigned_to`), "bugün benim işlerim" görünümü, lead birleştirme (merge) ekranı, tüm verinin JSON/CSV dışa aktarımı (Free planda otomatik yedek olmadığı için).
 

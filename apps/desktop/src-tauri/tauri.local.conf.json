@@ -1,0 +1,7 @@
+{
+  "app": {
+    "security": {
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: https://asset.localhost data: https://tile.openstreetmap.org; connect-src 'self' https: wss: http://127.0.0.1:54321 ws://127.0.0.1:54321"
+    }
+  }
+}

@@ -45,7 +45,7 @@ Bkz. `docs/adr/0006-ai-integration.md` (NVIDIA VERIFY_CURRENT_DOCS bulgusu ve op
       olmayan tablolara (`conversations`, `followups`) da bağlı olduğu ve "record new has no
       field" hatasıyla patladığı bulundu; `to_jsonb(...)->>'...'` ile düzeltildi
       (`20260926100000_fix_kb_write_log_generic_fields.sql`). 16/16 dosya, 82/82 test PASS.
-- [ ] **Deno testi** (`ai-gateway/validate.test.ts`): Deno kurulu değil.
+- [x] **Deno testi** (`ai-gateway/validate.test.ts`): `pnpm test:edge` ile 2026-09-27'de geçti.
 - [x] **Gerçek NVIDIA çağrısı, prompt+validasyon katmanı** (2026-09-26, `scripts/smoke/nvidia.ts`,
       gerçek API key ile): `buildDraftFirstMessagePrompt()` → gerçek NVIDIA çağrısı →
       `validateDraft()` ucu ucuna çalıştırıldı; bu sırada **varsayılan modelin emekliye ayrıldığı
@@ -105,5 +105,6 @@ Bkz. `docs/adr/0006-ai-integration.md` (NVIDIA VERIFY_CURRENT_DOCS bulgusu ve op
   (paket adı dahil) doğru şekilde reddetti — guardrail'in kendisi çalışıyor. Model yanıt süresi bu
   hesap/model kombinasyonunda yüksekti (~4 dk); production'da kullanıcıya "oluşturuluyor" durumu
   gösterilmeden önce gerçek bir workspace'te tipik gecikme ölçülmeli.
-- **KB sayfası** basit bir CRUD'dur; düzenleme/silme UI'ı yok (yalnızca ekleme + listeleme).
-  Gerekirse ayrı bir görev olarak genişletilebilir.
+- **KB sayfası** 2026-09-27'de tam CRUD'a (düzenle/sil/aktiflik) genişletildi (ADR 0007).
+- **Varsayılan model** 2026-09-27'de sağlayıcı zincirine taşındı: OpenAI `gpt-4o-mini` → NVIDIA
+  `nemotron-3.5-lightning` (düşünme kapalı). JSON şeması artık sistem promptuna ekleniyor.
