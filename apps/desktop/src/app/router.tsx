@@ -1,5 +1,6 @@
 import { createHashRouter } from "react-router-dom";
 import { RouteGuard } from "./route-guard";
+import { RouteError } from "./route-error";
 import { AppLayout } from "./layout";
 import { LoginPage } from "../features/auth/LoginPage";
 import { ResetPasswordPage } from "../features/auth/ResetPasswordPage";
@@ -14,8 +15,11 @@ import { ActivityLogPage } from "../features/activity-log/ActivityLogPage";
 import { TeamPage } from "../features/team/TeamPage";
 import { KnowledgeBasePage } from "../features/knowledge-base/KnowledgeBasePage";
 import { SettingsPage } from "../features/settings/SettingsPage";
-import { ComingSoon } from "../components/coming-soon";
-import { tr } from "../i18n/tr";
+import { PipelinePage } from "../features/pipeline/PipelinePage";
+import { CustomersPage } from "../features/customers/CustomersPage";
+import { CampaignsPage } from "../features/campaigns/CampaignsPage";
+import { CampaignDetailPage } from "../features/campaigns/CampaignDetailPage";
+import { ReportsPage } from "../features/reports/ReportsPage";
 
 /**
  * Tauri'nin webview'ında dosya tabanlı history yerine hash router kullanılır
@@ -26,6 +30,7 @@ import { tr } from "../i18n/tr";
 export const router = createHashRouter([
   {
     element: <RouteGuard />,
+    errorElement: <RouteError />,
     children: [
       { path: "/login", element: <LoginPage /> },
       { path: "/reset-password", element: <ResetPasswordPage /> },
@@ -39,10 +44,11 @@ export const router = createHashRouter([
           { path: "/leads/:businessId", element: <LeadDetailPage /> },
           { path: "/conversations", element: <ConversationsPage /> },
           { path: "/follow-ups", element: <FollowUpsPage /> },
-          { path: "/pipeline", element: <ComingSoon title={tr.nav.pipeline} /> },
-          { path: "/customers", element: <ComingSoon title={tr.nav.customers} /> },
-          { path: "/campaigns", element: <ComingSoon title={tr.nav.campaigns} /> },
-          { path: "/reports", element: <ComingSoon title={tr.nav.reports} /> },
+          { path: "/pipeline", element: <PipelinePage /> },
+          { path: "/customers", element: <CustomersPage /> },
+          { path: "/campaigns", element: <CampaignsPage /> },
+          { path: "/campaigns/:campaignId", element: <CampaignDetailPage /> },
+          { path: "/reports", element: <ReportsPage /> },
           { path: "/activity-log", element: <ActivityLogPage /> },
           { path: "/team", element: <TeamPage /> },
           { path: "/knowledge-base", element: <KnowledgeBasePage /> },

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useId } from "react";
 import { useQueryClient, type QueryKey } from "@tanstack/react-query";
 import { supabase } from "./supabase-client";
 
@@ -15,12 +15,15 @@ export function useRealtimeTable(
   queryKey: QueryKey,
 ) {
   const queryClient = useQueryClient();
+  // Aynı tabloyu birden fazla bileşen dinleyebilir; supabase-js aynı adlı
+  // kanalı yeniden kullandığı için ad her hook örneğine özgü olmalı.
+  const instanceId = useId();
 
   useEffect(() => {
     if (!workspaceId) return;
 
     const channel = supabase
-      .channel(`realtime:${table}:${workspaceId}`)
+      .channel(`realtime:${table}:${workspaceId}:${instanceId}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table, filter: `workspace_id=eq.${workspaceId}` },
@@ -33,5 +36,5 @@ export function useRealtimeTable(
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [table, workspaceId, queryClient, JSON.stringify(queryKey)]);
+  }, [table, workspaceId, queryClient, instanceId, JSON.stringify(queryKey)]);
 }
