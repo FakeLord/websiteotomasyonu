@@ -18,11 +18,14 @@ export interface GooglePlaceResult {
 
 export interface PlaceToBusinessPayload {
   name: string;
+  category?: string | undefined;
   address?: string | undefined;
   city?: string | undefined;
   district?: string | undefined;
   lat?: number | undefined;
   lng?: number | undefined;
+  rating?: number | undefined;
+  reviewCount?: number | undefined;
   googlePlaceId: string;
   websiteUrl?: string | undefined;
   websiteDomain?: string | undefined;
@@ -40,6 +43,28 @@ const SOCIAL_HOSTS: Array<{ platform: "INSTAGRAM" | "FACEBOOK"; hosts: string[] 
   { platform: "FACEBOOK", hosts: ["facebook.com", "fb.com"] },
 ];
 const LINK_IN_BIO_HOSTS = ["linktr.ee", "bio.link", "linkin.bio"];
+const ADDRESS_SUFFIX = /\b\d{5}\s+(?:[^,/]+\/)*([^,/]+?)\s*\/\s*([^,/]+?)\s*(?:,\s*T[üu]rkiye)?\s*$/iu;
+
+/** Türkçe büyük/küçük harf kurallarıyla her kelimenin ilk harfini büyütür ("istanbul" → "İstanbul"). */
+export function titleCaseTr(value: string): string {
+  return value
+    .trim()
+    .toLocaleLowerCase("tr-TR")
+    .split(/\s+/)
+    .map((word) => (word ? word.charAt(0).toLocaleUpperCase("tr-TR") + word.slice(1) : word))
+    .join(" ");
+}
+
+/**
+ * Google'ın Türkiye adres biçimindeki "… 34710 Kadıköy/İstanbul[, Türkiye]"
+ * sonekinden ilçe ve şehri çıkarır.
+ */
+export function parseTurkishAddress(address: string | undefined): { district: string | null; city: string | null } {
+  if (!address) return { district: null, city: null };
+  const match = ADDRESS_SUFFIX.exec(address);
+  if (!match?.[1] || !match[2]) return { district: null, city: null };
+  return { district: match[1].trim(), city: match[2].trim() };
+}
 
 /**
  * Places sonucunu `import_business()` RPC payload'ına çevirir (SPEC.md → G.1).
@@ -48,8 +73,14 @@ const LINK_IN_BIO_HOSTS = ["linktr.ee", "bio.link", "linkin.bio"];
  */
 export function placeToBusinessPayload(
   place: GooglePlaceResult,
-  context: { city?: string; district?: string } = {},
+  context: { city?: string; district?: string; category?: string } = {},
 ): PlaceToBusinessPayload {
+  // Adres, kullanıcının aramaya yazdığı (çoğu zaman küçük harfli, ilçesiz)
+  // bağlamdan daha güvenilir; yoksa bağlam Türkçe title-case ile kullanılır.
+  const parsed = parseTurkishAddress(place.formattedAddress);
+  const city = parsed.city ?? (context.city?.trim() ? titleCaseTr(context.city) : undefined);
+  const district = parsed.district ?? (context.district?.trim() ? titleCaseTr(context.district) : undefined);
+  const category = context.category?.trim() || undefined;
   const name = place.displayName?.text?.trim() || "Bilinmeyen İşletme";
   const phone = place.internationalPhoneNumber ?? place.nationalPhoneNumber;
   const normalizedPhone = phone ? normalizePhone(phone)?.e164 : undefined;
@@ -83,11 +114,14 @@ export function placeToBusinessPayload(
 
   return {
     name,
+    category,
     address: place.formattedAddress,
-    city: context.city,
-    district: context.district,
+    city,
+    district,
     lat: place.location?.latitude,
     lng: place.location?.longitude,
+    rating: place.rating,
+    reviewCount: place.userRatingCount,
     googlePlaceId: place.id,
     websiteUrl,
     websiteDomain,

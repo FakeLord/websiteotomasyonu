@@ -12,6 +12,9 @@ export interface SearchJobParams {
   textQuery: string;
   city?: string;
   district?: string;
+  category?: string;
+  /** Harita üzerinden yarıçaplı arama (Places `locationBias.circle`). */
+  location?: { lat: number; lng: number; radiusMeters: number };
 }
 
 export interface ProcessQueueResult {
@@ -90,7 +93,7 @@ async function runOneJob(workspaceId: string, jobId: string, params: SearchJobPa
     let duplicateCount = 0;
 
     for (const place of result.places) {
-      const payload = placeToBusinessPayload(place, { city: params.city, district: params.district });
+      const payload = placeToBusinessPayload(place, { city: params.city, district: params.district, category: params.category });
       const { data, error } = await supabase.rpc("import_business", {
         ws: workspaceId,
         p_payload: payload,

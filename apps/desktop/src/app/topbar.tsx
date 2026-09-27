@@ -6,6 +6,7 @@ import { tr } from "../i18n/tr";
 import { supabase } from "../lib/supabase-client";
 import { useUiStore } from "../lib/ui-store";
 import { useWorkspaceMembership } from "../lib/use-workspace-membership";
+import { turkishLikePattern } from "../lib/filters";
 import { TURKISH_CITIES, useMyProfile, useShellCounters } from "../lib/use-shell-data";
 import { Avatar } from "../components/ui/data-display";
 import { WebsiteStatusBadge } from "../components/domain/badges";
@@ -55,7 +56,7 @@ function GlobalSearch() {
     queryKey: ["global-search", workspaceId, cleaned],
     enabled: !!workspaceId && cleaned.length >= 2,
     queryFn: async (): Promise<SearchHit[]> => {
-      const pattern = `%${cleaned}%`;
+      const pattern = turkishLikePattern(cleaned);
       const { data, error } = await supabase
         .from("businesses")
         .select("id, name, category, district, city, website_status")

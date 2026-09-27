@@ -7,7 +7,8 @@ import { supabase } from "../../lib/supabase-client";
 import { recomputeScore } from "../../workers/score-runner";
 import { tr } from "../../i18n/tr";
 import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
+import { Input, Label } from "../../components/ui/input";
+import { Dialog, DialogContent } from "../../components/ui/primitives";
 
 interface ManualAddDialogProps {
   workspaceId: string;
@@ -45,9 +46,8 @@ export function ManualAddDialog({ workspaceId, onClose }: ManualAddDialogProps) 
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-      <div className="w-full max-w-lg space-y-4 rounded-lg bg-white p-6 shadow-lg">
-        <h2 className="text-lg font-semibold text-slate-900">{tr.leads.manualAddTitle}</h2>
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent title={tr.leads.manualAddTitle} size="lg">
         <form
           onSubmit={handleSubmit((values) => mutation.mutate(values))}
           className="grid grid-cols-2 gap-3"
@@ -89,8 +89,9 @@ export function ManualAddDialog({ workspaceId, onClose }: ManualAddDialogProps) 
             </Button>
           </div>
         </form>
-      </div>
-    </div>
+        {mutation.isError && <p className="mt-3 text-sm text-[#f87171]">{tr.common.error}</p>}
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -106,10 +107,10 @@ function Field({
   children: ReactNode;
 }) {
   return (
-    <div className={full ? "col-span-2 space-y-1" : "space-y-1"}>
-      <label className="text-sm font-medium text-slate-700">{label}</label>
+    <div className={full ? "col-span-2" : undefined}>
+      <Label>{label}</Label>
       {children}
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-xs text-[#f87171]">{error}</p>}
     </div>
   );
 }

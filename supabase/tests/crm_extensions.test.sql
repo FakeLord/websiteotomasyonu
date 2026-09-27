@@ -8,7 +8,7 @@ begin;
 set local client_min_messages = warning;
 truncate table public.workspaces cascade;
 
-select plan(23);
+select plan(25);
 
 insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at)
 values
@@ -170,6 +170,12 @@ select is(
   'report_metrics hunisi iletişime geçilen işletmeyi sayar'
 );
 
+select is(
+  (select count(*)::int from public.workspace_member_directory(:'ws')),
+  2,
+  'Üye dizini workspace''in tüm üyelerini döner'
+);
+
 -- ===== İzolasyon: B workspace'inin kullanıcısı =====
 select set_config('request.jwt.claim.sub', 'c1000000-0000-0000-0000-000000000003', true);
 
@@ -181,6 +187,12 @@ select throws_like(
   format($$ select public.report_metrics(%L, current_date - 6, current_date) $$, :'ws'),
   '%not a member%',
   'Üye olmayan report_metrics çağıramaz'
+);
+
+select throws_like(
+  format($$ select * from public.workspace_member_directory(%L) $$, :'ws'),
+  '%not a member%',
+  'Üye olmayan başka workspace''in üye dizinini göremez'
 );
 
 select * from finish();

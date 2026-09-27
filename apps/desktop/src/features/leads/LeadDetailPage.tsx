@@ -1,632 +1,354 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, Ban, CheckCircle2, GitMerge, MapPin, MessageSquarePlus, Sparkles, Star, Tag } from "lucide-react";
 import {
   allowedNextStages,
-  buildDraftFirstMessagePrompt,
   chooseChannel,
-  validateDraft,
   type BusinessStage,
   type Channel,
-  type ChannelMode,
   type OutreachChannel,
   type RoutingChannelCandidate,
-  type ServicePackageInfo,
 } from "@lbf/core";
 import { supabase } from "../../lib/supabase-client";
 import { useWorkspaceMembership } from "../../lib/use-workspace-membership";
-import { analyzeBusiness } from "../../workers/website-analysis-runner";
-import { callAiGateway } from "../../lib/ai-gateway-client";
+import { useWorkspaceMembers } from "../../lib/use-workspace-members";
+import { useRealtimeTable } from "../../lib/use-realtime-table";
 import { tr } from "../../i18n/tr";
 import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
+import { Select } from "../../components/ui/input";
+import { Card, CardBody, CardHeader } from "../../components/ui/card";
+import { Badge } from "../../components/ui/badge";
+import { Avatar } from "../../components/ui/data-display";
+import { PillTabsList, PillTabsTrigger, Tabs, TabsContent } from "../../components/ui/primitives";
+import { ScoreBadge, StageBadge, WebsiteStatusBadge } from "../../components/domain/badges";
+import { ChannelIcon } from "../../components/domain/channel-icon";
+import { CustomerDealDialog } from "../customers/CustomerDealDialog";
+import { useBusiness, useContactChannels, useWorkspaceSettings, type ContactChannelRow, type WorkspaceSettingsRow } from "./detail/lead-data";
+import { DraftMessageDialog } from "./detail/DraftMessageDialog";
+import { OverviewTab } from "./detail/OverviewTab";
+import { AnalysisTab, ContactTab, ConversationsTab, NotesTab, SOCIAL_CHANNELS, WebsiteTab } from "./detail/tabs";
 import type { BusinessDetail } from "./types";
 
-interface WorkspaceRoutingSettings {
-  channel_priority: Channel[];
-  channel_modes: Record<Channel, ChannelMode>;
-  outreach_limits: { daily_total: number; channels: Record<string, number>; channel_cooldown_hours: number };
-}
+const OUTREACH: Channel[] = ["EMAIL", "INSTAGRAM", "FACEBOOK", "WHATSAPP", "LINKEDIN", "TIKTOK"];
 
-interface DraftResult {
-  ok: boolean;
-  subject?: string;
-  body: string;
-  reasons: string[];
-}
-
-function DraftFirstMessageCard({ business, workspaceId }: { business: BusinessDetail; workspaceId: string }) {
-  const [draft, setDraft] = useState<DraftResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const mutation = useMutation({
-    mutationFn: async (): Promise<DraftResult> => {
-      const [{ data: analysis }, { data: packages }, { data: salesRuleEntries }, { data: referenceEntries }] =
-        await Promise.all([
-          supabase
-            .from("website_analyses")
-            .select("issues")
-            .eq("business_id", business.id)
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .maybeSingle(),
-          supabase
-            .from("service_packages")
-            .select("id, name, summary, price_min, price_max, delivery_days_min, delivery_days_max")
-            .eq("workspace_id", workspaceId)
-            .eq("is_active", true),
-          supabase.from("kb_entries").select("title, body, data").eq("workspace_id", workspaceId).eq("type", "SALES_RULE").eq("is_active", true),
-          supabase
-            .from("kb_entries")
-            .select("title")
-            .eq("workspace_id", workspaceId)
-            .eq("type", "REFERENCE")
-            .eq("is_verified_real", true),
-        ]);
-
-      const websiteIssues = (analysis?.issues ?? []) as string[];
-      const servicePackages: ServicePackageInfo[] = (packages ?? []).map((p) => ({
-        id: p.id as string,
-        name: p.name as string,
-        summary: (p.summary as string | null) ?? "",
-        priceMin: p.price_min as number | null,
-        priceMax: p.price_max as number | null,
-        deliveryDaysMin: p.delivery_days_min as number | null,
-        deliveryDaysMax: p.delivery_days_max as number | null,
-      }));
-      const salesRulesSummary = (salesRuleEntries ?? []).map((e) => `${e.title}: ${e.body}`).join(" ");
-      const allowDiscountMention = (salesRuleEntries ?? []).some(
-        (e) => (e.data as { allowDiscountMention?: boolean } | null)?.allowDiscountMention === true,
-      );
-      const verifiedReferenceNames = (referenceEntries ?? []).map((e) => e.title as string);
-      const channel: OutreachChannel = "EMAIL";
-
-      const promptRequest = buildDraftFirstMessagePrompt({
-        businessName: business.name,
-        category: business.category,
-        district: business.district,
-        websiteIssues,
-        channel,
-        relevantPackages: servicePackages,
-        salesRulesSummary,
-      });
-
-      const result = await callAiGateway(workspaceId, promptRequest, { entityType: "business", entityId: business.id });
-      const parsed = result.json as { subject?: string; body: string };
-
-      const validation = validateDraft({
-        body: parsed.body,
-        channel,
-        packages: servicePackages,
-        salesRules: { allowDiscountMention, forbiddenWords: ["indirim", "%", "bedava", "garanti"] },
-        verifiedReferenceNames,
-        recipientBusinessName: business.name,
-        stopRequest: business.do_not_contact,
-      });
-
-      return { ok: validation.ok, subject: parsed.subject, body: parsed.body, reasons: validation.reasons };
+function recommendChannel(business: BusinessDetail, channels: ContactChannelRow[], settings: WorkspaceSettingsRow | undefined) {
+  if (!settings) return null;
+  const candidates: RoutingChannelCandidate[] = channels
+    .filter((c) => c.channel !== "WEBSITE_FORM")
+    .map((c) => ({ channel: c.channel as Channel, status: c.status, confidence: Number(c.confidence) }));
+  return chooseChannel({
+    doNotContact: business.do_not_contact,
+    candidates,
+    settings: { channelPriority: settings.channel_priority, channelModes: settings.channel_modes },
+    history: { lastMessageAtByChannel: {}, firstMessageChannelWithin30Days: null, dailyCountByChannel: {}, dailyCountTotal: 0 },
+    limits: {
+      dailyTotal: settings.outreach_limits.daily_total,
+      dailyByChannel: settings.outreach_limits.channels as Partial<Record<Channel, number>>,
+      channelCooldownHours: settings.outreach_limits.channel_cooldown_hours,
     },
-    onSuccess: (result) => {
-      setError(null);
-      setDraft(result);
-    },
-    onError: (err) => {
-      setError(err instanceof Error ? err.message : tr.draft.error);
-    },
+    now: new Date(),
   });
-
-  return (
-    <section className="rounded-lg border border-slate-200 bg-white p-4">
-      <div className="mb-2 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-slate-700">{tr.draft.title}</h2>
-        <Button size="sm" variant="outline" disabled={mutation.isPending} onClick={() => mutation.mutate()}>
-          {mutation.isPending ? tr.draft.generating : tr.draft.generateButton}
-        </Button>
-      </div>
-
-      {error && <p className="text-xs text-red-600">{error}</p>}
-
-      {draft && !draft.ok && (
-        <div>
-          <p className="mb-1 text-xs font-medium text-red-700">{tr.draft.rejectedTitle}</p>
-          <ul className="list-inside list-disc text-xs text-red-600">
-            {draft.reasons.map((r) => (
-              <li key={r}>{r}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {draft?.ok && (
-        <div className="space-y-2 text-sm">
-          {draft.subject && (
-            <p>
-              <span className="text-slate-500">{tr.draft.subjectLabel}: </span>
-              <span className="font-medium">{draft.subject}</span>
-            </p>
-          )}
-          <p className="whitespace-pre-wrap rounded-md bg-slate-50 p-2 text-slate-800">{draft.body}</p>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => void navigator.clipboard.writeText(draft.body)}
-          >
-            {tr.draft.copyButton}
-          </Button>
-        </div>
-      )}
-    </section>
-  );
 }
 
-function RecommendedChannelCard({ business, workspaceId }: { business: BusinessDetail; workspaceId: string }) {
-  const query = useQuery({
-    queryKey: ["recommended-channel", business.id],
-    queryFn: async () => {
-      const [{ data: channels, error: channelsError }, { data: settings, error: settingsError }] = await Promise.all([
-        supabase
-          .from("contact_channels")
-          .select("channel, status, confidence")
-          .eq("business_id", business.id),
-        supabase
-          .from("workspace_settings")
-          .select("channel_priority, channel_modes, outreach_limits")
-          .eq("workspace_id", workspaceId)
-          .single(),
-      ]);
-      if (channelsError) throw channelsError;
-      if (settingsError) throw settingsError;
-
-      const typedSettings = settings as unknown as WorkspaceRoutingSettings;
-      const candidates: RoutingChannelCandidate[] = (channels ?? []).map((c) => ({
-        channel: c.channel as Channel,
-        status: c.status as RoutingChannelCandidate["status"],
-        confidence: Number(c.confidence),
-      }));
-
-      return chooseChannel({
-        doNotContact: business.do_not_contact,
-        candidates,
-        settings: {
-          channelPriority: typedSettings.channel_priority,
-          channelModes: typedSettings.channel_modes,
-        },
-        history: {
-          lastMessageAtByChannel: {},
-          firstMessageChannelWithin30Days: null,
-          dailyCountByChannel: {},
-          dailyCountTotal: 0,
-        },
-        limits: {
-          dailyTotal: typedSettings.outreach_limits.daily_total,
-          dailyByChannel: typedSettings.outreach_limits.channels as Partial<Record<Channel, number>>,
-          channelCooldownHours: typedSettings.outreach_limits.channel_cooldown_hours,
-        },
-        now: new Date(),
-      });
-    },
-  });
-
-  if (!query.data) return null;
-  const result = query.data;
-
-  return (
-    <section className="rounded-lg border border-slate-200 bg-white p-4">
-      <h2 className="mb-2 text-sm font-semibold text-slate-700">{tr.routing.title}</h2>
-      {result.ok ? (
-        <p className="text-sm">
-          <span className="font-medium text-slate-900">{result.channel}</span>{" "}
-          <span className="text-slate-500">({result.mode})</span>
-        </p>
-      ) : result.doNotContact ? (
-        <p className="text-xs text-red-600">{tr.routing.doNotContact}</p>
-      ) : (
-        <p className="text-xs text-slate-400">{tr.routing.noChannel}</p>
-      )}
-    </section>
-  );
-}
-
-interface WebsiteAnalysisRow {
-  id: string;
-  status: "NO_WEBSITE" | "BROKEN_WEBSITE" | "LOW_QUALITY_WEBSITE" | "GOOD_WEBSITE";
-  issues: string[];
-  created_at: string;
-}
-
-const STALE_DAYS = 30;
-
-function WebsiteAnalysisSection({ business, workspaceId }: { business: BusinessDetail; workspaceId: string }) {
+function SalesPanel({
+  business,
+  recommended,
+  onWon,
+}: {
+  business: BusinessDetail;
+  recommended: ReturnType<typeof recommendChannel>;
+  onWon: () => void;
+}) {
   const queryClient = useQueryClient();
-  const [error, setError] = useState<string | null>(null);
-
-  const analysisQuery = useQuery({
-    queryKey: ["website-analysis", business.id],
-    queryFn: async (): Promise<WebsiteAnalysisRow | null> => {
-      const { data, error: queryError } = await supabase
-        .from("website_analyses")
-        .select("id, status, issues, created_at")
-        .eq("business_id", business.id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (queryError) throw queryError;
-      return data as WebsiteAnalysisRow | null;
-    },
-  });
-
-  const analyzeMutation = useMutation({
-    mutationFn: async () => {
-      await analyzeBusiness(workspaceId, {
-        id: business.id,
-        websiteUrl: business.website_url,
-        category: business.category,
-      });
-    },
-    onSuccess: () => {
-      setError(null);
-      void queryClient.invalidateQueries({ queryKey: ["website-analysis", business.id] });
-      void queryClient.invalidateQueries({ queryKey: ["business", business.id] });
-    },
-    onError: (err) => {
-      setError(err instanceof Error ? err.message : tr.websiteAnalysis.analyzeError);
-    },
-  });
-
-  const analysis = analysisQuery.data;
-  const isStale = analysis
-    ? Date.now() - new Date(analysis.created_at).getTime() > STALE_DAYS * 24 * 60 * 60 * 1000
-    : false;
-
-  return (
-    <section className="rounded-lg border border-slate-200 bg-white p-4">
-      <div className="mb-2 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-slate-700">{tr.websiteAnalysis.title}</h2>
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={analyzeMutation.isPending}
-          onClick={() => analyzeMutation.mutate()}
-        >
-          {analyzeMutation.isPending
-            ? tr.websiteAnalysis.analyzing
-            : analysis
-              ? tr.websiteAnalysis.reanalyzeButton
-              : tr.websiteAnalysis.analyzeButton}
-        </Button>
-      </div>
-
-      {error && <p className="mb-2 text-xs text-red-600">{error}</p>}
-
-      {!analysis && !analyzeMutation.isPending && (
-        <p className="text-xs text-slate-400">{tr.websiteAnalysis.neverAnalyzed}</p>
-      )}
-
-      {analysis && (
-        <div className="space-y-2 text-sm">
-          <p>
-            <span className="text-slate-500">{tr.websiteAnalysis.statusLabel}: </span>
-            <span className="font-medium text-slate-900">{tr.websiteAnalysis.status[analysis.status]}</span>
-          </p>
-          <p className="text-xs text-slate-400">
-            {tr.websiteAnalysis.lastAnalyzedAt}: {new Date(analysis.created_at).toLocaleString("tr-TR")}
-          </p>
-          {isStale && <p className="text-xs text-amber-600">{tr.websiteAnalysis.staleWarning}</p>}
-          <div>
-            <p className="mb-1 text-xs font-medium text-slate-600">{tr.websiteAnalysis.issuesTitle}</p>
-            {analysis.issues.length === 0 ? (
-              <p className="text-xs text-slate-400">{tr.websiteAnalysis.noIssues}</p>
-            ) : (
-              <ul className="list-inside list-disc space-y-1 text-xs text-slate-600">
-                {analysis.issues.map((issue, idx) => (
-                  <li key={idx}>{issue}</li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </div>
-      )}
-    </section>
-  );
-}
-
-interface NoteRow {
-  id: string;
-  body: string;
-  created_at: string;
-  author_id: string;
-}
-
-interface StageTransitionRow {
-  id: string;
-  from_stage: string | null;
-  to_stage: string;
-  reason: string | null;
-  actor_type: string;
-  created_at: string;
-}
-
-export function LeadDetailPage() {
-  const { businessId } = useParams<{ businessId: string }>();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const membership = useWorkspaceMembership();
-  const [noteBody, setNoteBody] = useState("");
-
-  const businessQuery = useQuery({
-    queryKey: ["business", businessId],
-    enabled: !!businessId,
-    queryFn: async (): Promise<BusinessDetail> => {
-      const { data, error } = await supabase
-        .from("businesses")
-        .select("*")
-        .eq("id", businessId as string)
-        .single();
-      if (error) throw error;
-      return data as BusinessDetail;
-    },
-  });
-
-  const duplicateTargetQuery = useQuery({
-    queryKey: ["business", businessQuery.data?.possible_duplicate_of],
-    enabled: !!businessQuery.data?.possible_duplicate_of,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("businesses")
-        .select("id, name")
-        .eq("id", businessQuery.data?.possible_duplicate_of as string)
-        .single();
-      if (error) throw error;
-      return data as { id: string; name: string };
-    },
-  });
-
-  const notesQuery = useQuery({
-    queryKey: ["notes", businessId],
-    enabled: !!businessId,
-    queryFn: async (): Promise<NoteRow[]> => {
-      const { data, error } = await supabase
-        .from("notes")
-        .select("id, body, created_at, author_id")
-        .eq("business_id", businessId as string)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as NoteRow[];
-    },
-  });
-
-  const timelineQuery = useQuery({
-    queryKey: ["stage-transitions", businessId],
-    enabled: !!businessId,
-    queryFn: async (): Promise<StageTransitionRow[]> => {
-      const { data, error } = await supabase
-        .from("stage_transitions")
-        .select("id, from_stage, to_stage, reason, actor_type, created_at")
-        .eq("business_id", businessId as string)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as StageTransitionRow[];
-    },
-  });
-
-  const invalidateBusiness = () => {
-    void queryClient.invalidateQueries({ queryKey: ["business", businessId] });
-    void queryClient.invalidateQueries({ queryKey: ["stage-transitions", businessId] });
+  const { members } = useWorkspaceMembers();
+  const nextStages = allowedNextStages(business.stage);
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ["business", business.id] });
+    void queryClient.invalidateQueries({ queryKey: ["stage-transitions", business.id] });
   };
 
-  const transitionMutation = useMutation({
+  const transition = useMutation({
     mutationFn: async (toStage: BusinessStage) => {
-      if (!businessQuery.data) return;
       const { error } = await supabase.rpc("transition_stage", {
-        p_business_id: businessQuery.data.id,
+        p_business_id: business.id,
         p_to_stage: toStage,
         p_reason: null,
-        p_expected_version: businessQuery.data.version,
+        p_expected_version: business.version,
       });
       if (error) throw error;
+      return toStage;
     },
-    onSuccess: invalidateBusiness,
+    onSuccess: (toStage) => {
+      invalidate();
+      if (toStage === "WON") onWon();
+    },
   });
 
-  const dncMutation = useMutation({
+  const assign = useMutation({
+    mutationFn: async (userId: string | null) => {
+      const { error } = await supabase.rpc("assign_business", { p_business_id: business.id, p_user_id: userId });
+      if (error) throw error;
+    },
+    onSuccess: invalidate,
+  });
+
+  const dnc = useMutation({
     mutationFn: async (value: boolean) => {
       let reason: string | null = null;
       if (!value) {
         reason = window.prompt(tr.leads.dncReasonPrompt) ?? "";
         if (!reason.trim()) return;
       }
-      const { error } = await supabase.rpc("set_dnc", {
-        p_business_id: businessId,
-        p_value: value,
-        p_reason: reason,
-      });
+      const { error } = await supabase.rpc("set_dnc", { p_business_id: business.id, p_value: value, p_reason: reason });
       if (error) throw error;
     },
-    onSuccess: invalidateBusiness,
+    onSuccess: invalidate,
   });
 
-  const mergeMutation = useMutation({
+  const duplicateTarget = useQuery({
+    queryKey: ["business-name", business.possible_duplicate_of],
+    enabled: !!business.possible_duplicate_of,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("businesses").select("id, name").eq("id", business.possible_duplicate_of as string).single();
+      if (error) throw error;
+      return data as { id: string; name: string };
+    },
+  });
+
+  const merge = useMutation({
     mutationFn: async (keepId: string) => {
-      const { error } = await supabase.rpc("merge_businesses", {
-        p_keep_id: keepId,
-        p_drop_id: businessId,
-      });
+      const { error } = await supabase.rpc("merge_businesses", { p_keep_id: keepId, p_drop_id: business.id });
       if (error) throw error;
       return keepId;
     },
-    onSuccess: (keepId) => {
-      if (keepId) navigate(`/leads/${keepId}`, { replace: true });
-    },
+    onSuccess: (keepId) => navigate(`/leads/${keepId}`, { replace: true }),
   });
 
-  const addNoteMutation = useMutation({
-    mutationFn: async (body: string) => {
-      const { data: userData } = await supabase.auth.getUser();
-      const { error } = await supabase.from("notes").insert({
-        workspace_id: businessQuery.data?.id ? membership.data?.workspaceId : undefined,
-        business_id: businessId,
-        author_id: userData.user?.id,
-        body,
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      setNoteBody("");
-      void queryClient.invalidateQueries({ queryKey: ["notes", businessId] });
-    },
-  });
-
-  if (businessQuery.isPending || !businessQuery.data) {
-    return <p className="text-sm text-slate-500">{tr.common.loading}</p>;
-  }
-
-  const business = businessQuery.data;
-  const nextStages = allowedNextStages(business.stage);
+  const error = transition.error ?? assign.error ?? dnc.error ?? merge.error;
 
   return (
-    <div className="space-y-6">
-      <button
-        type="button"
-        onClick={() => navigate("/leads")}
-        className="text-sm text-slate-500 hover:underline"
-      >
-        ← {tr.leads.backToList}
-      </button>
-
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">{business.name}</h1>
-          <p className="text-sm text-slate-500">
-            {[business.city, business.district].filter(Boolean).join(" / ")} · {business.category ?? "—"}
-          </p>
-        </div>
-        <span className="rounded-full bg-slate-900 px-3 py-1 text-xs font-medium text-white">
-          {tr.stages[business.stage]}
-        </span>
-      </div>
-
-      {business.possible_duplicate_of && duplicateTargetQuery.data && (
-        <div className="flex items-center justify-between rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-          <span>
-            {tr.leads.possibleDuplicateBanner} ({duplicateTargetQuery.data.name})
-          </span>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              if (window.confirm(tr.leads.mergeConfirm)) {
-                mergeMutation.mutate(duplicateTargetQuery.data!.id);
-              }
-            }}
-          >
-            {tr.leads.mergeButton}
-          </Button>
-        </div>
-      )}
-
-      <div className="grid grid-cols-2 gap-6">
-        <div className="space-y-4">
-          <section className="rounded-lg border border-slate-200 bg-white p-4">
-            <h2 className="mb-2 text-sm font-semibold text-slate-700">Bilgiler</h2>
-            <dl className="space-y-1 text-sm">
-              <Row label={tr.leads.phoneLabel} value={business.primary_phone_e164} />
-              <Row label={tr.leads.websiteLabel} value={business.website_url} />
-              <Row
-                label={tr.websiteAnalysis.statusLabel}
-                value={business.website_status ? tr.websiteAnalysis.status[business.website_status] : null}
-              />
-              <Row label={tr.leads.columns.score} value={String(business.lead_score)} />
-            </dl>
-          </section>
-
-          {membership.data?.workspaceId && (
-            <>
-              <WebsiteAnalysisSection business={business} workspaceId={membership.data.workspaceId} />
-              <RecommendedChannelCard business={business} workspaceId={membership.data.workspaceId} />
-              <DraftFirstMessageCard business={business} workspaceId={membership.data.workspaceId} />
-            </>
+    <div className="space-y-4">
+      <Card>
+        <CardHeader title={tr.leadDetail.salesProcess} />
+        <CardBody className="space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted">{tr.leadDetail.currentStage}</span>
+            <StageBadge stage={business.stage} />
+          </div>
+          {nextStages.length > 0 && (
+            <div>
+              <p className="mb-2 text-xs text-muted">{tr.leadDetail.moveTo}</p>
+              <div className="flex flex-wrap gap-2">
+                {nextStages.map((stage) => (
+                  <Button key={stage} size="sm" variant="outline" disabled={transition.isPending} onClick={() => transition.mutate(stage)}>
+                    {tr.stages[stage]}
+                  </Button>
+                ))}
+              </div>
+            </div>
           )}
-
-          <section className="rounded-lg border border-slate-200 bg-white p-4">
-            <h2 className="mb-2 text-sm font-semibold text-slate-700">Aşama</h2>
-            <div className="flex flex-wrap gap-2">
-              {nextStages.length === 0 && <p className="text-xs text-slate-400">Sonraki aşama yok.</p>}
-              {nextStages.map((stage) => (
-                <Button
-                  key={stage}
-                  size="sm"
-                  variant="outline"
-                  disabled={transitionMutation.isPending}
-                  onClick={() => transitionMutation.mutate(stage)}
-                >
-                  {tr.stages[stage]}
-                </Button>
+          <div>
+            <p className="mb-1.5 text-xs text-muted">{tr.leads.assignLabel}</p>
+            <Select value={business.assigned_to ?? ""} disabled={assign.isPending} onChange={(e) => assign.mutate(e.target.value || null)}>
+              <option value="">{tr.leads.unassigned}</option>
+              {members.map((m) => (
+                <option key={m.user_id} value={m.user_id}>
+                  {m.name}
+                </option>
               ))}
-            </div>
-            <div className="mt-3">
-              <Button
-                size="sm"
-                variant={business.do_not_contact ? "outline" : "default"}
-                disabled={dncMutation.isPending}
-                onClick={() => dncMutation.mutate(!business.do_not_contact)}
-              >
-                {business.do_not_contact ? tr.leads.dncToggleOff : tr.leads.dncToggleOn}
-              </Button>
-            </div>
-          </section>
+            </Select>
+          </div>
+          <Button
+            variant={business.do_not_contact ? "outline" : "danger"}
+            size="sm"
+            className="w-full"
+            disabled={dnc.isPending}
+            onClick={() => dnc.mutate(!business.do_not_contact)}
+          >
+            <Ban />
+            {business.do_not_contact ? tr.leads.dncToggleOff : tr.leads.dncToggleOn}
+          </Button>
+          {business.stage === "WON" && (
+            <Button size="sm" variant="outline" className="w-full" onClick={onWon}>
+              <CheckCircle2 />
+              {tr.customers.editDeal}
+            </Button>
+          )}
+          {error && <p className="text-xs text-[#f87171]">{error instanceof Error ? error.message : tr.common.error}</p>}
+        </CardBody>
+      </Card>
 
-          <section className="rounded-lg border border-slate-200 bg-white p-4">
-            <h2 className="mb-2 text-sm font-semibold text-slate-700">{tr.leads.timelineTitle}</h2>
-            <ul className="space-y-2 text-xs text-slate-600">
-              {timelineQuery.data?.map((t) => (
-                <li key={t.id}>
-                  <span className="font-medium">{t.from_stage ?? "—"} → {t.to_stage}</span>{" "}
-                  <span className="text-slate-400">
-                    ({t.actor_type}, {new Date(t.created_at).toLocaleString("tr-TR")})
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        </div>
+      <Card>
+        <CardHeader title={tr.routing.title} />
+        <CardBody>
+          {!recommended ? null : recommended.ok ? (
+            <div className="flex items-center gap-3">
+              <ChannelIcon channel={recommended.channel} boxed />
+              <div>
+                <p className="text-sm font-medium text-text">{tr.channels[recommended.channel]}</p>
+                <p className="text-xs text-muted">{tr.channelModes[recommended.mode]}</p>
+              </div>
+            </div>
+          ) : recommended.doNotContact ? (
+            <p className="text-sm text-[#f87171]">{tr.routing.doNotContact}</p>
+          ) : (
+            <p className="text-sm text-muted">{tr.routing.noChannel}</p>
+          )}
+        </CardBody>
+      </Card>
 
-        <section className="space-y-3 rounded-lg border border-slate-200 bg-white p-4">
-          <h2 className="text-sm font-semibold text-slate-700">{tr.leads.notesTitle}</h2>
-          <div className="flex gap-2">
-            <Input
-              value={noteBody}
-              onChange={(e) => setNoteBody(e.target.value)}
-              placeholder={tr.leads.addNotePlaceholder}
-            />
+      {business.possible_duplicate_of && duplicateTarget.data && (
+        <Card className="border-warning/40">
+          <CardBody className="space-y-3 pt-4">
+            <p className="text-sm text-[#fbbf24]">
+              {tr.leads.possibleDuplicateBanner} ({duplicateTarget.data.name})
+            </p>
             <Button
               size="sm"
-              disabled={!noteBody.trim() || addNoteMutation.isPending}
-              onClick={() => addNoteMutation.mutate(noteBody.trim())}
+              variant="outline"
+              onClick={() => {
+                if (window.confirm(tr.leads.mergeConfirm)) merge.mutate(duplicateTarget.data!.id);
+              }}
             >
-              {tr.leads.addNoteButton}
+              <GitMerge />
+              {tr.leads.mergeButton}
             </Button>
-          </div>
-          <ul className="space-y-3">
-            {notesQuery.data?.map((note) => (
-              <li key={note.id} className="rounded-md bg-slate-50 p-2 text-sm">
-                <p className="text-slate-800">{note.body}</p>
-                <p className="mt-1 text-xs text-slate-400">
-                  {new Date(note.created_at).toLocaleString("tr-TR")}
-                </p>
-              </li>
-            ))}
-          </ul>
-        </section>
-      </div>
+          </CardBody>
+        </Card>
+      )}
     </div>
   );
 }
 
-function Row({ label, value }: { label: string; value: string | null }) {
+export function LeadDetailPage() {
+  const { businessId } = useParams<{ businessId: string }>();
+  const navigate = useNavigate();
+  const workspaceId = useWorkspaceMembership().data?.workspaceId;
+  const businessQuery = useBusiness(businessId);
+  const channelsQuery = useContactChannels(businessId);
+  const settings = useWorkspaceSettings().data;
+  const [draftOpen, setDraftOpen] = useState(false);
+  const [dealOpen, setDealOpen] = useState(false);
+  useRealtimeTable("businesses", workspaceId, ["business", businessId]);
+
+  if (!businessQuery.data || !workspaceId) {
+    return <p className="text-sm text-muted">{businessQuery.isError ? tr.common.error : tr.common.loading}</p>;
+  }
+
+  const business = businessQuery.data;
+  const channels = channelsQuery.data ?? [];
+  const recommended = recommendChannel(business, channels, settings);
+  const recommendedChannel = recommended?.ok && recommended.channel !== "PHONE" ? (recommended.channel as OutreachChannel) : null;
+  const location = [business.district, business.city].filter(Boolean).join(", ");
+
   return (
-    <div className="flex justify-between gap-4">
-      <dt className="text-slate-500">{label}</dt>
-      <dd className="text-right text-slate-800">{value ?? "—"}</dd>
+    <div className="space-y-5">
+      <button type="button" onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-sm text-muted hover:text-text">
+        <ArrowLeft className="size-4" />
+        {tr.leads.backToList}
+      </button>
+
+      <Card className="overflow-hidden">
+        <div className="flex flex-wrap items-center gap-5 p-5">
+          <Avatar name={business.name} size="xl" square />
+          <div className="min-w-0 flex-1 space-y-2">
+            <h1 className="text-xl font-semibold tracking-tight text-text">{business.name}</h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <WebsiteStatusBadge status={business.website_status} />
+              {business.business_status === "OPERATIONAL" && <Badge tone="green">{tr.businessStatus.OPERATIONAL}</Badge>}
+              <StageBadge stage={business.stage} />
+              {business.do_not_contact && <Badge tone="red">DNC</Badge>}
+            </div>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted">
+              {business.rating !== null && (
+                <span className="flex items-center gap-1">
+                  <Star className="size-4 fill-warning text-warning" />
+                  <span className="text-text">{business.rating.toLocaleString("tr-TR")}</span>({tr.leadDetail.reviews(business.review_count ?? 0)})
+                </span>
+              )}
+              {business.category && (
+                <span className="flex items-center gap-1">
+                  <Tag className="size-4" />
+                  {business.category}
+                </span>
+              )}
+              {location && (
+                <span className="flex items-center gap-1">
+                  <MapPin className="size-4" />
+                  {location}
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="text-center">
+              <ScoreBadge score={business.lead_score} size="lg" />
+              <p className="mt-1 text-xs text-muted">{tr.leadDetail.leadScore}</p>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Button variant="violet" onClick={() => setDraftOpen(true)} disabled={business.do_not_contact}>
+                <Sparkles />
+                {tr.leadDetail.aiDraft}
+              </Button>
+              <Button variant="outline" onClick={() => setDraftOpen(true)} disabled={business.do_not_contact}>
+                <MessageSquarePlus />
+                {tr.leadDetail.startConversation}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_300px]">
+        <Tabs defaultValue="overview" className="min-w-0 space-y-4">
+          <PillTabsList>
+            <PillTabsTrigger value="overview">{tr.leadDetail.tabs.overview}</PillTabsTrigger>
+            <PillTabsTrigger value="website">{tr.leadDetail.tabs.website}</PillTabsTrigger>
+            <PillTabsTrigger value="contact">{tr.leadDetail.tabs.contact}</PillTabsTrigger>
+            <PillTabsTrigger value="social">{tr.leadDetail.tabs.social}</PillTabsTrigger>
+            <PillTabsTrigger value="analysis">{tr.leadDetail.tabs.analysis}</PillTabsTrigger>
+            <PillTabsTrigger value="notes">{tr.leadDetail.tabs.notes}</PillTabsTrigger>
+            <PillTabsTrigger value="conversations">{tr.leadDetail.tabs.conversations}</PillTabsTrigger>
+          </PillTabsList>
+          <TabsContent value="overview">
+            <OverviewTab business={business} channels={channels} settings={settings} />
+          </TabsContent>
+          <TabsContent value="website">
+            <WebsiteTab business={business} workspaceId={workspaceId} />
+          </TabsContent>
+          <TabsContent value="contact">
+            <ContactTab business={business} workspaceId={workspaceId} channels={channels} />
+          </TabsContent>
+          <TabsContent value="social">
+            <ContactTab business={business} workspaceId={workspaceId} channels={channels} only={SOCIAL_CHANNELS} />
+          </TabsContent>
+          <TabsContent value="analysis">
+            <AnalysisTab business={business} />
+          </TabsContent>
+          <TabsContent value="notes">
+            <NotesTab business={business} workspaceId={workspaceId} />
+          </TabsContent>
+          <TabsContent value="conversations">
+            <ConversationsTab business={business} onDraft={() => setDraftOpen(true)} />
+          </TabsContent>
+        </Tabs>
+
+        <SalesPanel business={business} recommended={recommended} onWon={() => setDealOpen(true)} />
+      </div>
+
+      {draftOpen && (
+        <DraftMessageDialog
+          open={draftOpen}
+          onOpenChange={setDraftOpen}
+          workspaceId={workspaceId}
+          business={business}
+          availableChannels={channels.map((c) => c.channel).filter((c) => OUTREACH.includes(c as Channel))}
+          recommendedChannel={recommendedChannel}
+        />
+      )}
+      {dealOpen && <CustomerDealDialog open={dealOpen} onOpenChange={setDealOpen} businessId={business.id} businessName={business.name} />}
     </div>
   );
 }

@@ -12,6 +12,9 @@ import { supabase } from "../../lib/supabase-client";
 import { recomputeScore } from "../../workers/score-runner";
 import { tr } from "../../i18n/tr";
 import { Button } from "../../components/ui/button";
+import { Dialog, DialogContent } from "../../components/ui/primitives";
+import { Badge } from "../../components/ui/badge";
+import { Table, Td, Th } from "../../components/ui/data-display";
 
 interface ImportCsvDialogProps {
   workspaceId: string;
@@ -139,62 +142,67 @@ export function ImportCsvDialog({ workspaceId, onClose }: ImportCsvDialogProps) 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-      <div className="max-h-[85vh] w-full max-w-2xl space-y-4 overflow-auto rounded-lg bg-white p-6 shadow-lg">
-        <h2 className="text-lg font-semibold text-slate-900">{tr.leads.importTitle}</h2>
-        <p className="text-sm text-slate-500">{tr.leads.importDescription}</p>
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent title={tr.leads.importTitle} description={tr.leads.importDescription} size="lg">
+        <div className="space-y-4">
+          {!done && (
+            <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border border-dashed border-border-strong bg-surface-2 px-4 py-6 text-center text-sm text-muted hover:border-primary">
+              <span className="font-medium text-text">{tr.leads.importChooseFile}</span>
+              <span className="text-xs">.csv</span>
+              <input
+                type="file"
+                accept=".csv,text/csv"
+                className="sr-only"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) void onFile(file);
+                }}
+              />
+            </label>
+          )}
 
-        {!done && (
-          <input
-            type="file"
-            accept=".csv,text/csv"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) void onFile(file);
-            }}
-            className="text-sm"
-          />
-        )}
-
-        {rows.length > 0 && !done && (
-          <div className="space-y-3">
-            <h3 className="text-sm font-medium text-slate-700">{tr.leads.importPreview}</h3>
-            <div className="max-h-64 overflow-auto rounded-md border border-slate-200">
-              <table className="w-full text-xs">
-                <thead className="bg-slate-50 text-left uppercase text-slate-500">
-                  <tr>
-                    <th className="px-2 py-1">Ad</th>
-                    <th className="px-2 py-1">Durum</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row, i) => (
-                    <tr key={i} className="border-t border-slate-100">
-                      <td className="px-2 py-1">{row.raw.name}</td>
-                      <td className="px-2 py-1">
-                        {row.status === "CREATED" && tr.leads.importStatusNew}
-                        {row.status === "POSSIBLE_DUPLICATE" && tr.leads.importStatusPossible}
-                        {row.status === "DUPLICATE_MERGED" && tr.leads.importStatusDuplicate}
-                      </td>
+          {rows.length > 0 && !done && (
+            <div className="space-y-3">
+              <h3 className="text-sm font-medium text-text">
+                {tr.leads.importPreview} ({rows.length})
+              </h3>
+              <div className="max-h-64 overflow-auto rounded-lg border border-border">
+                <Table>
+                  <thead>
+                    <tr>
+                      <Th>{tr.leads.nameLabel}</Th>
+                      <Th>{tr.leads.columns.status}</Th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {rows.map((row, i) => (
+                      <tr key={i}>
+                        <Td>{row.raw.name}</Td>
+                        <Td>
+                          {row.status === "CREATED" && <Badge tone="green">{tr.leads.importStatusNew}</Badge>}
+                          {row.status === "POSSIBLE_DUPLICATE" && <Badge tone="orange">{tr.leads.importStatusPossible}</Badge>}
+                          {row.status === "DUPLICATE_MERGED" && <Badge tone="gray">{tr.leads.importStatusDuplicate}</Badge>}
+                        </Td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              </div>
+              <Button onClick={() => void confirmImport()} disabled={importing}>
+                {tr.leads.importConfirm}
+              </Button>
             </div>
-            <Button onClick={() => void confirmImport()} disabled={importing}>
-              {tr.leads.importConfirm}
+          )}
+
+          {done && <p className="rounded-lg bg-success/10 px-3 py-2 text-sm text-[#4ade80]">{tr.leads.importDone}</p>}
+
+          <div className="flex justify-end">
+            <Button type="button" variant="outline" onClick={onClose}>
+              {done ? tr.common.close : tr.common.cancel}
             </Button>
           </div>
-        )}
-
-        {done && <p className="text-sm text-green-700">{tr.leads.importDone}</p>}
-
-        <div className="flex justify-end">
-          <Button type="button" variant="outline" onClick={onClose}>
-            {tr.common.cancel}
-          </Button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

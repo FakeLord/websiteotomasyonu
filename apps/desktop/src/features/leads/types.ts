@@ -1,11 +1,17 @@
 import type { BusinessStage } from "@lbf/core";
 
+export type WebsiteStatus = "NO_WEBSITE" | "BROKEN_WEBSITE" | "LOW_QUALITY_WEBSITE" | "GOOD_WEBSITE";
+
 export interface BusinessListRow {
   id: string;
   name: string;
   stage: BusinessStage;
+  category: string | null;
   city: string | null;
   district: string | null;
+  website_url: string | null;
+  website_status: WebsiteStatus | null;
+  last_contacted_at: string | null;
   lead_score: number;
   assigned_to: string | null;
   updated_at: string;
@@ -14,12 +20,17 @@ export interface BusinessListRow {
 }
 
 export interface BusinessDetail extends BusinessListRow {
-  category: string | null;
   address: string | null;
-  website_url: string | null;
   website_domain: string | null;
   primary_phone_e164: string | null;
-  website_status: "NO_WEBSITE" | "BROKEN_WEBSITE" | "LOW_QUALITY_WEBSITE" | "GOOD_WEBSITE" | null;
+  rating: number | null;
+  review_count: number | null;
+  lat: number | null;
+  lng: number | null;
+  google_place_id: string | null;
+  business_status: string | null;
+  score_breakdown: { reasons?: Array<{ code: string; label?: string; points: number }> } | Record<string, unknown>;
+  created_at: string;
   version: number;
   merged_into: string | null;
   dnc_reason: string | null;
