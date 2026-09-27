@@ -21,7 +21,18 @@ import { Input, Textarea } from "../../components/ui/input";
 import { Badge } from "../../components/ui/badge";
 import { Avatar } from "../../components/ui/data-display";
 import { ChannelIcon } from "../../components/domain/channel-icon";
-import { FORBIDDEN_WORDS, businessContextNames, rpc, sendDraftMessage, type DeliveryMode } from "../outreach/outreach";
+import {
+  ASSISTED_FAILURE_REASONS,
+  FORBIDDEN_WORDS,
+  businessContextNames,
+  confirmAssistedSent,
+  reopenAssistedMessage,
+  reportAssistedFailure,
+  rpc,
+  sendDraftMessage,
+  type AssistedFailureReason,
+  type DeliveryMode,
+} from "../outreach/outreach";
 import { draftReasonLabel } from "../leads/detail/lead-data";
 import { useMessages, type ConversationListRow, type MessageRow } from "./conversation-data";
 
@@ -48,6 +59,7 @@ export function ConversationThread({ conversation, workspaceId }: { conversation
   const [notice, setNotice] = useState<{ tone: "ok" | "warn" | "error"; text: string } | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editBody, setEditBody] = useState("");
+  const [failingId, setFailingId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const business = conversation.businesses;
   const channel = conversation.channel;
@@ -222,14 +234,11 @@ export function ConversationThread({ conversation, workspaceId }: { conversation
     onError: (err) => fail(err, tr.draft.error),
   });
 
+  const target = { conversationId: conversation.id, businessId: conversation.business_id, channel };
+  const asSendable = (m: MessageRow) => ({ id: m.id, body: m.body, subject: m.subject });
+
   const send = useMutation({
-    mutationFn: (message: MessageRow): Promise<DeliveryMode> =>
-      sendDraftMessage(
-        workspaceId,
-        { conversationId: conversation.id, businessId: conversation.business_id, channel },
-        { id: message.id, body: message.body, subject: message.subject },
-        { scheduleFirstFollowUp: !messages.some((m) => m.direction === "OUT" && m.status === "SENT") },
-      ),
+    mutationFn: (message: MessageRow): Promise<DeliveryMode> => sendDraftMessage(workspaceId, target, asSendable(message)),
     onSuccess: (mode) => {
       setNotice({
         tone: mode === "SMTP" ? "ok" : "warn",
@@ -242,6 +251,34 @@ export function ConversationThread({ conversation, workspaceId }: { conversation
       fail(err, tr.conversations.sendError);
       invalidate();
     },
+  });
+
+  const confirmSent = useMutation({
+    mutationFn: (message: MessageRow) => confirmAssistedSent(workspaceId, target, asSendable(message)),
+    onSuccess: () => {
+      setNotice({ tone: "ok", text: tr.conversations.assistedConfirmed });
+      invalidate();
+      void queryClient.invalidateQueries({ queryKey: ["follow-ups", workspaceId] });
+    },
+    onError: (err) => fail(err, tr.conversations.sendError),
+  });
+
+  const reportFailure = useMutation({
+    mutationFn: ({ message, reason }: { message: MessageRow; reason: AssistedFailureReason }) =>
+      reportAssistedFailure(target, message.id, reason),
+    onSuccess: () => {
+      setFailingId(null);
+      setNotice({ tone: "warn", text: tr.conversations.assistedFailedNotice });
+      invalidate();
+      void queryClient.invalidateQueries({ queryKey: ["follow-ups", workspaceId] });
+      void queryClient.invalidateQueries({ queryKey: ["contact-channels", conversation.business_id] });
+    },
+    onError: (err) => fail(err, tr.common.error),
+  });
+
+  const reopen = useMutation({
+    mutationFn: (message: MessageRow) => reopenAssistedMessage(target, asSendable(message)),
+    onError: (err) => fail(err, tr.common.error),
   });
 
   const discard = useMutation({
@@ -283,14 +320,16 @@ export function ConversationThread({ conversation, workspaceId }: { conversation
         {messages.map((m) => {
           const outbound = m.direction === "OUT";
           const isDraft = m.status === "DRAFT";
+          const awaitingConfirm = outbound && m.status === "APPROVED";
           return (
             <div key={m.id} className={cn("flex", outbound ? "justify-end" : "justify-start")}>
               <div
                 className={cn(
                   "max-w-[75%] rounded-2xl px-4 py-2.5 text-sm",
                   !outbound && "rounded-bl-md bg-surface-3 text-text",
-                  outbound && !isDraft && "rounded-br-md bg-primary text-white",
+                  outbound && !isDraft && !awaitingConfirm && "rounded-br-md bg-primary text-white",
                   isDraft && "rounded-br-md border border-violet/50 bg-violet/10 text-text",
+                  awaitingConfirm && "rounded-br-md border border-warning/50 bg-warning/10 text-text",
                   m.status === "FAILED" && "border border-danger/50 bg-danger/10 text-text",
                 )}
               >
@@ -298,6 +337,12 @@ export function ConversationThread({ conversation, workspaceId }: { conversation
                   <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-[#a78bfa]">
                     {m.author_type === "AI" ? <Bot className="size-3.5" /> : <Pencil className="size-3.5" />}
                     {m.author_type === "AI" ? tr.conversations.aiDraft : tr.conversations.manualDraft}
+                  </p>
+                )}
+                {awaitingConfirm && (
+                  <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-[#fbbf24]">
+                    <ClipboardPaste className="size-3.5" />
+                    {tr.conversations.awaitingConfirm}
                   </p>
                 )}
                 {m.subject && <p className="mb-1 text-xs font-semibold opacity-80">{m.subject}</p>}
@@ -317,7 +362,12 @@ export function ConversationThread({ conversation, workspaceId }: { conversation
                 ) : (
                   <p className="whitespace-pre-wrap">{m.body}</p>
                 )}
-                <div className={cn("mt-1.5 flex flex-wrap items-center gap-2 text-[11px]", outbound && !isDraft ? "text-white/70" : "text-muted")}>
+                <div
+                  className={cn(
+                    "mt-1.5 flex flex-wrap items-center gap-2 text-[11px]",
+                    outbound && !isDraft && !awaitingConfirm ? "text-white/70" : "text-muted",
+                  )}
+                >
                   <span>{formatDateTime(m.sent_at ?? m.created_at)}</span>
                   {m.status === "FAILED" && <Badge tone="red">{tr.conversations.failed}</Badge>}
                   {m.intent && <Badge tone={INTENT_TONES[m.intent as keyof typeof INTENT_TONES] ?? "gray"}>{tr.intents[m.intent as keyof typeof tr.intents] ?? m.intent}</Badge>}
@@ -343,6 +393,39 @@ export function ConversationThread({ conversation, workspaceId }: { conversation
                       <Trash2 />
                       {tr.conversations.discard}
                     </Button>
+                  </div>
+                )}
+                {awaitingConfirm && (
+                  <div className="mt-2.5 space-y-2">
+                    <div className="flex flex-wrap gap-2">
+                      <Button size="sm" disabled={confirmSent.isPending} onClick={() => confirmSent.mutate(m)}>
+                        {confirmSent.isPending ? <Loader2 className="animate-spin" /> : <Check />}
+                        {tr.conversations.iSentIt}
+                      </Button>
+                      <Button size="sm" variant="outline" disabled={reopen.isPending} onClick={() => reopen.mutate(m)}>
+                        <ExternalLink />
+                        {tr.conversations.reopenChat}
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setFailingId(failingId === m.id ? null : m.id)}>
+                        <X />
+                        {tr.conversations.couldNotSend}
+                      </Button>
+                    </div>
+                    {failingId === m.id && (
+                      <div className="flex flex-wrap gap-2 rounded-lg bg-surface-2 p-2">
+                        {ASSISTED_FAILURE_REASONS.map((reason) => (
+                          <Button
+                            key={reason}
+                            size="sm"
+                            variant="outline"
+                            disabled={reportFailure.isPending}
+                            onClick={() => reportFailure.mutate({ message: m, reason })}
+                          >
+                            {tr.conversations.assistedFailure[reason]}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

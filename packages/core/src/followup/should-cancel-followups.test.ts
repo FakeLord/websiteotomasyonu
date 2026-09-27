@@ -17,6 +17,10 @@ describe("shouldCancelFollowUps", () => {
     expect(shouldCancelFollowUps({ ...base, hasNewInboundMessage: true })).toBe(true);
   });
 
+  it("does not cancel for an automatic reply (SPEC → L: AUTO_REPLY only postpones)", () => {
+    expect(shouldCancelFollowUps({ ...base, hasNewInboundMessage: true, inboundIsAutoReply: true })).toBe(false);
+  });
+
   it.each(["ENGAGED", "PROPOSAL_READY", "HANDED_OFF", "WON", "LOST", "DISQUALIFIED"] as const)(
     "cancels when stage is %s",
     (stage) => {

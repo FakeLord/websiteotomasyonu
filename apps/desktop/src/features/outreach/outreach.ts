@@ -47,12 +47,33 @@ export interface SendableMessage {
 
 export type DeliveryMode = "SMTP" | "ASSISTED" | "MANUAL";
 
+interface Delivery {
+  mode: DeliveryMode;
+  /** SMTP gönderiminde üretilen RFC 5322 Message-ID (gelen cevap eşleştirmesi için). */
+  externalMessageId: string | null;
+}
+
+/** Konuşmadaki son gelen e-postanın Message-ID'si; cevap aynı thread'de gönderilir. */
+async function lastInboundMessageId(conversationId: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("messages")
+    .select("external_message_id")
+    .eq("conversation_id", conversationId)
+    .eq("direction", "IN")
+    .not("external_message_id", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return (data?.external_message_id as string | null | undefined) ?? null;
+}
+
 /**
  * Mesajı gerçekten iletir: e-posta SMTP ile gönderilir; Instagram/Facebook/
  * WhatsApp için metin panoya kopyalanıp ilgili sohbet açılır (SPEC → I.3
  * ASSISTED); diğer kanallarda metin panoya kopyalanır ve kullanıcı elle gönderir.
  */
-async function deliver(target: SendTarget, message: SendableMessage): Promise<DeliveryMode> {
+async function deliver(target: SendTarget, message: SendableMessage): Promise<Delivery> {
   if (target.channel === "EMAIL") {
     const account = await getEmailAccount();
     if (!account) throw new Error(tr.conversations.noEmailAccount);
@@ -67,7 +88,8 @@ async function deliver(target: SendTarget, message: SendableMessage): Promise<De
       .maybeSingle();
     if (error) throw error;
     if (!channelRow) throw new Error(tr.conversations.noEmailAddress);
-    await invoke("send_email", {
+    const inReplyTo = await lastInboundMessageId(target.conversationId);
+    const externalMessageId = await invoke<string>("send_email", {
       smtp: {
         host: account.smtpHost,
         port: account.smtpPort,
@@ -76,14 +98,14 @@ async function deliver(target: SendTarget, message: SendableMessage): Promise<De
         from_name: account.fromName,
         from_email: account.fromEmail,
       },
-      message: { to_email: channelRow.value, subject: message.subject ?? "", body: message.body },
+      message: { to_email: channelRow.value, subject: message.subject ?? "", body: message.body, in_reply_to: inReplyTo },
     });
-    return "SMTP";
+    return { mode: "SMTP", externalMessageId };
   }
 
   await navigator.clipboard.writeText(message.body);
   const linkBuilder = ASSISTED_LINK[target.channel];
-  if (!linkBuilder) return "MANUAL";
+  if (!linkBuilder) return { mode: "MANUAL", externalMessageId: null };
 
   const { data: channelRow } = await supabase
     .from("contact_channels")
@@ -93,9 +115,9 @@ async function deliver(target: SendTarget, message: SendableMessage): Promise<De
     .limit(1)
     .maybeSingle();
   const handle = (channelRow?.normalized_value as string | undefined)?.split(":").pop();
-  if (!handle) return "MANUAL";
+  if (!handle) return { mode: "MANUAL", externalMessageId: null };
   await openUrl(linkBuilder(handle));
-  return "ASSISTED";
+  return { mode: "ASSISTED", externalMessageId: null };
 }
 
 interface FollowupPolicy {
@@ -120,17 +142,64 @@ export function nextFollowUpDate(policy: FollowupPolicy | null, completedStep: n
 }
 
 /**
- * Taslak → onay → gerçek teslim → `mark_message_sent` (outreach_guard + çift
- * gönderim kontrolü DB'de). Teslim başarısız olursa mesaj FAILED işaretlenir.
- * İlk giden mesajsa 1. follow-up planlanır. Dönen mod, UI'da kullanıcıya ne
- * yapması gerektiğini söylemek için kullanılır (ASSISTED/MANUAL: elle gönder).
+ * Mesaj gerçekten iletildikten sonra: `mark_message_sent` (outreach_guard + çift
+ * gönderim kontrolü DB'de tekrar çalışır), ardından sekans ilerletilir —
+ * mesaj bir follow-up'ın taslağıysa o adım SENT olur ve sonraki adım planlanır;
+ * konuşmadaki ilk giden mesajsa 1. follow-up planlanır (SPEC.md → M).
  */
-export async function sendDraftMessage(
-  workspaceId: string,
-  target: SendTarget,
-  message: SendableMessage,
-  options: { scheduleFirstFollowUp: boolean },
-): Promise<DeliveryMode> {
+async function finalizeSent(workspaceId: string, target: SendTarget, message: SendableMessage, externalMessageId: string | null) {
+  const { count: previousSent, error: countError } = await supabase
+    .from("messages")
+    .select("id", { count: "exact", head: true })
+    .eq("conversation_id", target.conversationId)
+    .eq("direction", "OUT")
+    .eq("status", "SENT");
+  if (countError) throw countError;
+
+  await rpc("mark_message_sent", {
+    p_message_id: message.id,
+    p_content_hash: await sha256Hex(message.body),
+    p_external_message_id: externalMessageId,
+  });
+
+  const { data: followUp, error: followUpError } = await supabase
+    .from("follow_ups")
+    .select("id, step")
+    .eq("message_id", message.id)
+    .in("status", ["PENDING", "DRAFTED"])
+    .maybeSingle();
+  if (followUpError) throw followUpError;
+
+  const policy = await loadFollowupPolicy(workspaceId);
+  if (followUp) {
+    const nextDue = nextFollowUpDate(policy, followUp.step as number);
+    await rpc("mark_followup_sent", {
+      p_followup_id: followUp.id,
+      p_message_id: message.id,
+      p_next_due_at: nextDue?.toISOString() ?? null,
+    });
+  } else if ((previousSent ?? 0) === 0) {
+    const dueAt = nextFollowUpDate(policy, 0);
+    if (dueAt) {
+      await rpc("schedule_next_followup", {
+        ws: workspaceId,
+        p_business_id: target.businessId,
+        p_conversation_id: target.conversationId,
+        p_step: 1,
+        p_due_at: dueAt.toISOString(),
+      });
+    }
+  }
+}
+
+/**
+ * Taslak → onay → gerçek teslim. E-postada SMTP başarılıysa mesaj hemen SENT
+ * olur. Asist/manuel kanallarda metin panoya kopyalanıp sohbet açılır; mesaj
+ * APPROVED kalır ve kullanıcı "Gönderdim" (`confirmAssistedSent`) veya
+ * "Gönderemedim" (`reportAssistedFailure`) diyene kadar gönderilmiş sayılmaz
+ * (SPEC.md → L.3). Teslim hata verirse mesaj FAILED işaretlenir.
+ */
+export async function sendDraftMessage(workspaceId: string, target: SendTarget, message: SendableMessage): Promise<DeliveryMode> {
   // Ön kontrol: DB'deki kurallar (DNC, gönderim penceresi, soğuma, günlük
   // limitler, 30 günlük aynı içerik) mesaj gerçekten gitmeden ÖNCE kontrol
   // edilir; aksi halde e-posta SMTP'den çıkıp mark_message_sent'te reddedilebilirdi.
@@ -156,33 +225,46 @@ export async function sendDraftMessage(
 
   await rpc("approve_message", { p_message_id: message.id });
 
-  let mode: DeliveryMode;
+  let delivery: Delivery;
   try {
-    mode = await deliver(target, message);
-    await rpc("mark_message_sent", {
-      p_message_id: message.id,
-      p_content_hash: contentHash,
-      p_external_message_id: null,
-    });
+    delivery = await deliver(target, message);
+    if (delivery.mode === "SMTP") await finalizeSent(workspaceId, target, message, delivery.externalMessageId);
   } catch (err) {
     const reason = err instanceof Error ? err.message : tr.conversations.sendError;
     await supabase.rpc("mark_message_failed", { p_message_id: message.id, p_reason: reason });
     throw err instanceof Error ? err : new Error(reason);
   }
+  return delivery.mode;
+}
 
-  if (options.scheduleFirstFollowUp) {
-    const dueAt = nextFollowUpDate(await loadFollowupPolicy(workspaceId), 0);
-    if (dueAt) {
-      await rpc("schedule_next_followup", {
-        ws: workspaceId,
-        p_business_id: target.businessId,
-        p_conversation_id: target.conversationId,
-        p_step: 1,
-        p_due_at: dueAt.toISOString(),
-      });
-    }
-  }
-  return mode;
+/** Onaylanmış bir asist mesajı için metni tekrar panoya kopyalar ve sohbeti yeniden açar. */
+export async function reopenAssistedMessage(target: SendTarget, message: SendableMessage): Promise<DeliveryMode> {
+  return (await deliver(target, message)).mode;
+}
+
+/** Kullanıcı mesajı asist kanaldan gerçekten gönderdiğini onayladı. */
+export async function confirmAssistedSent(workspaceId: string, target: SendTarget, message: SendableMessage): Promise<void> {
+  await finalizeSent(workspaceId, target, message, null);
+}
+
+export const ASSISTED_FAILURE_REASONS = ["NO_ACCOUNT", "DM_CLOSED", "OTHER"] as const;
+export type AssistedFailureReason = (typeof ASSISTED_FAILURE_REASONS)[number];
+
+/**
+ * Kullanıcı mesajı gönderemedi (hesap yok, DM kapalı…): mesaj FAILED, kanal
+ * INVALID olur; kanal trigger'ı o kanaldaki bekleyen follow-up'ları iptal eder
+ * ve kanal yönlendirmesi sıradaki kanala geçer (SPEC.md → L.3, I.3).
+ */
+export async function reportAssistedFailure(target: SendTarget, messageId: string, reason: AssistedFailureReason): Promise<void> {
+  const label = tr.conversations.assistedFailure[reason];
+  await rpc("mark_message_failed", { p_message_id: messageId, p_reason: label });
+  await rpc("mark_channel_status", {
+    p_business_id: target.businessId,
+    p_channel: target.channel,
+    p_value: null,
+    p_status: "INVALID",
+    p_reason: label,
+  });
 }
 
 export interface DraftBusiness {

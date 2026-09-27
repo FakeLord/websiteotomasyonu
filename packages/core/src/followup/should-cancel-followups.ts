@@ -14,6 +14,8 @@ export interface FollowUpCancelInput {
   doNotContact: boolean;
   channelStatus: "UNVERIFIED" | "VALID" | "INVALID" | "BOUNCED";
   hasNewInboundMessage: boolean;
+  /** Yeni gelen mesaj otomatik yanıtsa (AUTO_REPLY) sekans iptal edilmez, ertelenir. */
+  inboundIsAutoReply?: boolean;
 }
 
 /**
@@ -22,7 +24,7 @@ export interface FollowUpCancelInput {
  * ayna tutmak içindir.
  */
 export function shouldCancelFollowUps(input: FollowUpCancelInput): boolean {
-  if (input.hasNewInboundMessage) return true;
+  if (input.hasNewInboundMessage && !input.inboundIsAutoReply) return true;
   if (STOPPING_STAGES.includes(input.stage)) return true;
   if (input.doNotContact) return true;
   if (input.channelStatus === "INVALID" || input.channelStatus === "BOUNCED") return true;

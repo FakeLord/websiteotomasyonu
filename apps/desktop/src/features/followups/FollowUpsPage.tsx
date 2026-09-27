@@ -26,7 +26,17 @@ import {
   DropdownMenuTrigger,
 } from "../../components/ui/primitives";
 import { ChannelIcon } from "../../components/domain/channel-icon";
-import { loadFollowupPolicy, nextFollowUpDate, rpc, sendDraftMessage } from "../outreach/outreach";
+import {
+  ASSISTED_FAILURE_REASONS,
+  confirmAssistedSent,
+  loadFollowupPolicy,
+  reportAssistedFailure,
+  rpc,
+  sendDraftMessage,
+  type AssistedFailureReason,
+  type SendTarget,
+  type SendableMessage,
+} from "../outreach/outreach";
 
 interface FollowUpRow {
   id: string;
@@ -48,7 +58,7 @@ function tabFor(row: FollowUpRow): TabKey {
   if (row.status === "PENDING" || row.status === "DRAFTED") return "pending";
   if (row.status === "SENT") return "sent";
   // Müşteri cevap verdiyse veya süreç ilerlediyse sekans amacına ulaşmıştır.
-  if (row.status === "CANCELLED" && row.cancel_reason && !/DNC|LOST|DISQUALIFIED/.test(row.cancel_reason)) return "completed";
+  if (row.status === "CANCELLED" && row.cancel_reason && !/DNC|LOST|DISQUALIFIED|INVALID|BOUNCED/.test(row.cancel_reason)) return "completed";
   return "stopped";
 }
 
@@ -60,6 +70,7 @@ export function FollowUpsPage() {
   const [tab, setTab] = useState<TabKey>("pending");
   const [notice, setNotice] = useState<{ tone: "ok" | "warn" | "error"; text: string } | null>(null);
   const [preview, setPreview] = useState<{ row: FollowUpRow; body: string; subject: string | null } | null>(null);
+  const [awaitingConfirm, setAwaitingConfirm] = useState<{ target: SendTarget; message: SendableMessage } | null>(null);
 
   const policyQuery = useQuery({
     queryKey: ["followup-policy", workspaceId],
@@ -154,32 +165,53 @@ export function FollowUpsPage() {
       if (!workspaceId || !input.row.message_id || !input.row.conversations) throw new Error(tr.followUps.noDraft);
       const { error: updateError } = await supabase.from("messages").update({ body: input.body.trim() }).eq("id", input.row.message_id);
       if (updateError) throw updateError;
-      const mode = await sendDraftMessage(
-        workspaceId,
-        { conversationId: input.row.conversation_id, businessId: input.row.business_id, channel: input.row.conversations.channel },
-        { id: input.row.message_id, body: input.body.trim(), subject: input.subject },
-        { scheduleFirstFollowUp: false },
-      );
-      const nextDue = nextFollowUpDate(policyQuery.data ?? null, input.row.step);
-      await rpc("mark_followup_sent", {
-        p_followup_id: input.row.id,
-        p_message_id: input.row.message_id,
-        p_next_due_at: nextDue?.toISOString() ?? null,
-      });
-      return mode;
+      // Sekans ilerletme (mark_followup_sent + sonraki adım) gönderim
+      // kesinleştiğinde outreach.finalizeSent içinde yapılır: SMTP'de hemen,
+      // asist kanallarda kullanıcı "Gönderdim" dediğinde.
+      const target = { conversationId: input.row.conversation_id, businessId: input.row.business_id, channel: input.row.conversations.channel };
+      const message = { id: input.row.message_id, body: input.body.trim(), subject: input.subject };
+      const mode = await sendDraftMessage(workspaceId, target, message);
+      return { mode, target, message };
     },
-    onSuccess: (mode) => {
+    onSuccess: ({ mode, target, message }) => {
       setPreview(null);
       setNotice({
         tone: mode === "SMTP" ? "ok" : "warn",
         text: mode === "SMTP" ? tr.conversations.sentEmail : mode === "ASSISTED" ? tr.conversations.sentAssisted : tr.conversations.sentManual,
       });
+      setAwaitingConfirm(mode === "SMTP" ? null : { target, message });
       invalidate();
     },
     onError: (err) => {
       fail(err, tr.followUps.sendError);
       invalidate();
     },
+  });
+
+  const confirmSent = useMutation({
+    mutationFn: () => {
+      if (!workspaceId || !awaitingConfirm) throw new Error(tr.common.error);
+      return confirmAssistedSent(workspaceId, awaitingConfirm.target, awaitingConfirm.message);
+    },
+    onSuccess: () => {
+      setAwaitingConfirm(null);
+      setNotice({ tone: "ok", text: tr.conversations.assistedConfirmed });
+      invalidate();
+    },
+    onError: (err) => fail(err, tr.followUps.sendError),
+  });
+
+  const reportFailure = useMutation({
+    mutationFn: (reason: AssistedFailureReason) => {
+      if (!awaitingConfirm) throw new Error(tr.common.error);
+      return reportAssistedFailure(awaitingConfirm.target, awaitingConfirm.message.id, reason);
+    },
+    onSuccess: () => {
+      setAwaitingConfirm(null);
+      setNotice({ tone: "warn", text: tr.conversations.assistedFailedNotice });
+      invalidate();
+    },
+    onError: (err) => fail(err, tr.common.error),
   });
 
   const skip = useMutation({
@@ -214,6 +246,19 @@ export function FollowUpsPage() {
           )}
         >
           {notice.text}
+          {awaitingConfirm && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Button size="sm" disabled={confirmSent.isPending} onClick={() => confirmSent.mutate()}>
+                {confirmSent.isPending ? <Loader2 className="animate-spin" /> : <Send />}
+                {tr.conversations.iSentIt}
+              </Button>
+              {ASSISTED_FAILURE_REASONS.map((reason) => (
+                <Button key={reason} size="sm" variant="outline" disabled={reportFailure.isPending} onClick={() => reportFailure.mutate(reason)}>
+                  {tr.conversations.couldNotSend}: {tr.conversations.assistedFailure[reason]}
+                </Button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
