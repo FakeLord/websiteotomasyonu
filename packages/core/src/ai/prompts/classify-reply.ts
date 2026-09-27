@@ -8,7 +8,20 @@ export interface ClassifyReplyInput {
 const JSON_SCHEMA = {
   type: "object",
   properties: {
-    intent: { type: "string", enum: ["INTERESTED", "NOT_INTERESTED", "QUESTION", "STOP_CONTACT", "UNCLEAR", "OTHER"] },
+    intent: {
+      type: "string",
+      enum: [
+        "INTERESTED",
+        "NOT_INTERESTED",
+        "QUESTION",
+        "STOP_CONTACT",
+        "UNCLEAR",
+        "OTHER",
+        "AUTO_REPLY",
+        "WRONG_CONTACT",
+        "ALREADY_HAS_PROVIDER",
+      ],
+    },
     confidence: { type: "number" },
     requirements_delta: { type: "array", items: { type: "string" } },
     stop_request: { type: "boolean" },
@@ -28,7 +41,11 @@ const STOP_KEYWORDS = ["yazmayın", "istemiyorum", "rahatsız etmeyin", "stop"];
 export function buildClassifyReplyPrompt(input: ClassifyReplyInput): AIPromptRequest {
   const system =
     "Sen bir satış konuşmasındaki müşteri cevabını sınıflandıran bir asistansın. Türkçe cevapları " +
-    "analiz et. Yalnızca istenen JSON şemasında cevap ver, ek açıklama yazma.";
+    "analiz et. Niyetler: INTERESTED (ilgileniyor), NOT_INTERESTED (ilgilenmiyor), QUESTION (soru " +
+    "soruyor), STOP_CONTACT (bir daha yazılmasını istemiyor), AUTO_REPLY (otomatik yanıt: izin, " +
+    "\"mesajınız alındı\"), WRONG_CONTACT (yanlış kişi veya işletme), ALREADY_HAS_PROVIDER (zaten " +
+    "bir ajansı/web sitesi yapan biri var), UNCLEAR (belirsiz), OTHER (diğer). " +
+    "Yalnızca istenen JSON şemasında cevap ver, ek açıklama yazma.";
 
   const context = [
     `Konuşma özeti: ${input.conversationSummary || "(henüz özet yok)"}`,

@@ -504,6 +504,9 @@ export const tr = {
     STOP_CONTACT: "İletişim istemiyor",
     UNCLEAR: "Belirsiz",
     OTHER: "Diğer",
+    AUTO_REPLY: "Otomatik yanıt",
+    WRONG_CONTACT: "Yanlış kişi",
+    ALREADY_HAS_PROVIDER: "Sağlayıcısı var",
   },
   kb: {
     title: "Bilgi Bankası",

@@ -46,6 +46,17 @@ describe("classifyReplyOutputSchema", () => {
     ).toThrow();
   });
 
+  it.each(["AUTO_REPLY", "WRONG_CONTACT", "ALREADY_HAS_PROVIDER"])("accepts the SPEC → L intent %s", (intent) => {
+    const result = classifyReplyOutputSchema.parse({
+      intent,
+      confidence: 0.8,
+      requirements_delta: [],
+      stop_request: false,
+      language: "tr",
+    });
+    expect(result.intent).toBe(intent);
+  });
+
   it("rejects an unknown intent value", () => {
     expect(() =>
       classifyReplyOutputSchema.parse({

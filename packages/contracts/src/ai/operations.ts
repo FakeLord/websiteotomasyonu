@@ -13,6 +13,10 @@ export const aiIntentSchema = z.enum([
   "STOP_CONTACT",
   "UNCLEAR",
   "OTHER",
+  // SPEC.md → L: otomatik yanıt, yanlış kişi/işletme, zaten sağlayıcısı var.
+  "AUTO_REPLY",
+  "WRONG_CONTACT",
+  "ALREADY_HAS_PROVIDER",
 ]);
 export type AiIntent = z.infer<typeof aiIntentSchema>;
 

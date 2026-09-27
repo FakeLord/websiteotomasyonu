@@ -41,6 +41,7 @@ export { isTurkishHoliday } from "./followup/tr-holidays";
 export { shouldCancelFollowUps, type FollowUpCancelInput } from "./followup/should-cancel-followups";
 export { parseEmlHeaders, type EmailHeaders } from "./email/parse-eml-headers";
 export { matchEmailThread, type ConversationThreadRef } from "./email/match-thread";
+export { isAutoReply } from "./email/auto-reply";
 export { validateDraft, type ValidateDraftInput, type ValidateDraftResult } from "./ai/validate-draft";
 export {
   normalizeAiConfig,

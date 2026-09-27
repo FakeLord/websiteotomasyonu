@@ -46,6 +46,15 @@ describe("buildClassifyReplyPrompt / hasStopKeyword", () => {
     expect(req.messages[0]?.content).toContain("Fiyat nedir?");
   });
 
+  it("offers the auto-reply / wrong-contact / has-provider intents to the model", () => {
+    const req = buildClassifyReplyPrompt({ lastInboundMessage: "İzindeyim", conversationSummary: "" });
+    const schema = JSON.stringify(req.jsonSchema);
+    for (const intent of ["AUTO_REPLY", "WRONG_CONTACT", "ALREADY_HAS_PROVIDER"]) {
+      expect(schema).toContain(intent);
+      expect(req.system).toContain(intent);
+    }
+  });
+
   it("detects a Turkish stop keyword", () => {
     expect(hasStopKeyword("lütfen bir daha yazmayın")).toBe(true);
     expect(hasStopKeyword("teşekkürler, ilgileniyorum")).toBe(false);

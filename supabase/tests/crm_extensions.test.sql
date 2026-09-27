@@ -165,7 +165,7 @@ select is(
 );
 
 select is(
-  (public.report_metrics(:'ws', current_date - 6, current_date) -> 'funnel' ->> 'contacted')::int,
+  (public.report_metrics(:'ws', (now() at time zone 'Europe/Istanbul')::date - 6, (now() at time zone 'Europe/Istanbul')::date) -> 'funnel' ->> 'contacted')::int,
   1,
   'report_metrics hunisi iletişime geçilen işletmeyi sayar'
 );
@@ -184,7 +184,7 @@ select is((select count(*)::int from public.campaigns), 0, 'Başka workspace üy
 select is((select count(*)::int from public.campaign_members), 0, 'Başka workspace üyesi kampanya üyelerini göremez');
 
 select throws_like(
-  format($$ select public.report_metrics(%L, current_date - 6, current_date) $$, :'ws'),
+  format($$ select public.report_metrics(%L, (now() at time zone 'Europe/Istanbul')::date - 6, (now() at time zone 'Europe/Istanbul')::date) $$, :'ws'),
   '%not a member%',
   'Üye olmayan report_metrics çağıramaz'
 );

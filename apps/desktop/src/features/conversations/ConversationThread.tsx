@@ -32,6 +32,9 @@ const INTENT_TONES = {
   STOP_CONTACT: "red",
   UNCLEAR: "orange",
   OTHER: "gray",
+  AUTO_REPLY: "violet",
+  WRONG_CONTACT: "orange",
+  ALREADY_HAS_PROVIDER: "gray",
 } as const;
 
 export function ConversationThread({ conversation, workspaceId }: { conversation: ConversationListRow; workspaceId: string }) {
