@@ -97,6 +97,10 @@ export function ConversationThread({ conversation, workspaceId }: { conversation
             : { tone: "ok", text: tr.conversations.inboundSaved },
       );
       invalidate();
+      // Gelen cevap aşamayı değiştirebilir (CONTACTED → REPLIED, STOP → LOST).
+      void queryClient.invalidateQueries({ queryKey: ["business", conversation.business_id] });
+      void queryClient.invalidateQueries({ queryKey: ["businesses", workspaceId] });
+      void queryClient.invalidateQueries({ queryKey: ["follow-ups", workspaceId] });
     },
     onError: (err) => fail(err, tr.conversations.pasteError),
   });

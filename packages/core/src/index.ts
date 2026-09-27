@@ -39,6 +39,7 @@ export { runWebsiteAnalysis } from "./website-analyzer/run-website-analysis";
 export { computeFollowUpDueDate, type SendWindow } from "./followup/compute-due-date";
 export { isTurkishHoliday } from "./followup/tr-holidays";
 export { shouldCancelFollowUps, type FollowUpCancelInput } from "./followup/should-cancel-followups";
+export { shouldMarkLostNoResponse, NO_RESPONSE_GRACE_DAYS, type SequenceState } from "./followup/should-mark-lost";
 export { parseEmlHeaders, type EmailHeaders } from "./email/parse-eml-headers";
 export { matchEmailThread, type ConversationThreadRef } from "./email/match-thread";
 export { isAutoReply } from "./email/auto-reply";
