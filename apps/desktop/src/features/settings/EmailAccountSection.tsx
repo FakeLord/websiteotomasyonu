@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Mail, Send } from "lucide-react";
+import { Inbox, Loader2, Mail, Send } from "lucide-react";
+import { suggestImapServer } from "@lbf/core";
 import { getEmailAccount, setEmailAccount, type EmailAccountConfig } from "../../lib/email-account";
+import { useWorkspaceMembership } from "../../lib/use-workspace-membership";
+import { formatDateTime } from "../../lib/format";
+import { pollInboxOnce, useImapStatus } from "../../workers/imap-poller";
 import { tr } from "../../i18n/tr";
 import { Button } from "../../components/ui/button";
 import { Input, Label } from "../../components/ui/input";
@@ -20,6 +24,8 @@ export function EmailAccountSection() {
   const [form, setForm] = useState<EmailAccountConfig>(EMPTY);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState<"save" | "test" | null>(null);
+  const workspaceId = useWorkspaceMembership().data?.workspaceId;
+  const imap = useImapStatus();
 
   useEffect(() => {
     void getEmailAccount()
@@ -29,7 +35,16 @@ export function EmailAccountSection() {
       .catch(() => undefined);
   }, []);
 
-  const set = <K extends keyof EmailAccountConfig>(key: K, value: EmailAccountConfig[K]) => setForm((f) => ({ ...f, [key]: value }));
+  const set = <K extends keyof EmailAccountConfig>(key: K, value: EmailAccountConfig[K]) =>
+    setForm((f) => {
+      const next = { ...f, [key]: value };
+      // SMTP sunucusu yazılırken IMAP sunucusu boşsa öneriyle doldurulur.
+      if (key === "smtpHost" && !f.imapHost) {
+        const suggestion = suggestImapServer(String(value));
+        if (suggestion) Object.assign(next, { imapHost: suggestion.host, imapPort: suggestion.port });
+      }
+      return next;
+    });
   const complete = form.smtpHost && form.smtpPort && form.smtpUsername && form.smtpPassword && form.fromEmail;
 
   const save = async () => {
@@ -42,6 +57,18 @@ export function EmailAccountSection() {
       setMessage({ ok: false, text: err instanceof Error ? err.message : tr.settings.saveError });
     } finally {
       setBusy(null);
+    }
+  };
+
+  const checkInbox = async () => {
+    if (!workspaceId) return;
+    setMessage(null);
+    try {
+      await setEmailAccount(form);
+      const summary = await pollInboxOnce(workspaceId);
+      if (!summary) setMessage({ ok: false, text: tr.settings.inboxUnavailable });
+    } catch {
+      // Hata useImapStatus üzerinden aşağıda gösterilir.
     }
   };
 
@@ -107,7 +134,20 @@ export function EmailAccountSection() {
             <Label>{tr.settings.fromEmailLabel}</Label>
             <Input type="email" value={form.fromEmail} onChange={(e) => set("fromEmail", e.target.value)} />
           </div>
+          <div>
+            <Label>{tr.settings.imapHostLabel}</Label>
+            <Input
+              value={form.imapHost ?? ""}
+              onChange={(e) => set("imapHost", e.target.value)}
+              placeholder={suggestImapServer(form.smtpHost)?.host ?? "imap.gmail.com"}
+            />
+          </div>
+          <div>
+            <Label>{tr.settings.imapPortLabel}</Label>
+            <Input type="number" value={form.imapPort ?? 993} onChange={(e) => set("imapPort", Number(e.target.value))} />
+          </div>
         </div>
+        <p className="text-xs text-subtle">{tr.settings.imapHint}</p>
         <p className="text-xs text-subtle">{tr.settings.appPasswordHint}</p>
         <div className="flex flex-wrap gap-2">
           <Button disabled={!!busy || !complete} onClick={() => void save()}>
@@ -117,8 +157,20 @@ export function EmailAccountSection() {
             <Send />
             {busy === "test" ? tr.settings.testing : tr.settings.testEmail}
           </Button>
+          <Button variant="outline" disabled={!!busy || imap.running || !complete || !form.imapHost || !workspaceId} onClick={() => void checkInbox()}>
+            {imap.running ? <Loader2 className="animate-spin" /> : <Inbox />}
+            {tr.settings.checkInbox}
+          </Button>
         </div>
         {message && <p className={`text-xs ${message.ok ? "text-[#4ade80]" : "text-[#f87171]"}`}>{message.text}</p>}
+        {imap.lastRunAt && (
+          <p className={`text-xs ${imap.lastError ? "text-[#f87171]" : "text-muted"}`}>
+            {tr.settings.inboxLastCheck(formatDateTime(imap.lastRunAt))}{" "}
+            {imap.lastError
+              ? `${tr.settings.inboxError}: ${imap.lastError}`
+              : imap.lastSummary && tr.settings.inboxSummary(imap.lastSummary.imported, imap.lastSummary.bounces)}
+          </p>
+        )}
       </CardBody>
     </Card>
   );

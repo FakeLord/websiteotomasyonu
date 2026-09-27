@@ -42,6 +42,14 @@ export { shouldCancelFollowUps, type FollowUpCancelInput } from "./followup/shou
 export { parseEmlHeaders, type EmailHeaders } from "./email/parse-eml-headers";
 export { matchEmailThread, type ConversationThreadRef } from "./email/match-thread";
 export { isAutoReply } from "./email/auto-reply";
+export { suggestImapServer, imapSinceDate } from "./email/imap-host";
+export { parseInboundEmail, stripQuotedReply, type ParsedInboundEmail, type BounceInfo } from "./email/parse-inbound";
+export {
+  resolveInboundTarget,
+  resolveBounceTarget,
+  type InboundMatchContext,
+  type InboundTarget,
+} from "./email/resolve-inbound";
 export { validateDraft, type ValidateDraftInput, type ValidateDraftResult } from "./ai/validate-draft";
 export {
   normalizeAiConfig,

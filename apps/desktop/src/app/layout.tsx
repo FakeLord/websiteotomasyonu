@@ -9,6 +9,7 @@ import { useUiStore } from "../lib/ui-store";
 import { Topbar } from "./topbar";
 import { JarvisPanel } from "../features/jarvis/JarvisPanel";
 import { AppLogo } from "../components/domain/app-logo";
+import { useBackgroundWorkers } from "../lib/use-background-workers";
 
 function SidebarLink({ item, badgeCount }: { item: NavItem; badgeCount: number | undefined }) {
   const Icon = item.icon;
@@ -78,6 +79,7 @@ function Sidebar() {
 }
 
 export function AppLayout() {
+  useBackgroundWorkers();
   return (
     <div className="flex h-screen flex-col bg-bg text-text">
       <OnlineBanner />

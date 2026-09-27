@@ -2,15 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Bot, Check, ClipboardPaste, ExternalLink, Loader2, Pencil, Send, Sparkles, Trash2, X } from "lucide-react";
-import {
-  buildClassifyReplyPrompt,
-  buildDraftReplyPrompt,
-  buildUpdateSummaryPrompt,
-  hasStopKeyword,
-  validateDraft,
-  type OutreachChannel,
-} from "@lbf/core";
-import { classifyReplyOutputSchema, draftReplyOutputSchema, updateSummaryOutputSchema } from "@lbf/contracts";
+import { buildDraftReplyPrompt, isAutoReply, validateDraft, type OutreachChannel } from "@lbf/core";
+import { draftReplyOutputSchema } from "@lbf/contracts";
+import { ingestInboundMessage } from "../outreach/inbound";
 import { supabase } from "../../lib/supabase-client";
 import { callAiGateway } from "../../lib/ai-gateway-client";
 import { formatDateTime } from "../../lib/format";
@@ -83,60 +77,15 @@ export function ConversationThread({ conversation, workspaceId }: { conversation
   const fail = (err: unknown, fallback: string) => setNotice({ tone: "error", text: err instanceof Error ? err.message : fallback });
 
   const recordInbound = useMutation({
-    mutationFn: async () => {
-      const body = text.trim();
-      const stopByKeyword = hasStopKeyword(body);
-      let intent: string | null = null;
-      let confidence: number | null = null;
-      let stopRequest = stopByKeyword;
-      let aiFailed = false;
-      try {
-        const result = await callAiGateway(
-          workspaceId,
-          buildClassifyReplyPrompt({ lastInboundMessage: body, conversationSummary: conversation.summary }),
-          { entityType: "conversation", entityId: conversation.id },
-        );
-        const classification = classifyReplyOutputSchema.parse(result.json);
-        intent = classification.intent;
-        confidence = classification.confidence;
-        stopRequest = stopByKeyword || (classification.intent === "STOP_CONTACT" && classification.confidence >= 0.5);
-      } catch {
-        // Cevap hiçbir koşulda kaybolmamalı: AI sınıflandıramazsa niyetsiz kaydedilir.
-        aiFailed = true;
-      }
-
-      await rpc("record_inbound", {
-        ws: workspaceId,
-        p_business_id: conversation.business_id,
-        p_channel: channel,
-        p_body: body,
-        p_subject: subject || null,
-        p_external_message_id: null,
-        p_intent: intent,
-        p_intent_confidence: confidence,
-        p_stop_request: stopRequest,
-      });
-
-      if (!aiFailed) {
-        try {
-          const summary = await callAiGateway(
-            workspaceId,
-            buildUpdateSummaryPrompt({ previousSummary: conversation.summary, newMessages: [{ direction: "IN", body }] }),
-            { entityType: "conversation", entityId: conversation.id },
-          );
-          const parsed = updateSummaryOutputSchema.safeParse(summary.json);
-          if (parsed.success) {
-            await supabase
-              .from("conversations")
-              .update({ summary: parsed.data.summary, requirements: parsed.data.requirements, interest_level: parsed.data.interest_level })
-              .eq("id", conversation.id);
-          }
-        } catch {
-          // Özet güncellenemezse mesaj yine kayıtlıdır.
-        }
-      }
-      return { aiFailed, stopRequest };
-    },
+    mutationFn: () =>
+      ingestInboundMessage(workspaceId, {
+        businessId: conversation.business_id,
+        channel,
+        body: text,
+        subject: subject || null,
+        autoReply: channel === "EMAIL" && isAutoReply({}, subject),
+        conversationSummary: conversation.summary,
+      }),
     onSuccess: ({ aiFailed, stopRequest }) => {
       setText("");
       setSubject("");

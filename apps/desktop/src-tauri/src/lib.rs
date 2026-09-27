@@ -30,6 +30,7 @@ pub fn run() {
             commands::secrets::secret_delete,
             commands::website::fetch_page,
             commands::email::send_email,
+            commands::imap::imap_fetch,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

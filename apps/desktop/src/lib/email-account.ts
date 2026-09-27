@@ -9,6 +9,9 @@ export interface EmailAccountConfig {
   smtpPassword: string;
   fromName: string;
   fromEmail: string;
+  /** Gelen cevapları okumak için (ADR 0008). Boşsa IMAP poller çalışmaz. Kimlik bilgileri SMTP ile aynıdır. */
+  imapHost?: string;
+  imapPort?: number;
 }
 
 /**
