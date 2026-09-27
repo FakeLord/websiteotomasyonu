@@ -4,6 +4,7 @@ begin;
 -- Yerel geliştirme DB'sindeki gerçek veriyi (ör. elle oluşturulmuş workspace)
 -- yalnızca bu transaction içinde gizler; testler boş bir workspace durumu
 -- varsayar ve dosya sonundaki rollback her şeyi geri getirir.
+set local client_min_messages = warning;
 truncate table public.workspaces cascade;
 
 select plan(6);

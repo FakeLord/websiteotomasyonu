@@ -53,6 +53,17 @@ export {
   type ChatRequestInput,
 } from "./ai/provider-chain";
 export { extractJsonObject } from "./ai/extract-json";
+export {
+  buildJarvisSystemPrompt,
+  sanitizeJarvisReply,
+  leadFilterToSearchParams,
+  JARVIS_OUTPUT_SCHEMA,
+  JARVIS_PROMPT_VERSION,
+  type JarvisAction,
+  type JarvisContext,
+  type JarvisLeadFilter,
+  type JarvisReply,
+} from "./ai/jarvis";
 export type { AIMessage, AIPromptRequest, ServicePackageInfo, SalesRules, OutreachChannel } from "./ai/types";
 export { buildDraftFirstMessagePrompt, type DraftFirstMessageInput } from "./ai/prompts/draft-first-message";
 export {

@@ -50,7 +50,7 @@ export function RouteGuard() {
 
 function FullScreenMessage({ text }: { text: string }) {
   return (
-    <div className="flex h-screen items-center justify-center bg-slate-50 text-sm text-slate-500">
+    <div className="flex h-screen items-center justify-center bg-bg text-sm text-muted">
       {text}
     </div>
   );

@@ -14,6 +14,8 @@ import { ActivityLogPage } from "../features/activity-log/ActivityLogPage";
 import { TeamPage } from "../features/team/TeamPage";
 import { KnowledgeBasePage } from "../features/knowledge-base/KnowledgeBasePage";
 import { SettingsPage } from "../features/settings/SettingsPage";
+import { ComingSoon } from "../components/coming-soon";
+import { tr } from "../i18n/tr";
 
 /**
  * Tauri'nin webview'ında dosya tabanlı history yerine hash router kullanılır
@@ -37,6 +39,10 @@ export const router = createHashRouter([
           { path: "/leads/:businessId", element: <LeadDetailPage /> },
           { path: "/conversations", element: <ConversationsPage /> },
           { path: "/follow-ups", element: <FollowUpsPage /> },
+          { path: "/pipeline", element: <ComingSoon title={tr.nav.pipeline} /> },
+          { path: "/customers", element: <ComingSoon title={tr.nav.customers} /> },
+          { path: "/campaigns", element: <ComingSoon title={tr.nav.campaigns} /> },
+          { path: "/reports", element: <ComingSoon title={tr.nav.reports} /> },
           { path: "/activity-log", element: <ActivityLogPage /> },
           { path: "/team", element: <TeamPage /> },
           { path: "/knowledge-base", element: <KnowledgeBasePage /> },

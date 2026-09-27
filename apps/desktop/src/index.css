@@ -1,8 +1,90 @@
 @import "tailwindcss";
+@import "@fontsource-variable/inter";
+@import "leaflet/dist/leaflet.css";
+
+@theme {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+
+  --color-bg: #060a17;
+  --color-sidebar: #080d1d;
+  --color-surface: #0c1326;
+  --color-surface-2: #111a31;
+  --color-surface-3: #17213b;
+  --color-border: #1a2442;
+  --color-border-strong: #26325a;
+  --color-text: #e7ebf6;
+  --color-muted: #8b95b4;
+  --color-subtle: #5d688a;
+
+  --color-primary: #2f6bff;
+  --color-primary-hover: #4a7fff;
+  --color-violet: #8b5cf6;
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+  --color-pink: #ec4899;
+  --color-cyan: #06b6d4;
+}
 
 html,
 body,
 #root {
   height: 100%;
   margin: 0;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  color-scheme: dark;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-strong) transparent;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Leaflet haritasını koyu temaya uydurur (OSM karoları açık renkli gelir). */
+.map-dark .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(200deg) brightness(0.85) contrast(0.9) saturate(0.6);
+}
+.map-dark .leaflet-container {
+  background: var(--color-surface);
+}
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: var(--color-surface-2);
+  color: var(--color-text);
+  border: 1px solid var(--color-border-strong);
+}
+.leaflet-popup-content {
+  margin: 12px;
+}
+.leaflet-control-attribution {
+  background: rgb(6 10 23 / 0.7) !important;
+  color: var(--color-muted) !important;
+}
+.leaflet-control-attribution a {
+  color: var(--color-muted) !important;
+}
+.leaflet-bar a {
+  background: var(--color-surface-2) !important;
+  color: var(--color-text) !important;
+  border-color: var(--color-border) !important;
 }

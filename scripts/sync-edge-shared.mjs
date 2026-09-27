@@ -7,7 +7,7 @@ import { copyFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const SHARED_FILES = ["ai/provider-chain.ts", "ai/extract-json.ts"];
+export const SHARED_FILES = ["ai/provider-chain.ts", "ai/extract-json.ts", "ai/jarvis.ts"];
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const targetDir = join(root, "supabase/functions/_shared/core");

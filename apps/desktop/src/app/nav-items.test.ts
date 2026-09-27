@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { navItems } from "./nav-items";
 
 describe("navItems", () => {
-  it("has exactly the 9 MVP sidebar pages", () => {
-    expect(navItems).toHaveLength(9);
+  it("has the 12 sidebar pages of the design reference", () => {
+    expect(navItems).toHaveLength(12);
   });
 
   it("has unique paths", () => {
@@ -13,5 +13,10 @@ describe("navItems", () => {
 
   it("starts with the dashboard as the root route", () => {
     expect(navItems[0]?.path).toBe("/");
+  });
+
+  it("puts team, knowledge base and settings in the workspace group at the end", () => {
+    expect(navItems.slice(-3).map((item) => item.group)).toEqual(["workspace", "workspace", "workspace"]);
+    expect(navItems.slice(0, -3).every((item) => item.group === "main")).toBe(true);
   });
 });

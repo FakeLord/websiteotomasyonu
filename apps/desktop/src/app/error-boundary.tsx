@@ -25,9 +25,9 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   render() {
     if (this.state.hasError) {
       return (
-        <div className="flex h-screen flex-col items-center justify-center gap-3 p-6 text-center">
-          <h1 className="text-xl font-semibold text-slate-900">{tr.errorBoundary.title}</h1>
-          <p className="max-w-md text-sm text-slate-500">{tr.errorBoundary.description}</p>
+        <div className="flex h-screen flex-col items-center justify-center gap-3 bg-bg p-6 text-center">
+          <h1 className="text-xl font-semibold text-text">{tr.errorBoundary.title}</h1>
+          <p className="max-w-md text-sm text-muted">{tr.errorBoundary.description}</p>
           <Button onClick={() => window.location.reload()}>{tr.errorBoundary.reload}</Button>
         </div>
       );
