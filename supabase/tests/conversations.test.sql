@@ -4,6 +4,11 @@
 -- (SPEC.md → I.5, J.3, D16).
 begin;
 
+-- Yerel geliştirme DB'sindeki gerçek veriyi (ör. elle oluşturulmuş workspace)
+-- yalnızca bu transaction içinde gizler; testler boş bir workspace durumu
+-- varsayar ve dosya sonundaki rollback her şeyi geri getirir.
+truncate table public.workspaces cascade;
+
 select plan(9);
 
 insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at)

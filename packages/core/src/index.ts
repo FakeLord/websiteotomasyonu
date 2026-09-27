@@ -36,6 +36,23 @@ export { shouldCancelFollowUps, type FollowUpCancelInput } from "./followup/shou
 export { parseEmlHeaders, type EmailHeaders } from "./email/parse-eml-headers";
 export { matchEmailThread, type ConversationThreadRef } from "./email/match-thread";
 export { validateDraft, type ValidateDraftInput, type ValidateDraftResult } from "./ai/validate-draft";
+export {
+  normalizeAiConfig,
+  activeProviders,
+  buildChatCompletionBody,
+  modelForOperation,
+  secretNameForProvider,
+  failureErrorCode,
+  summarizeChainFailure,
+  PROVIDER_DEFAULTS,
+  DEFAULT_PROVIDER_ORDER,
+  DEFAULT_DAILY_LIMIT,
+  type AiProviderConfig,
+  type AiChainConfig,
+  type AttemptFailure,
+  type ChatRequestInput,
+} from "./ai/provider-chain";
+export { extractJsonObject } from "./ai/extract-json";
 export type { AIMessage, AIPromptRequest, ServicePackageInfo, SalesRules, OutreachChannel } from "./ai/types";
 export { buildDraftFirstMessagePrompt, type DraftFirstMessageInput } from "./ai/prompts/draft-first-message";
 export {

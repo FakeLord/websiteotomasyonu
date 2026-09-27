@@ -1,19 +1,16 @@
-// ai-gateway: OpenAI-uyumlu sağlayıcıya (varsayılan NVIDIA — bkz.
-// docs/adr/0006-ai-integration.md) tek giriş noktası. Anahtar burada Vault'tan
-// okunur, hiçbir zaman istemciye dönmez. Günlük kota + 24 saatlik
-// (operation, input_hash, prompt_version) cache uygular; `ai_runs`'a yalnızca
-// metadata yazar — prompt/yanıt metni ai_runs'ta TUTULMAZ (SPEC.md → E), asıl
-// çıktı istemciye hiç açılmayan `ai_output_cache`'te durur.
+// ai-gateway: OpenAI-uyumlu sağlayıcı zincirine tek giriş noktası (varsayılan
+// OpenAI → NVIDIA, bkz. docs/adr/0007-redesign-and-scope-extension.md). Anahtarlar
+// burada Vault'tan okunur, hiçbir zaman istemciye dönmez. Günlük kota + 24 saatlik
+// (operation, input_hash, prompt_version) cache uygular; `ai_runs`'a her deneme için
+// yalnızca metadata yazar — prompt/yanıt metni ai_runs'ta TUTULMAZ (SPEC.md → E).
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { runChain } from "../_shared/ai-chain.ts";
 import { isValidBody } from "./validate.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
-
-const DEFAULT_DAILY_LIMIT = 300;
-const DEFAULT_NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1";
 
 function json(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
@@ -57,40 +54,8 @@ Deno.serve(async (req) => {
   }
 
   const { data: userData } = await callerClient.auth.getUser();
-  const requestedBy = userData.user?.id ?? null;
-
   const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
-
-  const { data: settingsRow } = await callerClient
-    .from("workspace_settings")
-    .select("ai_config")
-    .eq("workspace_id", rawBody.workspaceId)
-    .single();
-  const aiConfig = (settingsRow?.ai_config ?? { provider: "nvidia", routes: {} }) as {
-    provider: string;
-    model?: string;
-    routes?: Record<string, string>;
-    dailyLimit?: number;
-  };
-
-  const dailyLimit = aiConfig.dailyLimit ?? DEFAULT_DAILY_LIMIT;
-  const dayStart = new Date();
-  dayStart.setHours(0, 0, 0, 0);
-  const { count: usedToday } = await adminClient
-    .from("ai_runs")
-    .select("id", { count: "exact", head: true })
-    .eq("workspace_id", rawBody.workspaceId)
-    .gte("created_at", dayStart.toISOString());
-
-  if ((usedToday ?? 0) >= dailyLimit) {
-    return json({ code: "QUOTA_EXCEEDED", message: `Günlük AI çağrı kotası (${dailyLimit}) doldu` }, 429);
-  }
-
   const { operation, promptVersion } = rawBody.request;
-  // meta/llama-3.1-70b-instruct, NVIDIA tarafından 2026-08-26'da emekliye ayrıldı (smoke test
-  // ile bulundu, bkz. scripts/smoke/nvidia.ts). mistralai/mistral-nemotron, bu hesapta erişilebilir
-  // olduğu doğrulanan güncel bir genel amaçlı model.
-  const model = aiConfig.routes?.[operation] ?? aiConfig.model ?? "mistralai/mistral-nemotron";
 
   const { data: cached } = await adminClient
     .from("ai_output_cache")
@@ -105,143 +70,55 @@ Deno.serve(async (req) => {
   if (cached) {
     await adminClient.from("ai_runs").insert({
       workspace_id: rawBody.workspaceId,
-      provider: aiConfig.provider,
+      provider: "cache",
       model: cached.model,
       operation,
       prompt_version: promptVersion,
       status: "CACHED",
       entity_type: rawBody.entityType ?? null,
       entity_id: rawBody.entityId ?? null,
-      requested_by: requestedBy,
+      requested_by: userData.user?.id ?? null,
     });
     return json({ json: cached.output, cached: true }, 200);
   }
 
-  const { data: apiKey, error: keyError } = await adminClient.rpc("internal_get_secret", {
-    ws: rawBody.workspaceId,
-    p_name: aiConfig.provider === "nvidia" ? "nvidia_api_key" : `${aiConfig.provider}_api_key`,
+  const result = await runChain({
+    adminClient,
+    callerClient,
+    workspaceId: rawBody.workspaceId,
+    requestedBy: userData.user?.id ?? null,
+    request: {
+      operation,
+      promptVersion,
+      system: rawBody.request.system,
+      messages: rawBody.request.messages,
+      jsonSchema: rawBody.request.jsonSchema,
+      maxTokens: rawBody.request.maxTokens,
+      temperature: rawBody.request.temperature,
+    },
+    entityType: rawBody.entityType ?? null,
+    entityId: rawBody.entityId ?? null,
   });
-  if (keyError || !apiKey) {
-    return json({ code: "VALIDATION", message: `${aiConfig.provider} API anahtarı ayarlı değil` }, 400);
+
+  if (!result.ok) {
+    return json({ code: result.code, message: result.message }, result.status);
   }
-
-  const baseUrl = aiConfig.provider === "nvidia" ? DEFAULT_NVIDIA_BASE_URL : (aiConfig as { baseUrl?: string }).baseUrl;
-  if (!baseUrl) {
-    return json({ code: "VALIDATION", message: "AI sağlayıcı base URL'i ayarlı değil" }, 400);
-  }
-
-  const started = Date.now();
-  let upstreamResponse: Response;
-  try {
-    upstreamResponse = await fetch(`${baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        messages: [{ role: "system", content: rawBody.request.system }, ...rawBody.request.messages],
-        max_tokens: rawBody.request.maxTokens,
-        temperature: rawBody.request.temperature,
-        response_format: { type: "json_object" },
-      }),
-    });
-  } catch (err) {
-    await adminClient.from("ai_runs").insert({
-      workspace_id: rawBody.workspaceId,
-      provider: aiConfig.provider,
-      model,
-      operation,
-      prompt_version: promptVersion,
-      status: "ERROR",
-      error_code: "NETWORK_ERROR",
-      latency_ms: Date.now() - started,
-      entity_type: rawBody.entityType ?? null,
-      entity_id: rawBody.entityId ?? null,
-      requested_by: requestedBy,
-    });
-    return json({ code: "UPSTREAM_ERROR", message: err instanceof Error ? err.message : "network error" }, 502);
-  }
-
-  const latencyMs = Date.now() - started;
-
-  if (!upstreamResponse.ok) {
-    const status = upstreamResponse.status === 429 ? "ERROR" : "ERROR";
-    await adminClient.from("ai_runs").insert({
-      workspace_id: rawBody.workspaceId,
-      provider: aiConfig.provider,
-      model,
-      operation,
-      prompt_version: promptVersion,
-      status,
-      error_code: `HTTP_${upstreamResponse.status}`,
-      latency_ms: latencyMs,
-      entity_type: rawBody.entityType ?? null,
-      entity_id: rawBody.entityId ?? null,
-      requested_by: requestedBy,
-    });
-    return json(
-      { code: upstreamResponse.status === 429 ? "RATE_LIMITED" : "UPSTREAM_ERROR", message: `AI sağlayıcı hatası: ${upstreamResponse.status}` },
-      upstreamResponse.status === 429 ? 429 : 502,
-    );
-  }
-
-  const completion = await upstreamResponse.json();
-  const content: string | undefined = completion.choices?.[0]?.message?.content;
-  const usage = completion.usage ?? {};
-
-  let parsedJson: unknown;
-  try {
-    parsedJson = content ? JSON.parse(content) : null;
-  } catch {
-    await adminClient.from("ai_runs").insert({
-      workspace_id: rawBody.workspaceId,
-      provider: aiConfig.provider,
-      model,
-      operation,
-      prompt_version: promptVersion,
-      status: "ERROR",
-      error_code: "PARSE_ERROR",
-      input_tokens: usage.prompt_tokens ?? null,
-      output_tokens: usage.completion_tokens ?? null,
-      latency_ms: latencyMs,
-      entity_type: rawBody.entityType ?? null,
-      entity_id: rawBody.entityId ?? null,
-      requested_by: requestedBy,
-    });
-    return json({ code: "PARSE_ERROR", message: "model çıktısı geçerli JSON değil" }, 502);
-  }
-
-  await adminClient.from("ai_runs").insert({
-    workspace_id: rawBody.workspaceId,
-    provider: aiConfig.provider,
-    model,
-    operation,
-    prompt_version: promptVersion,
-    status: "OK",
-    input_tokens: usage.prompt_tokens ?? null,
-    output_tokens: usage.completion_tokens ?? null,
-    latency_ms: latencyMs,
-    entity_type: rawBody.entityType ?? null,
-    entity_id: rawBody.entityId ?? null,
-    requested_by: requestedBy,
-  });
 
   await adminClient.from("ai_output_cache").upsert({
     workspace_id: rawBody.workspaceId,
     operation,
     input_hash: rawBody.inputHash,
     prompt_version: promptVersion,
-    output: parsedJson,
-    model,
+    output: result.json,
+    model: result.model,
   });
 
   return json(
     {
-      json: parsedJson,
-      usage: { inputTokens: usage.prompt_tokens ?? 0, outputTokens: usage.completion_tokens ?? 0 },
-      latencyMs,
+      json: result.json,
+      provider: result.provider,
+      usage: result.usage,
+      latencyMs: result.latencyMs,
       cached: false,
     },
     200,

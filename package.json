@@ -13,6 +13,7 @@
     "typecheck": "pnpm -r --if-present run typecheck",
     "test": "vitest run",
     "test:db": "supabase test db",
+    "sync:edge": "node scripts/sync-edge-shared.mjs",
     "tauri": "pnpm --filter @lbf/desktop tauri"
   },
   "devDependencies": {

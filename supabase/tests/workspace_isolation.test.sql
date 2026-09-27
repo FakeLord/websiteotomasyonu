@@ -1,6 +1,11 @@
 -- A workspace'inin üyesi, B workspace'inin hiçbir satırını okuyamaz/yazamaz.
 begin;
 
+-- Yerel geliştirme DB'sindeki gerçek veriyi (ör. elle oluşturulmuş workspace)
+-- yalnızca bu transaction içinde gizler; testler boş bir workspace durumu
+-- varsayar ve dosya sonundaki rollback her şeyi geri getirir.
+truncate table public.workspaces cascade;
+
 select plan(6);
 
 -- İki kullanıcı ve iki workspace kur.

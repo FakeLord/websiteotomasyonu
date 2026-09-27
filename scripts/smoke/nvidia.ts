@@ -4,15 +4,20 @@
  *
  * Çalıştırma:
  *   NVIDIA_API_KEY=nvapi-... pnpm exec tsx scripts/smoke/nvidia.ts
+ *   NVIDIA_MODEL=başka/model ile varsayılan model değiştirilebilir.
  */
 import {
+  PROVIDER_DEFAULTS,
+  buildChatCompletionBody,
   buildDraftFirstMessagePrompt,
+  normalizeAiConfig,
+  extractJsonObject,
   validateDraft,
   type ServicePackageInfo,
 } from "../../packages/core/src/index.ts";
 
-const NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1";
-const MODEL = "mistralai/mistral-nemotron";
+const NVIDIA_BASE_URL = PROVIDER_DEFAULTS.nvidia!.baseUrl;
+const MODEL = process.env.NVIDIA_MODEL ?? PROVIDER_DEFAULTS.nvidia!.model;
 
 async function main() {
   const apiKey = process.env.NVIDIA_API_KEY;
@@ -43,6 +48,7 @@ async function main() {
     salesRulesSummary: "Fiyat, indirim veya teslim süresi verme; ekip arkadaşım netleştirir.",
   });
 
+  const provider = normalizeAiConfig({ providers: [{ id: "nvidia" }] }).providers[0]!;
   console.log(`→ ${NVIDIA_BASE_URL}/chat/completions (model: ${MODEL})`);
   const started = Date.now();
 
@@ -52,13 +58,7 @@ async function main() {
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
     },
-    body: JSON.stringify({
-      model: MODEL,
-      messages: [{ role: "system", content: request.system }, ...request.messages],
-      max_tokens: request.maxTokens,
-      temperature: request.temperature,
-      response_format: { type: "json_object" },
-    }),
+    body: JSON.stringify(buildChatCompletionBody({ ...provider, model: MODEL }, request)),
   });
 
   const latencyMs = Date.now() - started;
@@ -76,11 +76,9 @@ async function main() {
   console.log(`✓ Yanıt alındı (${latencyMs}ms):`);
   console.log(rawContent);
 
-  let parsed: { subject?: string; body: string; used_facts: string[] };
-  try {
-    parsed = JSON.parse(rawContent);
-  } catch {
-    console.error("✗ Yanıt geçerli JSON değil (jsonSchema/response_format beklenirken).");
+  const parsed = extractJsonObject(rawContent) as { subject?: string; body?: string; used_facts?: string[] } | null;
+  if (!parsed || typeof parsed.body !== "string") {
+    console.error("✗ Yanıttan `body` içeren bir JSON nesnesi ayıklanamadı.");
     process.exit(1);
   }
 

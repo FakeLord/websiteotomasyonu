@@ -12,7 +12,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 
-const KNOWN_SECRET_NAMES = ["google_places_api_key", "nvidia_api_key"] as const;
+const KNOWN_SECRET_NAMES = ["google_places_api_key", "nvidia_api_key", "openai_api_key"] as const;
 
 interface RequestBody {
   workspaceId: string;

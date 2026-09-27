@@ -17,11 +17,10 @@ export interface CallAiGatewayResult {
  * hash'ini istemcide hesaplar (SPEC.md → J.4: 24 saatlik cache). Prompt metni
  * hiçbir zaman `ai_runs`'a yazılmaz — yalnızca bu çağrının kendisi loglanır.
  */
-// Bazı OpenAI-uyumlu modeller (ör. NVIDIA free tier'daki büyük modeller)
-// dakikalarca sürebiliyor veya hiç yanıt vermeyebiliyor; bu durumda çağrı
-// süresiz beklemek yerine açık bir zaman aşımı hatasıyla sonuçlanmalı
+// Sunucudaki sağlayıcı zinciri en kötü durumda OpenAI (30 sn) + NVIDIA (90 sn)
+// bekler; istemci bundan biraz fazlasını bekleyip açık bir hatayla sonuçlanır
 // (kullanıcı arayüzde sonsuza kadar "Oluşturuluyor..." görmemeli).
-const REQUEST_TIMEOUT_MS = 60_000;
+const REQUEST_TIMEOUT_MS = 150_000;
 
 export async function callAiGateway(
   workspaceId: string,
@@ -48,7 +47,7 @@ export async function callAiGateway(
     }));
   } catch (err) {
     if (controller.signal.aborted) {
-      throw new Error("AI sağlayıcısı zaman aşımına uğradı (60 sn içinde yanıt vermedi).");
+      throw new Error("AI sağlayıcıları zaman aşımına uğradı (150 sn içinde yanıt gelmedi).");
     }
     throw err;
   } finally {
