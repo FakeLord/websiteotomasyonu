@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { supabase } from "../../lib/supabase-client";
 import { tr } from "../../i18n/tr";
+import { Download } from "lucide-react";
 import { Button } from "../../components/ui/button";
+import { Card, CardBody, CardHeader } from "../../components/ui/card";
 
 /**
  * Free Supabase planında otomatik yedekleme olmadığı için admin'in elle JSON
@@ -49,13 +51,16 @@ export function DataExportSection({ workspaceId }: { workspaceId: string }) {
   };
 
   return (
-    <div className="space-y-2 border-t border-slate-100 pt-4">
-      <h2 className="text-lg font-medium text-slate-900">{tr.settings.exportTitle}</h2>
-      <p className="text-sm text-slate-500">{tr.settings.exportDescription}</p>
-      <Button disabled={exporting} onClick={() => void exportData()}>
-        {exporting ? tr.settings.exporting : tr.settings.exportButton}
-      </Button>
-      {error && <p className="text-xs text-red-600">{error}</p>}
-    </div>
+    <Card>
+      <CardHeader title={tr.settings.exportTitle} />
+      <CardBody className="space-y-3">
+        <p className="text-sm text-muted">{tr.settings.exportDescription}</p>
+        <Button disabled={exporting} onClick={() => void exportData()}>
+          <Download />
+          {exporting ? tr.settings.exporting : tr.settings.exportButton}
+        </Button>
+        {error && <p className="text-xs text-[#f87171]">{error}</p>}
+      </CardBody>
+    </Card>
   );
 }

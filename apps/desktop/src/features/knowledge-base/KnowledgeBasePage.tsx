@@ -1,10 +1,17 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { BookOpen, Package, Pencil, Plus, Trash2 } from "lucide-react";
 import { supabase } from "../../lib/supabase-client";
 import { useWorkspaceMembership } from "../../lib/use-workspace-membership";
+import { useAuthStore } from "../../lib/auth-store";
+import { formatCurrency } from "../../lib/format";
 import { tr } from "../../i18n/tr";
 import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
+import { Input, Label, Textarea } from "../../components/ui/input";
+import { Card, CardBody } from "../../components/ui/card";
+import { Badge } from "../../components/ui/badge";
+import { EmptyState, PageHeader } from "../../components/ui/data-display";
+import { CountPill, Dialog, DialogContent, Switch, Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/primitives";
 
 interface ServiceRow {
   id: string;
@@ -22,240 +29,560 @@ interface PackageRow {
   price_max: number | null;
   delivery_days_min: number | null;
   delivery_days_max: number | null;
+  features: string[];
   is_active: boolean;
 }
 
+type KbType = "COMPANY" | "FAQ" | "REFERENCE" | "SALES_RULE" | "OBJECTION";
+
 interface KbEntryRow {
   id: string;
-  type: "COMPANY" | "FAQ" | "REFERENCE" | "SALES_RULE" | "OBJECTION";
+  type: KbType;
   title: string;
   body: string;
+  data: { allowDiscountMention?: boolean } | null;
   is_active: boolean;
   is_verified_real: boolean;
 }
 
-const KB_TYPES: KbEntryRow["type"][] = ["COMPANY", "FAQ", "REFERENCE", "SALES_RULE", "OBJECTION"];
+const KB_TYPES: KbType[] = ["COMPANY", "FAQ", "REFERENCE", "SALES_RULE", "OBJECTION"];
+
+const toNumber = (value: string): number | null => {
+  const n = Number(value.replace(",", "."));
+  return value.trim() && Number.isFinite(n) ? n : null;
+};
 
 export function KnowledgeBasePage() {
-  const membership = useWorkspaceMembership();
-  const workspaceId = membership.data?.workspaceId;
-  const isAdmin = membership.data?.role === "ADMIN";
+  const membership = useWorkspaceMembership().data;
+  const workspaceId = membership?.workspaceId;
+  const isAdmin = membership?.role === "ADMIN";
 
-  if (!workspaceId) return <p className="text-sm text-slate-500">{tr.common.loading}</p>;
-
-  return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-slate-900">{tr.nav.knowledgeBase}</h1>
-      <ServicesSection workspaceId={workspaceId} isAdmin={isAdmin} />
-      <KbEntriesSection workspaceId={workspaceId} isAdmin={isAdmin} />
-    </div>
-  );
-}
-
-function ServicesSection({ workspaceId, isAdmin }: { workspaceId: string; isAdmin: boolean }) {
-  const queryClient = useQueryClient();
-  const [name, setName] = useState("");
-  const [newPackage, setNewPackage] = useState<Record<string, string>>({});
-
-  const servicesQuery = useQuery({
-    queryKey: ["services", workspaceId],
-    queryFn: async (): Promise<ServiceRow[]> => {
-      const { data, error } = await supabase.from("services").select("id, name, description, is_active").eq("workspace_id", workspaceId);
-      if (error) throw error;
-      return (data ?? []) as ServiceRow[];
-    },
-  });
-
-  const packagesQuery = useQuery({
-    queryKey: ["service-packages", workspaceId],
-    queryFn: async (): Promise<PackageRow[]> => {
-      const { data, error } = await supabase
-        .from("service_packages")
-        .select("id, service_id, name, summary, price_min, price_max, delivery_days_min, delivery_days_max, is_active")
-        .eq("workspace_id", workspaceId);
-      if (error) throw error;
-      return (data ?? []) as PackageRow[];
-    },
-  });
-
-  const addService = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.from("services").insert({ workspace_id: workspaceId, name });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      setName("");
-      void queryClient.invalidateQueries({ queryKey: ["services", workspaceId] });
-    },
-  });
-
-  const addPackage = useMutation({
-    mutationFn: async (serviceId: string) => {
-      const { error } = await supabase.from("service_packages").insert({
-        workspace_id: workspaceId,
-        service_id: serviceId,
-        name: newPackage.name || "Paket",
-        summary: newPackage.summary || null,
-        price_min: newPackage.priceMin ? Number(newPackage.priceMin) : null,
-        price_max: newPackage.priceMax ? Number(newPackage.priceMax) : null,
-        delivery_days_min: newPackage.deliveryMin ? Number(newPackage.deliveryMin) : null,
-        delivery_days_max: newPackage.deliveryMax ? Number(newPackage.deliveryMax) : null,
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      setNewPackage({});
-      void queryClient.invalidateQueries({ queryKey: ["service-packages", workspaceId] });
-    },
-  });
-
-  return (
-    <section className="space-y-3 rounded-lg border border-slate-200 bg-white p-4">
-      <h2 className="text-lg font-medium text-slate-900">{tr.kb.servicesTitle}</h2>
-
-      {isAdmin && (
-        <div className="flex gap-2">
-          <Input placeholder={tr.kb.serviceNamePlaceholder} value={name} onChange={(e) => setName(e.target.value)} className="max-w-xs" />
-          <Button size="sm" disabled={!name.trim() || addService.isPending} onClick={() => addService.mutate()}>
-            {tr.kb.addService}
-          </Button>
-        </div>
-      )}
-
-      <div className="space-y-4">
-        {servicesQuery.data?.map((service) => {
-          const packages = packagesQuery.data?.filter((p) => p.service_id === service.id) ?? [];
-          return (
-            <div key={service.id} className="rounded-md border border-slate-100 p-3">
-              <h3 className="font-medium text-slate-800">{service.name}</h3>
-              <ul className="mt-2 space-y-1 text-sm text-slate-600">
-                {packages.map((pkg) => (
-                  <li key={pkg.id}>
-                    {pkg.name}
-                    {pkg.price_min != null && pkg.price_max != null && ` — ${pkg.price_min}-${pkg.price_max} TRY`}
-                    {pkg.delivery_days_min != null && pkg.delivery_days_max != null && ` (${pkg.delivery_days_min}-${pkg.delivery_days_max} gün)`}
-                  </li>
-                ))}
-                {packages.length === 0 && <li className="text-slate-400">{tr.kb.noPackages}</li>}
-              </ul>
-              {isAdmin && (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <Input
-                    className="h-7 w-32 text-xs"
-                    placeholder={tr.kb.packageNamePlaceholder}
-                    value={newPackage.name ?? ""}
-                    onChange={(e) => setNewPackage({ ...newPackage, name: e.target.value })}
-                  />
-                  <Input className="h-7 w-20 text-xs" placeholder="Min ₺" value={newPackage.priceMin ?? ""} onChange={(e) => setNewPackage({ ...newPackage, priceMin: e.target.value })} />
-                  <Input className="h-7 w-20 text-xs" placeholder="Max ₺" value={newPackage.priceMax ?? ""} onChange={(e) => setNewPackage({ ...newPackage, priceMax: e.target.value })} />
-                  <Input className="h-7 w-16 text-xs" placeholder="Min gün" value={newPackage.deliveryMin ?? ""} onChange={(e) => setNewPackage({ ...newPackage, deliveryMin: e.target.value })} />
-                  <Input className="h-7 w-16 text-xs" placeholder="Max gün" value={newPackage.deliveryMax ?? ""} onChange={(e) => setNewPackage({ ...newPackage, deliveryMax: e.target.value })} />
-                  <Button size="sm" variant="outline" disabled={addPackage.isPending} onClick={() => addPackage.mutate(service.id)}>
-                    {tr.kb.addPackage}
-                  </Button>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
-function KbEntriesSection({ workspaceId, isAdmin }: { workspaceId: string; isAdmin: boolean }) {
-  const queryClient = useQueryClient();
-  const [type, setType] = useState<KbEntryRow["type"]>("FAQ");
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
-  const [isVerifiedReal, setIsVerifiedReal] = useState(false);
-
-  const entriesQuery = useQuery({
+  const entries = useQuery({
     queryKey: ["kb-entries", workspaceId],
+    enabled: !!workspaceId,
     queryFn: async (): Promise<KbEntryRow[]> => {
       const { data, error } = await supabase
         .from("kb_entries")
-        .select("id, type, title, body, is_active, is_verified_real")
-        .eq("workspace_id", workspaceId)
-        .order("type");
+        .select("id, type, title, body, data, is_active, is_verified_real")
+        .eq("workspace_id", workspaceId as string)
+        .order("created_at");
       if (error) throw error;
       return (data ?? []) as KbEntryRow[];
     },
   });
 
-  const addEntry = useMutation({
+  if (!workspaceId) return <p className="text-sm text-muted">{tr.common.loading}</p>;
+  const count = (type: KbType) => entries.data?.filter((e) => e.type === type).length ?? 0;
+
+  return (
+    <div>
+      <PageHeader title={tr.kb.title} description={tr.kb.description} />
+      {!isAdmin && <p className="mb-4 rounded-lg bg-surface-2 px-3 py-2 text-sm text-muted">{tr.kb.readOnly}</p>}
+      <Tabs defaultValue="services" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="services">{tr.kb.tabs.services}</TabsTrigger>
+          {KB_TYPES.map((type) => (
+            <TabsTrigger key={type} value={type}>
+              {tr.kb.tabs[type]}
+              <CountPill>{count(type)}</CountPill>
+            </TabsTrigger>
+          ))}
+        </TabsList>
+        <TabsContent value="services">
+          <ServicesTab workspaceId={workspaceId} isAdmin={isAdmin} />
+        </TabsContent>
+        {KB_TYPES.map((type) => (
+          <TabsContent key={type} value={type}>
+            <EntriesTab workspaceId={workspaceId} isAdmin={isAdmin} type={type} entries={(entries.data ?? []).filter((e) => e.type === type)} />
+          </TabsContent>
+        ))}
+      </Tabs>
+    </div>
+  );
+}
+
+/* ---------- Hizmetler ve paketler ---------- */
+
+function ServicesTab({ workspaceId, isAdmin }: { workspaceId: string; isAdmin: boolean }) {
+  const queryClient = useQueryClient();
+  const [serviceName, setServiceName] = useState("");
+  const [editingPackage, setEditingPackage] = useState<{ serviceId: string; pkg: PackageRow | null } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const onError = (err: unknown) => setError(err instanceof Error ? err.message : tr.common.error);
+
+  const services = useQuery({
+    queryKey: ["services", workspaceId],
+    queryFn: async (): Promise<ServiceRow[]> => {
+      const { data, error: qError } = await supabase.from("services").select("id, name, description, is_active").eq("workspace_id", workspaceId).order("created_at");
+      if (qError) throw qError;
+      return (data ?? []) as ServiceRow[];
+    },
+  });
+
+  const packages = useQuery({
+    queryKey: ["service-packages-all", workspaceId],
+    queryFn: async (): Promise<PackageRow[]> => {
+      const { data, error: qError } = await supabase
+        .from("service_packages")
+        .select("id, service_id, name, summary, price_min, price_max, delivery_days_min, delivery_days_max, features, is_active")
+        .eq("workspace_id", workspaceId)
+        .order("price_min", { ascending: true, nullsFirst: false });
+      if (qError) throw qError;
+      return (data ?? []) as PackageRow[];
+    },
+  });
+
+  const refresh = () => {
+    void queryClient.invalidateQueries({ queryKey: ["services", workspaceId] });
+    void queryClient.invalidateQueries({ queryKey: ["service-packages-all", workspaceId] });
+    void queryClient.invalidateQueries({ queryKey: ["service-packages", workspaceId] });
+  };
+
+  const addService = useMutation({
     mutationFn: async () => {
-      const { data: userData } = await supabase.auth.getUser();
-      const { error } = await supabase.from("kb_entries").insert({
-        workspace_id: workspaceId,
-        type,
-        title,
-        body,
-        is_verified_real: type === "REFERENCE" ? isVerifiedReal : false,
-        updated_by: userData.user?.id,
-      });
+      const { error: iError } = await supabase.from("services").insert({ workspace_id: workspaceId, name: serviceName.trim() });
+      if (iError) throw iError;
+    },
+    onSuccess: () => {
+      setServiceName("");
+      refresh();
+    },
+    onError,
+  });
+
+  const updateService = useMutation({
+    mutationFn: async (patch: Partial<ServiceRow> & { id: string }) => {
+      const { id, ...rest } = patch;
+      const { error: uError } = await supabase.from("services").update({ ...rest, updated_at: new Date().toISOString() }).eq("id", id);
+      if (uError) throw uError;
+    },
+    onSuccess: refresh,
+    onError,
+  });
+
+  const deleteService = useMutation({
+    mutationFn: async (id: string) => {
+      const { error: dError } = await supabase.from("services").delete().eq("id", id);
+      if (dError) throw dError;
+    },
+    onSuccess: refresh,
+    onError,
+  });
+
+  const deletePackage = useMutation({
+    mutationFn: async (id: string) => {
+      const { error: dError } = await supabase.from("service_packages").delete().eq("id", id);
+      if (dError) throw dError;
+    },
+    onSuccess: refresh,
+    onError,
+  });
+
+  const togglePackage = useMutation({
+    mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
+      const { error: uError } = await supabase.from("service_packages").update({ is_active, updated_at: new Date().toISOString() }).eq("id", id);
+      if (uError) throw uError;
+    },
+    onSuccess: refresh,
+    onError,
+  });
+
+  return (
+    <div className="space-y-4">
+      {error && <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-[#f87171]">{error}</p>}
+      {isAdmin && (
+        <form
+          className="flex gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            addService.mutate();
+          }}
+        >
+          <Input className="max-w-sm" placeholder={tr.kb.serviceNamePlaceholder} value={serviceName} onChange={(e) => setServiceName(e.target.value)} />
+          <Button type="submit" disabled={!serviceName.trim() || addService.isPending}>
+            <Plus />
+            {tr.kb.addService}
+          </Button>
+        </form>
+      )}
+
+      {services.data?.length === 0 && (
+        <Card>
+          <EmptyState icon={Package} title={tr.kb.noServices} description={tr.kb.noServicesHint} />
+        </Card>
+      )}
+
+      {services.data?.map((service) => {
+        const servicePackages = (packages.data ?? []).filter((p) => p.service_id === service.id);
+        return (
+          <Card key={service.id}>
+            <div className="flex flex-wrap items-center gap-3 border-b border-border p-4">
+              <Package className="size-5 text-primary" />
+              <div className="min-w-0 flex-1">
+                {isAdmin ? (
+                  <input
+                    defaultValue={service.name}
+                    onBlur={(e) => e.target.value.trim() && e.target.value !== service.name && updateService.mutate({ id: service.id, name: e.target.value.trim() })}
+                    className="w-full bg-transparent font-semibold text-text focus-visible:outline-none"
+                    aria-label={tr.kb.serviceNamePlaceholder}
+                  />
+                ) : (
+                  <p className="font-semibold text-text">{service.name}</p>
+                )}
+              </div>
+              {!service.is_active && <Badge tone="gray">{tr.kb.inactive}</Badge>}
+              {isAdmin && (
+                <>
+                  <Switch checked={service.is_active} onCheckedChange={(v) => updateService.mutate({ id: service.id, is_active: v })} aria-label={tr.kb.active} />
+                  <Button size="sm" variant="outline" onClick={() => setEditingPackage({ serviceId: service.id, pkg: null })}>
+                    <Plus />
+                    {tr.kb.addPackage}
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={() => window.confirm(tr.kb.deleteServiceConfirm) && deleteService.mutate(service.id)}
+                    className="rounded-md p-1.5 text-muted hover:bg-danger/15 hover:text-danger"
+                    aria-label={tr.common.delete}
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                </>
+              )}
+            </div>
+            <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-3">
+              {servicePackages.length === 0 && <p className="text-sm text-muted">{tr.kb.noPackages}</p>}
+              {servicePackages.map((pkg) => (
+                <div key={pkg.id} className="rounded-lg border border-border bg-surface-2 p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-medium text-text">{pkg.name}</p>
+                    {!pkg.is_active && <Badge tone="gray">{tr.kb.inactive}</Badge>}
+                  </div>
+                  {pkg.summary && <p className="mt-1 text-sm text-muted">{pkg.summary}</p>}
+                  <p className="mt-2 text-sm text-text">
+                    {pkg.price_min != null && pkg.price_max != null
+                      ? `${formatCurrency(pkg.price_min)} – ${formatCurrency(pkg.price_max)}`
+                      : tr.kb.noPrice}
+                  </p>
+                  {pkg.delivery_days_min != null && pkg.delivery_days_max != null && (
+                    <p className="text-xs text-muted">{tr.kb.deliveryRange(pkg.delivery_days_min, pkg.delivery_days_max)}</p>
+                  )}
+                  {pkg.features.length > 0 && (
+                    <ul className="mt-2 list-inside list-disc text-xs text-muted">
+                      {pkg.features.map((f) => (
+                        <li key={f}>{f}</li>
+                      ))}
+                    </ul>
+                  )}
+                  {isAdmin && (
+                    <div className="mt-3 flex items-center gap-2">
+                      <Switch checked={pkg.is_active} onCheckedChange={(v) => togglePackage.mutate({ id: pkg.id, is_active: v })} aria-label={tr.kb.active} />
+                      <Button size="sm" variant="ghost" onClick={() => setEditingPackage({ serviceId: service.id, pkg })}>
+                        <Pencil />
+                        {tr.common.edit}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => window.confirm(tr.kb.deletePackageConfirm) && deletePackage.mutate(pkg.id)}
+                      >
+                        <Trash2 />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </Card>
+        );
+      })}
+
+      {editingPackage && (
+        <PackageDialog
+          workspaceId={workspaceId}
+          serviceId={editingPackage.serviceId}
+          pkg={editingPackage.pkg}
+          onClose={() => setEditingPackage(null)}
+          onSaved={refresh}
+        />
+      )}
+    </div>
+  );
+}
+
+function PackageDialog({
+  workspaceId,
+  serviceId,
+  pkg,
+  onClose,
+  onSaved,
+}: {
+  workspaceId: string;
+  serviceId: string;
+  pkg: PackageRow | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [form, setForm] = useState({
+    name: pkg?.name ?? "",
+    summary: pkg?.summary ?? "",
+    priceMin: pkg?.price_min?.toString() ?? "",
+    priceMax: pkg?.price_max?.toString() ?? "",
+    deliveryMin: pkg?.delivery_days_min?.toString() ?? "",
+    deliveryMax: pkg?.delivery_days_max?.toString() ?? "",
+    features: (pkg?.features ?? []).join("\n"),
+  });
+  const set = (key: keyof typeof form, value: string) => setForm((f) => ({ ...f, [key]: value }));
+
+  const save = useMutation({
+    mutationFn: async () => {
+      const payload = {
+        name: form.name.trim(),
+        summary: form.summary.trim() || null,
+        price_min: toNumber(form.priceMin),
+        price_max: toNumber(form.priceMax),
+        delivery_days_min: toNumber(form.deliveryMin),
+        delivery_days_max: toNumber(form.deliveryMax),
+        features: form.features
+          .split("\n")
+          .map((f) => f.trim())
+          .filter(Boolean),
+        updated_at: new Date().toISOString(),
+      };
+      if (payload.price_min !== null && payload.price_max !== null && payload.price_min > payload.price_max) {
+        throw new Error(tr.kb.priceOrder);
+      }
+      const { error } = pkg
+        ? await supabase.from("service_packages").update(payload).eq("id", pkg.id)
+        : await supabase.from("service_packages").insert({ ...payload, workspace_id: workspaceId, service_id: serviceId });
       if (error) throw error;
     },
     onSuccess: () => {
-      setTitle("");
-      setBody("");
-      setIsVerifiedReal(false);
-      void queryClient.invalidateQueries({ queryKey: ["kb-entries", workspaceId] });
+      onSaved();
+      onClose();
     },
   });
 
   return (
-    <section className="space-y-3 rounded-lg border border-slate-200 bg-white p-4">
-      <h2 className="text-lg font-medium text-slate-900">{tr.kb.entriesTitle}</h2>
-
-      {isAdmin && (
-        <div className="space-y-2 rounded-md border border-slate-100 p-3">
-          <div className="flex flex-wrap gap-2">
-            <select
-              className="h-9 rounded-md border border-slate-300 bg-white px-3 text-sm"
-              value={type}
-              onChange={(e) => setType(e.target.value as KbEntryRow["type"])}
-            >
-              {KB_TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-            <Input placeholder={tr.kb.titlePlaceholder} value={title} onChange={(e) => setTitle(e.target.value)} className="max-w-xs" />
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent title={pkg ? tr.kb.editPackage : tr.kb.addPackage} description={tr.kb.packageHint} size="lg">
+        <form
+          className="grid gap-3 sm:grid-cols-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            save.mutate();
+          }}
+        >
+          <div className="sm:col-span-2">
+            <Label>{tr.kb.packageName}</Label>
+            <Input value={form.name} onChange={(e) => set("name", e.target.value)} required />
           </div>
-          <textarea
-            className="w-full rounded-md border border-slate-300 p-2 text-sm"
-            rows={3}
-            placeholder={tr.kb.bodyPlaceholder}
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-          />
+          <div className="sm:col-span-2">
+            <Label>{tr.kb.summary}</Label>
+            <Input value={form.summary} onChange={(e) => set("summary", e.target.value)} />
+          </div>
+          <div>
+            <Label>{tr.kb.priceMin}</Label>
+            <Input inputMode="decimal" value={form.priceMin} onChange={(e) => set("priceMin", e.target.value)} />
+          </div>
+          <div>
+            <Label>{tr.kb.priceMax}</Label>
+            <Input inputMode="decimal" value={form.priceMax} onChange={(e) => set("priceMax", e.target.value)} />
+          </div>
+          <div>
+            <Label>{tr.kb.deliveryMin}</Label>
+            <Input inputMode="numeric" value={form.deliveryMin} onChange={(e) => set("deliveryMin", e.target.value)} />
+          </div>
+          <div>
+            <Label>{tr.kb.deliveryMax}</Label>
+            <Input inputMode="numeric" value={form.deliveryMax} onChange={(e) => set("deliveryMax", e.target.value)} />
+          </div>
+          <div className="sm:col-span-2">
+            <Label>{tr.kb.features}</Label>
+            <Textarea rows={4} value={form.features} onChange={(e) => set("features", e.target.value)} placeholder={tr.kb.featuresPlaceholder} />
+          </div>
+          {save.isError && <p className="text-sm text-[#f87171] sm:col-span-2">{save.error instanceof Error ? save.error.message : tr.common.error}</p>}
+          <div className="flex justify-end gap-2 sm:col-span-2">
+            <Button variant="outline" onClick={onClose}>
+              {tr.common.cancel}
+            </Button>
+            <Button type="submit" disabled={!form.name.trim() || save.isPending}>
+              {tr.common.save}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/* ---------- KB girdileri ---------- */
+
+function EntriesTab({ workspaceId, isAdmin, type, entries }: { workspaceId: string; isAdmin: boolean; type: KbType; entries: KbEntryRow[] }) {
+  const queryClient = useQueryClient();
+  const myId = useAuthStore((state) => state.session?.user.id);
+  const [editing, setEditing] = useState<KbEntryRow | "new" | null>(null);
+  const refresh = () => void queryClient.invalidateQueries({ queryKey: ["kb-entries", workspaceId] });
+
+  const toggle = useMutation({
+    mutationFn: async (entry: KbEntryRow) => {
+      const { error } = await supabase
+        .from("kb_entries")
+        .update({ is_active: !entry.is_active, updated_by: myId, updated_at: new Date().toISOString() })
+        .eq("id", entry.id);
+      if (error) throw error;
+    },
+    onSuccess: refresh,
+  });
+
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("kb_entries").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: refresh,
+  });
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-muted">{tr.kb.typeHints[type]}</p>
+        {isAdmin && (
+          <Button onClick={() => setEditing("new")}>
+            <Plus />
+            {tr.kb.addEntry}
+          </Button>
+        )}
+      </div>
+      {entries.length === 0 && (
+        <Card>
+          <EmptyState icon={BookOpen} title={tr.kb.noEntries} />
+        </Card>
+      )}
+      <div className="grid gap-3 lg:grid-cols-2">
+        {entries.map((entry) => (
+          <Card key={entry.id} className={entry.is_active ? undefined : "opacity-60"}>
+            <CardBody className="space-y-2 pt-4">
+              <div className="flex items-start justify-between gap-2">
+                <p className="font-medium text-text">{entry.title}</p>
+                <div className="flex shrink-0 gap-1">
+                  {type === "REFERENCE" && (
+                    <Badge tone={entry.is_verified_real ? "green" : "orange"}>{entry.is_verified_real ? tr.kb.verified : tr.kb.unverified}</Badge>
+                  )}
+                  {type === "SALES_RULE" && entry.data?.allowDiscountMention && <Badge tone="blue">{tr.kb.discountAllowed}</Badge>}
+                  {!entry.is_active && <Badge tone="gray">{tr.kb.inactive}</Badge>}
+                </div>
+              </div>
+              <p className="text-sm whitespace-pre-wrap text-muted">{entry.body}</p>
+              {isAdmin && (
+                <div className="flex items-center gap-2 pt-1">
+                  <Switch checked={entry.is_active} onCheckedChange={() => toggle.mutate(entry)} aria-label={tr.kb.active} />
+                  <Button size="sm" variant="ghost" onClick={() => setEditing(entry)}>
+                    <Pencil />
+                    {tr.common.edit}
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => window.confirm(tr.kb.deleteEntryConfirm) && remove.mutate(entry.id)}>
+                    <Trash2 />
+                  </Button>
+                </div>
+              )}
+            </CardBody>
+          </Card>
+        ))}
+      </div>
+      {editing && (
+        <EntryDialog
+          workspaceId={workspaceId}
+          type={type}
+          entry={editing === "new" ? null : editing}
+          onClose={() => setEditing(null)}
+          onSaved={refresh}
+        />
+      )}
+    </div>
+  );
+}
+
+function EntryDialog({
+  workspaceId,
+  type,
+  entry,
+  onClose,
+  onSaved,
+}: {
+  workspaceId: string;
+  type: KbType;
+  entry: KbEntryRow | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const myId = useAuthStore((state) => state.session?.user.id);
+  const [title, setTitle] = useState(entry?.title ?? "");
+  const [body, setBody] = useState(entry?.body ?? "");
+  const [verified, setVerified] = useState(entry?.is_verified_real ?? false);
+  const [allowDiscount, setAllowDiscount] = useState(entry?.data?.allowDiscountMention ?? false);
+
+  const save = useMutation({
+    mutationFn: async () => {
+      const payload = {
+        title: title.trim(),
+        body: body.trim(),
+        is_verified_real: type === "REFERENCE" ? verified : false,
+        data: type === "SALES_RULE" ? { allowDiscountMention: allowDiscount } : (entry?.data ?? {}),
+        updated_by: myId,
+        updated_at: new Date().toISOString(),
+      };
+      const { error } = entry
+        ? await supabase.from("kb_entries").update(payload).eq("id", entry.id)
+        : await supabase.from("kb_entries").insert({ ...payload, workspace_id: workspaceId, type });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      onSaved();
+      onClose();
+    },
+  });
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent title={entry ? tr.kb.editEntry : tr.kb.addEntry} description={tr.kb.tabs[type]} size="lg">
+        <form
+          className="space-y-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            save.mutate();
+          }}
+        >
+          <div>
+            <Label>{tr.kb.titlePlaceholder}</Label>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} required />
+          </div>
+          <div>
+            <Label>{tr.kb.bodyPlaceholder}</Label>
+            <Textarea rows={7} value={body} onChange={(e) => setBody(e.target.value)} required />
+          </div>
           {type === "REFERENCE" && (
-            <label className="flex items-center gap-2 text-xs text-slate-600">
-              <input type="checkbox" checked={isVerifiedReal} onChange={(e) => setIsVerifiedReal(e.target.checked)} />
+            <label className="flex items-center gap-2 text-sm text-text">
+              <Switch checked={verified} onCheckedChange={setVerified} />
               {tr.kb.verifiedRealLabel}
             </label>
           )}
-          <Button size="sm" disabled={!title.trim() || !body.trim() || addEntry.isPending} onClick={() => addEntry.mutate()}>
-            {tr.kb.addEntry}
-          </Button>
-        </div>
-      )}
-
-      <ul className="space-y-2">
-        {entriesQuery.data?.map((entry) => (
-          <li key={entry.id} className="rounded-md bg-slate-50 p-2 text-sm">
-            <p className="font-medium text-slate-800">
-              [{entry.type}] {entry.title}
-              {entry.type === "REFERENCE" && !entry.is_verified_real && (
-                <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-700">{tr.kb.unverified}</span>
-              )}
-            </p>
-            <p className="text-slate-600">{entry.body}</p>
-          </li>
-        ))}
-      </ul>
-    </section>
+          {type === "SALES_RULE" && (
+            <label className="flex items-center gap-2 text-sm text-text">
+              <Switch checked={allowDiscount} onCheckedChange={setAllowDiscount} />
+              {tr.kb.allowDiscountLabel}
+            </label>
+          )}
+          {save.isError && <p className="text-sm text-[#f87171]">{save.error instanceof Error ? save.error.message : tr.common.error}</p>}
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={onClose}>
+              {tr.common.cancel}
+            </Button>
+            <Button type="submit" disabled={!title.trim() || !body.trim() || save.isPending}>
+              {tr.common.save}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

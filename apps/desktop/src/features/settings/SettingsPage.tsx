@@ -1,123 +1,82 @@
-import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "../../lib/supabase-client";
+import { useSearchParams } from "react-router-dom";
+import { CalendarClock, Database, Gauge, KeyRound, Mail, Plug, UserRound } from "lucide-react";
 import { useWorkspaceMembership } from "../../lib/use-workspace-membership";
+import { tr } from "../../i18n/tr";
+import { cn } from "../../lib/cn";
+import { PageHeader } from "../../components/ui/data-display";
+import { Card } from "../../components/ui/card";
 import { ScoringSettingsSection } from "./ScoringSettingsSection";
 import { EmailAccountSection } from "./EmailAccountSection";
 import { DataExportSection } from "./DataExportSection";
-import { tr } from "../../i18n/tr";
-import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
+import { AiProvidersSection } from "./AiProvidersSection";
+import { FollowupPolicySection, GeneralSection, IntegrationsSection } from "./OtherSections";
 
-type SecretName = "google_places_api_key" | "nvidia_api_key";
+const SECTIONS = [
+  { key: "general", icon: UserRound, adminOnly: false },
+  { key: "api", icon: KeyRound, adminOnly: true },
+  { key: "email", icon: Mail, adminOnly: false },
+  { key: "scoring", icon: Gauge, adminOnly: true },
+  { key: "followup", icon: CalendarClock, adminOnly: true },
+  { key: "integrations", icon: Plug, adminOnly: false },
+  { key: "data", icon: Database, adminOnly: false },
+] as const;
 
-interface SecretStatus {
-  configured: boolean;
-  last4?: string;
-}
+type SectionKey = (typeof SECTIONS)[number]["key"];
 
 export function SettingsPage() {
-  const membership = useWorkspaceMembership();
-  const workspaceId = membership.data?.workspaceId;
-  const isAdmin = membership.data?.role === "ADMIN";
+  const membership = useWorkspaceMembership().data;
+  const workspaceId = membership?.workspaceId;
+  const isAdmin = membership?.role === "ADMIN";
+  const [params, setParams] = useSearchParams();
+  const requested = params.get("section") as SectionKey | null;
+  const active: SectionKey = SECTIONS.some((s) => s.key === requested) ? (requested as SectionKey) : "general";
+  const activeSection = SECTIONS.find((s) => s.key === active)!;
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-semibold text-slate-900">{tr.nav.settings}</h1>
+    <div>
+      <PageHeader title={tr.settings.title} />
+      <div className="grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
+        <Card className="h-fit p-2">
+          <nav className="flex flex-col gap-0.5">
+            {SECTIONS.map((section) => (
+              <button
+                key={section.key}
+                type="button"
+                onClick={() => setParams({ section: section.key }, { replace: true })}
+                className={cn(
+                  "flex items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors",
+                  active === section.key ? "bg-primary text-white" : "text-muted hover:bg-surface-2 hover:text-text",
+                )}
+              >
+                <section.icon className="size-4" />
+                {tr.settings.sections[section.key]}
+              </button>
+            ))}
+          </nav>
+        </Card>
 
-      <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-4">
-        <div>
-          <h2 className="text-lg font-medium text-slate-900">{tr.settings.apiKeysTitle}</h2>
-          <p className="text-sm text-slate-500">{tr.settings.apiKeysDescription}</p>
+        <div className="min-w-0">
+          {activeSection.adminOnly && !isAdmin ? (
+            <Card className="p-6 text-sm text-muted">{tr.settings.adminOnly}</Card>
+          ) : (
+            workspaceId && (
+              <>
+                {active === "general" && <GeneralSection />}
+                {active === "api" && <AiProvidersSection workspaceId={workspaceId} />}
+                {active === "email" && <EmailAccountSection />}
+                {active === "scoring" && (
+                  <Card className="p-5">
+                    <ScoringSettingsSection workspaceId={workspaceId} />
+                  </Card>
+                )}
+                {active === "followup" && <FollowupPolicySection workspaceId={workspaceId} />}
+                {active === "integrations" && <IntegrationsSection />}
+                {active === "data" && <DataExportSection workspaceId={workspaceId} />}
+              </>
+            )
+          )}
         </div>
-
-        {!isAdmin ? (
-          <p className="text-sm text-slate-400">{tr.settings.adminOnly}</p>
-        ) : (
-          workspaceId && (
-            <div className="space-y-4">
-              <SecretField workspaceId={workspaceId} name="google_places_api_key" label={tr.settings.googlePlacesLabel} />
-              <SecretField workspaceId={workspaceId} name="nvidia_api_key" label={tr.settings.nvidiaLabel} />
-            </div>
-          )
-        )}
-
-        {isAdmin && workspaceId && <ScoringSettingsSection workspaceId={workspaceId} />}
-        <EmailAccountSection />
-        {workspaceId && <DataExportSection workspaceId={workspaceId} />}
       </div>
-    </div>
-  );
-}
-
-function SecretField({ workspaceId, name, label }: { workspaceId: string; name: SecretName; label: string }) {
-  const queryClient = useQueryClient();
-  const [value, setValue] = useState("");
-  const [message, setMessage] = useState<{ kind: "success" | "error"; text: string } | null>(null);
-
-  const statusQuery = useQuery({
-    queryKey: ["secret-status", workspaceId, name],
-    queryFn: async (): Promise<SecretStatus> => {
-      const { data, error } = await supabase.functions.invoke("admin-secrets", {
-        body: { workspaceId, name, action: "status" },
-      });
-      if (error) throw error;
-      return data as SecretStatus;
-    },
-  });
-
-  const saveMutation = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.functions.invoke("admin-secrets", {
-        body: { workspaceId, name, action: "set", value },
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      setValue("");
-      setMessage({ kind: "success", text: tr.settings.saveSuccess });
-      void queryClient.invalidateQueries({ queryKey: ["secret-status", workspaceId, name] });
-    },
-    onError: (err) => {
-      setMessage({ kind: "error", text: err instanceof Error ? err.message : tr.settings.saveError });
-    },
-  });
-
-  return (
-    <div className="space-y-2 border-t border-slate-100 pt-4 first:border-t-0 first:pt-0">
-      <div className="flex items-center justify-between">
-        <label className="text-sm font-medium text-slate-700">{label}</label>
-        <span className="text-xs text-slate-500">
-          {statusQuery.data?.configured
-            ? `${tr.settings.keyConfigured} (•••• ${statusQuery.data.last4})`
-            : tr.settings.keyNotConfigured}
-        </span>
-      </div>
-      <form
-        className="flex gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          setMessage(null);
-          if (!value.trim()) return;
-          saveMutation.mutate();
-        }}
-      >
-        <Input
-          type="password"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          placeholder={tr.settings.keyPlaceholder}
-          className="max-w-sm"
-        />
-        <Button type="submit" disabled={saveMutation.isPending || !value.trim()}>
-          {tr.settings.saveButton}
-        </Button>
-      </form>
-      {message && (
-        <p className={`text-xs ${message.kind === "success" ? "text-emerald-600" : "text-red-600"}`}>
-          {message.text}
-        </p>
-      )}
     </div>
   );
 }
