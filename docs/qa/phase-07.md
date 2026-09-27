@@ -67,6 +67,8 @@ tamamlandı).
 
 ## Notlar / bilinçli kapsam kararları
 
+- **Güncelleme 2026-09-28:** IMAP poller, bounce işleme, `email_thread_ref`/Message-ID ve handoff
+  UI uygulandı — bkz. `docs/qa/phase-10-mvp-completion.md`, ADR 0008. Aşağıdaki notlar tarihsel.
 - **IMAP otomatik okuma bu fazda uygulanmadı.** SPEC.md → C, `async-imap` + TLS altyapısını
   (rustls manuel wrap veya `async-native-tls`/OpenSSL) sıfırdan kurmak, kalan oturum bütçesiyle
   güvenilir şekilde tamamlanamayacak kadar büyük bir iş olarak değerlendirildi. Bunun yerine D

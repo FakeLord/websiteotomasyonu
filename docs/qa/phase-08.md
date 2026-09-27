@@ -66,6 +66,9 @@ Kaynak: `docs/SPEC.md` → M (Follow-Up Automation), D (Dashboard), Faz 8 özeti
 - **Dini bayram tarihleri statik ve yalnızca 2026'yı kapsar** (`tr-holidays.ts`); her yıl elle
   güncellenmelidir (sabit tarihli resmi tatiller otomatik, dini bayramlar değil — ay takvimine
   göre kayar).
+- **Güncelleme 2026-09-28:** kanal INVALID/BOUNCED trigger'ı, sekans sonu otomatik LOST
+  (NO_RESPONSE) ve marka ikonu uygulandı — bkz. `docs/qa/phase-10-mvp-completion.md`.
+  Aşağıdaki notlar tarihsel.
 - **Kanal INVALID/BOUNCED durma tetikleyicisi trigger olarak eklenmedi** (yalnızca
   `should-cancel-followups.ts`'de saf mantık olarak var, testli); `contact_channels.status`
   değişince otomatik follow-up iptali şu an çalışmıyor. Gerekçe: `contact_channels.status`'ün ne
