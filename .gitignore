@@ -17,3 +17,6 @@ coverage/
 .vite/
 src-tauri/target/
 src-tauri/gen/
+
+# Yerel test hesabı notu (şifre içerir, asla commit edilmez)
+.claude/yerel-giris.txt
