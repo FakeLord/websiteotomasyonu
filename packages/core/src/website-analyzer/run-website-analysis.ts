@@ -23,7 +23,8 @@ function classifyFetchError(message: string): BrokenReason {
   const lower = message.toLowerCase();
   if (lower.includes("dns")) return "DNS";
   if (lower.includes("timeout") || lower.includes("zaman")) return "TIMEOUT";
-  if (lower.includes("ssl") || lower.includes("certificate") || lower.includes("sertifika")) return "SSL";
+  // Node hata kodları (ör. UNABLE_TO_VERIFY_LEAF_SIGNATURE, CERT_HAS_EXPIRED, ERR_TLS_CERT_ALTNAME_INVALID, EPROTO)
+  if (/ssl|cert|sertifika|tls|eproto|unable_to_verify/.test(lower)) return "SSL";
   return "FETCH_ERROR";
 }
 

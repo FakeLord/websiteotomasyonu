@@ -2,7 +2,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import type { AddressInfo } from "node:net";
 import { gzipSync } from "node:zlib";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { fetchPage } from "./website";
+import { fetchPage, isIncompleteChainError } from "./website";
 
 let server: Server;
 let port = 0;
@@ -92,6 +92,19 @@ describe("fetchPage — davranış (Rust fetch_page ile aynı sözleşme)", () =
     handlers.set("/pin", (_req, res) => void res.writeHead(200).end("ok"));
     await fetchPage(url("/pin"), { resolve: async () => (lookups += 1, ["127.0.0.1"]), isBlocked: () => false });
     expect(lookups).toBe(1);
+  });
+});
+
+describe("isIncompleteChainError", () => {
+  it("eksik ara sertifika (tarayıcıda sorunsuz açılan siteler) hatalarını tanır", () => {
+    expect(isIncompleteChainError(new Error("istek başarısız: UNABLE_TO_VERIFY_LEAF_SIGNATURE"))).toBe(true);
+    expect(isIncompleteChainError(new Error("istek başarısız: UNABLE_TO_GET_ISSUER_CERT_LOCALLY"))).toBe(true);
+  });
+  it("süresi dolmuş, ad uyuşmayan veya başka hataları eksik zincir saymaz", () => {
+    expect(isIncompleteChainError(new Error("istek başarısız: CERT_HAS_EXPIRED"))).toBe(false);
+    expect(isIncompleteChainError(new Error("istek başarısız: ERR_TLS_CERT_ALTNAME_INVALID"))).toBe(false);
+    expect(isIncompleteChainError(new Error("istek zaman aşımına uğradı"))).toBe(false);
+    expect(isIncompleteChainError(undefined)).toBe(false);
   });
 });
 

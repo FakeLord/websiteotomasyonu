@@ -61,6 +61,15 @@ describe("runWebsiteAnalysis", () => {
     expect(result.brokenReason).toBe("DNS");
   });
 
+  it("classifies certificate/TLS error codes as SSL, not a generic fetch error", async () => {
+    for (const code of ["UNABLE_TO_VERIFY_LEAF_SIGNATURE", "CERT_HAS_EXPIRED", "ERR_TLS_CERT_ALTNAME_INVALID", "EPROTO"]) {
+      const fetcher = new FakeFetcher();
+      fetcher.register("https://abcdis.com", new Error(`istek başarısız: ${code}`));
+      const result = await runWebsiteAnalysis(fetcher, { websiteUrl: "abcdis.com" });
+      expect(result.brokenReason, code).toBe("SSL");
+    }
+  });
+
   it("returns BROKEN_WEBSITE on HTTP 404", async () => {
     const fetcher = new FakeFetcher();
     fetcher.register("https://abcdis.com", page({ html: "<html>not found</html>", httpStatus: 404 }));

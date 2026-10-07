@@ -78,7 +78,22 @@ interface HopResponse {
   body: Buffer;
 }
 
-function requestOnce(current: URL, address: string, timeoutMs: number, maxBytes: number): Promise<HopResponse> {
+/**
+ * Sunucu ara sertifikayı göndermiyorsa tarayıcılar onu kendisi bulup siteyi açar, Node açamaz.
+ * Yalnızca bu iki durum "tarayıcıda açılan site" sayılır; süresi dolmuş veya ada uymayan
+ * sertifikalar bilerek hata olarak kalır.
+ */
+export function isIncompleteChainError(error: Error | undefined): boolean {
+  return /UNABLE_TO_VERIFY_LEAF_SIGNATURE|UNABLE_TO_GET_ISSUER_CERT_LOCALLY/.test(error?.message ?? "");
+}
+
+function requestOnce(
+  current: URL,
+  address: string,
+  timeoutMs: number,
+  maxBytes: number,
+  verifyCertificate: boolean,
+): Promise<HopResponse> {
   return new Promise((resolve, reject) => {
     const isHttps = current.protocol === "https:";
     const hostname = stripBrackets(current.hostname);
@@ -98,6 +113,7 @@ function requestOnce(current: URL, address: string, timeoutMs: number, maxBytes:
         signal: controller.signal,
         // SNI ve sertifika doğrulaması orijinal ada göre yapılır; bağlantı sabit IP'ye gider.
         ...(isHttps && !net.isIP(hostname) ? { servername: hostname } : {}),
+        ...(isHttps && !verifyCertificate ? { rejectUnauthorized: false } : {}),
       },
       (res) => {
         const status = res.statusCode ?? 0;
@@ -155,16 +171,24 @@ export async function fetchPage(rawUrl: string, deps: FetchPageDeps = {}): Promi
 
     // Ad birden çok adrese çözülebilir (ör. önce IPv6); makinede o yol yoksa site yine de
     // tarayıcıda açılır. Doğrulanmış adreslerin hepsi sırayla denenir, son hata verilir.
-    let response: HopResponse | undefined;
-    let lastError: Error | undefined;
-    for (const address of addresses) {
-      try {
-        response = await requestOnce(current, address, timeoutMs, maxBytes);
-        break;
-      } catch (error) {
-        lastError = error instanceof Error ? error : new Error("istek başarısız");
+    const attempt = async (verifyCertificate: boolean) => {
+      let found: HopResponse | undefined;
+      let failure: Error | undefined;
+      for (const address of addresses) {
+        try {
+          found = await requestOnce(current, address, timeoutMs, maxBytes, verifyCertificate);
+          break;
+        } catch (error) {
+          failure = error instanceof Error ? error : new Error("istek başarısız");
+        }
       }
-    }
+      return { found, failure };
+    };
+
+    let { found: response, failure: lastError } = await attempt(true);
+    // Eksik ara sertifika: pasif, kimlik bilgisi göndermeyen bir GET olduğu için sertifika doğrulaması
+    // olmadan bir kez daha denenir (sayfa yalnızca analiz için okunur).
+    if (!response && isIncompleteChainError(lastError)) ({ found: response, failure: lastError } = await attempt(false));
     if (!response) throw lastError ?? new Error("istek başarısız");
 
     if (response.location) {
