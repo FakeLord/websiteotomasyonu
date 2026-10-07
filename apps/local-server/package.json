@@ -1,0 +1,26 @@
+{
+  "name": "@lbf/local-server",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Tarayıcı modu için yerel sunucu: derlenmiş arayüzü ve SMTP/IMAP/site analizi/kasa uçlarını 127.0.0.1'den sunar (ADR 0009).",
+  "scripts": {
+    "start": "tsx src/main.ts",
+    "dev": "tsx watch src/main.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@lbf/core": "workspace:*",
+    "@napi-rs/keyring": "^2.1.0",
+    "imapflow": "^2.2.7",
+    "nodemailer": "^10.0.16",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/nodemailer": "^8.0.2",
+    "tsx": "^4.23.15",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4"
+  }
+}
