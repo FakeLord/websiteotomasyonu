@@ -48,7 +48,7 @@ server.on("error", (error: NodeJS.ErrnoException) => {
 
 server.listen(port, "127.0.0.1", () => {
   const url = `http://127.0.0.1:${port}`;
-  console.log(`Local Business Finder hazır: ${url}`);
+  console.log(`Global Business Finder hazır: ${url}`);
   console.log("Kapatmak için bu pencerede Ctrl+C.");
   if ((process.argv.includes("--open") || process.env.LBF_OPEN === "1") && process.platform === "win32") {
     spawn("cmd", ["/c", "start", "", url], { stdio: "ignore", detached: true }).unref();

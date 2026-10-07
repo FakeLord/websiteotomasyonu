@@ -3,7 +3,7 @@
  */
 export const tr = {
   app: {
-    name: "Local Business Finder",
+    name: "Global Business Finder",
   },
   nav: {
     dashboard: "Dashboard",
@@ -916,7 +916,7 @@ export const tr = {
     appPasswordHint: "Gmail/Outlook için normal şifre yerine hesabınızdan oluşturduğunuz uygulama şifresini kullanın.",
     testEmail: "Test e-postası gönder",
     testing: "Gönderiliyor…",
-    testEmailSubject: "Local Business Finder test e-postası",
+    testEmailSubject: "Global Business Finder test e-postası",
     testEmailBody: "Bu e-posta SMTP ayarlarınızın çalıştığını doğrulamak için gönderildi.",
     testEmailSent: (to: string) => `Test e-postası ${to} adresine gönderildi.`,
     testEmailFailed: "Test e-postası gönderilemedi",

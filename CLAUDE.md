@@ -1,10 +1,10 @@
-# CLAUDE.md — Local Business Finder
+# CLAUDE.md — Global Business Finder
 
-Windows masaüstü uygulaması (Tauri 2 + React + TypeScript) ve Supabase paylaşımlı backend.
-2–3 kişilik ajans ekibi web sitesi müşterisi bulur, analiz eder, puanlar ve AI destekli, insan kontrollü satış süreci yürütür.
+Tarayıcıda (web modu) ve Windows masaüstünde (Tauri 2) çalışan React + TypeScript uygulaması ve Supabase paylaşımlı backend.
+2–3 kişilik ajans ekibi **dünya genelinde** web sitesi müşterisi bulur, analiz eder, puanlar ve AI destekli, insan kontrollü satış süreci yürütür.
 
-**Tek doğruluk kaynağı:** `docs/SPEC.md`. Başlangıçtaki "Karar Kaydı" (D1–D17) bağlayıcıdır.
-**Aktif faz:** `docs/phases/PHASE-XX.md`. Yalnızca aktif fazın kapsamında çalış.
+**Tek doğruluk kaynağı:** `docs/SPEC.md`. Başlangıçtaki "Karar Kaydı" (D1–D22) bağlayıcıdır; küresel kapsam ve faz sırası `docs/adr/0010-global-pivot.md`'dedir.
+**Aktif faz:** `docs/phases/PHASE-XX.md` (Yol Haritası v2: PHASE-12…22). Yalnızca aktif fazın kapsamında çalış. Açık işler: `docs/BACKLOG.md`.
 
 ## Mimari (özet)
 

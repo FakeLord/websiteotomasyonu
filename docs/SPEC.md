@@ -1,6 +1,12 @@
-# Local Business Finder — Proje Planı ve Mimari Spesifikasyon
+# Global Business Finder (eski adı: Local Business Finder) — Proje Planı ve Mimari Spesifikasyon
 
 Sep 25, 2026 · @Ciwan
+
+> **v2 revizyonu (2026-10-07, [ADR 0010](adr/0010-global-pivot.md)):** Kapsam Türkiye'den **küresele** genişledi.
+> Aşağıdaki Karar Kaydı'nda D2 revize edildi ve D18–D22 eklendi; güncel faz sırası **T → "Yol Haritası v2"**
+> bölümündedir. Bu belgenin Türkiye'ye özgü ayrıntıları (ör. `regionCode=TR`, İstanbul saati, TR tatilleri) ilgili
+> faz uygulanana kadar mevcut davranışı tarif eder; çelişki olursa Karar Kaydı ve ADR 0010 geçerlidir.
+> Açık işlerin tek listesi: [`docs/BACKLOG.md`](BACKLOG.md).
 
 ## A. Executive Summary
 
@@ -23,7 +29,7 @@ Açık soruların tamamı kapandı; ★ işaretliler sizin cevabınız, diğerle
 | # | Konu | Karar | Plana etkisi |
 | --- | --- | --- | --- |
 | D1 ★ | Hukuki danışmanlık | Danışılmayacak | Tasarımdaki korumalar zorunlu kalır: her mesajda gönderen kimliği + "bir daha yazmamamı isterseniz belirtin" satırı, global DNC, silme RPC'si, veri kaynağı kaydı. Risk kabul edildi (R bölümü). |
-| D2 ★ | Coğrafya | İlk sürüm yalnızca Türkiye | `regionCode=TR`, `languageCode=tr`, TR telefon kuralları, TR resmi tatil takvimi, arayüz Türkçe. Çok ülke desteği için alanlar (country, tz) şimdiden şemada. |
+| D2 ★ | Coğrafya | **Küresel** (revize 2026-10-07, ADR 0010). İlk pazarlar: ABD, İngiltere, Kanada, Avustralya; Türkiye çalışmaya devam eder | Ülke, saat dilimi, dil ve para birimi her işletmede tutulur; keşif `regionCode`/`languageCode` parametrelidir; telefon, adres, tatil ve gönderim penceresi ülkeye göre hesaplanır (G2–G3). Önceki karar: "ilk sürüm yalnızca Türkiye". |
 | D3 ★ | Outreach hesapları | Ajansın ana hesapları (Instagram, Facebook, e-posta, WhatsApp) | Ana marka hesabı kısıtlanma riskine karşı düşük limitler: Instagram 15/gün, Facebook 15/gün, WhatsApp 10/gün ilk mesaj. Hesap ortak olduğu için "kim gönderdi" yalnızca uygulamadaki `mark_message_sent` kaydından izlenir. |
 | D4 ★ | Google Cloud | Billing hesabı açılacak; 300 $ deneme kredisi bitince CSV'ye geçilecek | Uygulama içi sayaç hem krediyi hem SKU başına aylık ücretsiz kotayı izler; kredi bittiğinde keşif otomatik "yalnızca ücretsiz kota" moduna, kota da bittiğinde CSV/manuel moda düşer. Cloud'da 1 $ bütçe alarmı + günlük API kotası kurulur. VERIFY\_CURRENT\_DOCS: 300 $ kredinin süresi (genelde 90 gün) ve deneme bitince hesabın ücretli hesaba yükseltilmeden Maps kullanımına izin verip vermediği. |
 | D5 ★ | AI sağlayıcı | Pilotta NVIDIA; kazanç başlayınca yeniden değerlendirilecek | `OpenAICompatibleProvider` + NVIDIA varsayılan. Ollama ve paralı sağlayıcı Faz 6'da yalnızca konfigürasyon olarak hazır; geçiş kod değişikliği gerektirmez. **Güncelleme 2026-09-27 (ADR 0007):** sıralı sağlayıcı zinciri — varsayılan OpenAI API → NVIDIA fallback. |
@@ -38,7 +44,12 @@ Açık soruların tamamı kapandı; ★ işaretliler sizin cevabınız, diğerle
 | D14 | Kurulum | Windows 10/11, `currentUser` kurulum, yönetici yetkisi gerekmez | — |
 | D15 | Jarvis konumu | Henüz belli değil | Gateway Edge Function'da olduğu için Jarvis nerede çalışırsa çalışsın erişir. |
 | D16 | Lead sahipliği | Herkes her lead'e yazabilir; ilk mesajı gönderen otomatik `assigned_to` olur, diğerleri gönderimden önce uyarı görür | — |
-| D17 | Arayüz dili | Yalnızca Türkçe; metinler tek dosyada (i18n'e hazır) | — |
+| D17 | Arayüz dili | Yalnızca Türkçe; metinler tek dosyada (i18n'e hazır) | Küresel kapsamda da geçerli (teyit 2026-10-07). |
+| D18 ★ | Mesaj dili | İşletmenin kendi dilinde | AI hedef dilde yazar; onay ekranında her taslağın ve gelen mesajın Türkçe çevirisi yan yana gösterilir. Guardrail'ler dil bağımsızdır (G4). |
+| D19 ★ | Barındırma | Veritabanı bulutta (Supabase projesi) | Yerel Docker yalnızca geliştirme/test içindir; haftalık şifreli yedek buluta geçişle birlikte kurulur (G1). |
+| D20 | Places verisi | `place_id` kalıcı; diğer Places alanları yenileme tarihiyle izlenir | İşletmenin kendi sitesinden toplanan iletişim verisi ayrı kaynakla kalıcıdır. Google koşulları place ID dışındaki içeriğin kalıcı saklanmasını kısıtlar (ADR 0010; ayrıntı G3). |
+| D21 | Ülke kuralları | Soğuk iletişim kuralı ülke bazında DB'de zorlanır; bilinmeyen ülke = en sıkı kural | `outreach_guard` ülke kuralını, yerel gönderim saatini ve bastırma listesini denetler. D1 geçerli: varsayılanlar muhafazakârdır (G5). |
+| D22 | Tarama bütçesi | İş başına ve aylık USD üst sınırı olmadan tarama başlatılmaz | Sınır DB'de zorlanır; başlamadan önce tahmini maliyet gösterilir (G3). |
 
 ## B. Önerilen Nihai Mimari
 
@@ -811,6 +822,27 @@ MVP, tek bir satış döngüsünü uçtan uca kanıtlar: "Kadıköy diş klinikl
 | 11 | Level 2 Otomasyon + Campaigns | 9 | Yüksek | — |
 | 12 | Jarvis Adapter | 8 | Orta | — |
 | 13 | Production: Updater, İmzalama, Yedekleme | 8 | Orta | — |
+
+### Yol Haritası v2 (2026-10-07, ADR 0010)
+
+Faz 0–8 (MVP), Faz 9 (yeniden tasarım), 10 (MVP tamamlama) ve 11 (web modu) tamamlandı. Aşağıdaki fazlar yukarıdaki
+tablonun 10–13. satırlarının **yerine** geçer; eski Faz 10–13 içerikleri G7–G10'a dağıtılmıştır.
+
+| Kod | Faz | Ad | Bağımlılık | Eski karşılığı |
+| --- | --- | --- | --- | --- |
+| G0 | 12 | Temizlik ve karar kaydı | — | — |
+| G1 | 13 | Buluta taşıma + haftalık yedek | G0 | Faz 13 (yedek) |
+| G2 | 14 | Küresel veri modeli | G1 | yeni |
+| G3 | 15 | Küresel keşif motoru | G2 | yeni |
+| G4 | 16 | Çok dilli analiz ve yapay zekâ | G2 | yeni |
+| G5 | 17 | Ülke bazlı uyum ve gönderim güvenliği | G2, G4 | yeni |
+| G6 | 18 | Günlük kullanım eksikleri (CRM) | G2 | — |
+| G7 | 19 | Sunucu tarafı otomasyon | G1, G5 | Faz 11 |
+| G8 | 20 | Yeni kanallar ve kaynaklar | G5 | Faz 10 + Faz 11 (WhatsApp) |
+| G9 | 21 | Jarvis işlemleri | G6 | Faz 12 |
+| G10 | 22 | Üretim | hepsi | Faz 13 |
+
+Her fazın kapsamı ve kabul ölçütleri `docs/phases/PHASE-12…22.md` dosyalarındadır; madde düzeyi izleme `docs/BACKLOG.md`.
 
 ### Faz 0 – Foundation
 

@@ -1,4 +1,4 @@
-# Local Business Finder
+# Global Business Finder
 
 Windows masaüstü uygulaması (Tauri 2 + React + TypeScript) ve Supabase paylaşımlı backend. 2–3 kişilik ajans ekibi web sitesi müşterisi bulur, analiz eder, puanlar ve AI destekli, insan kontrollü satış süreci yürütür.
 

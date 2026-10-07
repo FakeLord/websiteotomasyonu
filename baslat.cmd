@@ -1,6 +1,6 @@
 @echo off
 chcp 65001 >nul
-title Local Business Finder
+title Global Business Finder
 cd /d "%~dp0"
 
 rem pnpm/node bazen komut penceresinin yolunda olmaz; bilinen klasorleri ekle.
@@ -16,7 +16,7 @@ where pnpm >nul 2>&1
 if errorlevel 1 set "PNPM=corepack pnpm"
 
 echo.
-echo  Local Business Finder - web modu
+echo  Global Business Finder - web modu
 echo  ================================
 echo.
 

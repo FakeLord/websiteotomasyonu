@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Local Business Finder",
+        "title": "Global Business Finder",
         "width": 1200,
         "height": 800,
         "minWidth": 960,
