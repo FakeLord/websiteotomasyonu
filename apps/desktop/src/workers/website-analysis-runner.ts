@@ -27,7 +27,7 @@ export async function analyzeBusiness(workspaceId: string, target: AnalyzeTarget
     p_business_id: target.id,
     p_result: result,
   });
-  if (error) throw error;
+  if (error) throw new Error(error.message);
 
   await recomputeScore(workspaceId, target.id);
 
@@ -40,21 +40,30 @@ export async function analyzeBusiness(workspaceId: string, target: AnalyzeTarget
  * paralel çalışır. Bir işletmenin analizi başarısız olursa diğerleri
  * etkilenmez.
  */
+export interface BatchAnalysisSummary {
+  failed: number;
+  /** İlk hatanın metni (neden görünür olsun diye). */
+  firstError: string | null;
+}
+
 export async function analyzeBusinessesInBatches(
   workspaceId: string,
   targets: AnalyzeTarget[],
   onProgress?: (done: number, total: number) => void,
-): Promise<void> {
+  analyze: (workspaceId: string, target: AnalyzeTarget) => Promise<unknown> = analyzeBusiness,
+): Promise<BatchAnalysisSummary> {
   let done = 0;
+  const summary: BatchAnalysisSummary = { failed: 0, firstError: null };
   for (let i = 0; i < targets.length; i += CONCURRENCY) {
     const batch = targets.slice(i, i + CONCURRENCY);
     await Promise.all(
       batch.map(async (target) => {
         try {
-          await analyzeBusiness(workspaceId, target);
-        } catch {
-          // Sessizce atla; kullanıcı sonucu website_status = null olarak görür
-          // ve tekrar deneyebilir.
+          await analyze(workspaceId, target);
+        } catch (error) {
+          // Diğer işletmeler etkilenmez; hata sayılır ve ilk nedeni kullanıcıya gösterilir.
+          summary.failed += 1;
+          summary.firstError ??= error instanceof Error ? error.message : "Bilinmeyen hata";
         } finally {
           done += 1;
           onProgress?.(done, targets.length);
@@ -62,4 +71,5 @@ export async function analyzeBusinessesInBatches(
       }),
     );
   }
+  return summary;
 }

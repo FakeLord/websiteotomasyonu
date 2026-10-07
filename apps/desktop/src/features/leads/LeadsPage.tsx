@@ -86,6 +86,7 @@ export function LeadsPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [columns, setColumns] = useState<ColumnKey[]>(loadColumns);
+  const [bulkNotice, setBulkNotice] = useState<string | null>(null);
   const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null);
   const [exporting, setExporting] = useState(false);
 
@@ -182,13 +183,15 @@ export function LeadsPage() {
       .is("website_status", null)
       .limit(200);
     if (error || !data || data.length === 0) return;
+    setBulkNotice(null);
     setBulkProgress({ done: 0, total: data.length });
-    await analyzeBusinessesInBatches(
+    const summary = await analyzeBusinessesInBatches(
       workspaceId,
       data.map((row) => ({ id: row.id as string, websiteUrl: row.website_url as string | null, category: row.category as string | null })),
       (done, total) => setBulkProgress({ done, total }),
     );
     setBulkProgress(null);
+    if (summary.failed > 0) setBulkNotice(tr.websiteAnalysis.bulkAnalyzeFailed(summary.failed, data.length, summary.firstError ?? ""));
     void queryClient.invalidateQueries({ queryKey: ["businesses", workspaceId] });
   };
 
@@ -280,6 +283,7 @@ export function LeadsPage() {
         }
       />
 
+      {bulkNotice && <p className="mb-3 rounded-lg bg-danger/10 px-3 py-2 text-sm text-[#f87171]">{bulkNotice}</p>}
       <Card>
         <div className="flex items-center gap-1 overflow-x-auto border-b border-border px-3">
           {[{ key: "all", label: tr.common.all, count: totalAll }, ...STAGE_GROUPS.map((g) => ({ key: g.key, label: g.label, count: countForGroup(g, stageCounts) }))].map(
