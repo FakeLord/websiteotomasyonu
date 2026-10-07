@@ -1,4 +1,6 @@
 import { runWebsiteAnalysis, type WebsiteAnalysisResult } from "@lbf/core";
+import { createAnalysisClient, type AnalysisWorkerLike } from "../lib/analysis-client";
+import { platform } from "../lib/platform";
 import { supabase } from "../lib/supabase-client";
 import { platformWebsiteFetcher } from "../lib/website-fetcher";
 import { recomputeScore } from "./score-runner";
@@ -12,12 +14,24 @@ export interface AnalyzeTarget {
 const CONCURRENCY = 4;
 
 /**
+ * Web modunda ağır HTML analizi arayüzü dondurmasın diye Web Worker'da çalışır; Tauri'de veya
+ * worker yoksa doğrudan (ana iş parçacığında) çalışır.
+ */
+const analysisClient = createAnalysisClient({
+  createWorker:
+    platform.kind === "web" && typeof Worker !== "undefined"
+      ? () => new Worker(new URL("./analysis.worker.ts", import.meta.url), { type: "module" }) as unknown as AnalysisWorkerLike
+      : null,
+  runInline: (input) => runWebsiteAnalysis(platformWebsiteFetcher, input),
+});
+
+/**
  * Tek bir işletmeyi analiz eder ve sonucu `save_website_analysis()` RPC'sine
  * yazar (yetki ve activity log DB tarafında — CLAUDE.md #8). Fetch, kabuğun
  * `fetch_page` uygulamasını (Rust veya yerel sunucu) saran `platformWebsiteFetcher` üzerinden yapılır.
  */
 export async function analyzeBusiness(workspaceId: string, target: AnalyzeTarget): Promise<WebsiteAnalysisResult> {
-  const result = await runWebsiteAnalysis(platformWebsiteFetcher, {
+  const result = await analysisClient.run({
     websiteUrl: target.websiteUrl,
     category: target.category ?? undefined,
   });

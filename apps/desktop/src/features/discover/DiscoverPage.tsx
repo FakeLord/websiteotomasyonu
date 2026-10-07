@@ -93,8 +93,6 @@ export function DiscoverPage() {
   }, [country, city]);
 
   useRealtimeTable("search_jobs", workspaceId, ["search-jobs", workspaceId]);
-  // Otomatik analiz ve puanlama sürerken sonuçlar (puan, site durumu) kendiliğinden güncellenir.
-  useRealtimeTable("businesses", workspaceId, ["search-results"]);
 
   const jobsQuery = useQuery({
     queryKey: ["search-jobs", workspaceId],
@@ -182,6 +180,9 @@ export function DiscoverPage() {
             if (summary.failed > 0) {
               setNotice({ tone: "warn", text: tr.websiteAnalysis.bulkAnalyzeFailed(summary.failed, summary.total, summary.firstError ?? "") });
             }
+          }, (done) => {
+            // Her 10 işletmede bir sonuçlar tazelenir; her biri için yenilemek arayüzü yorar.
+            if (done % 10 === 0) void queryClient.invalidateQueries({ queryKey: ["search-results"] });
           })
         : undefined,
     onSettled: () => {

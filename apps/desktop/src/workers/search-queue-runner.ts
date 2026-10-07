@@ -50,6 +50,8 @@ export async function processSearchQueue(
   workspaceId: string,
   /** Arka plandaki otomatik analiz bitince çağrılır (arayüz sonuçları tazeler, hata varsa gösterir). */
   onAnalysisSettled?: (summary: BatchAnalysisSummary & { total: number }) => void,
+  /** Otomatik analiz ilerledikçe çağrılır (arayüz sonuçları ara sıra tazeler). */
+  onAnalysisProgress?: (done: number, total: number) => void,
 ): Promise<ProcessQueueResult> {
   const deviceId = getDeviceId();
 
@@ -91,7 +93,7 @@ export async function processSearchQueue(
   const pending = await unanalyzedOnly(newTargets);
   if (pending.length > 0) {
     const total = pending.length;
-    void analyzeBusinessesInBatches(workspaceId, pending)
+    void analyzeBusinessesInBatches(workspaceId, pending, onAnalysisProgress)
       .then((summary) => onAnalysisSettled?.({ ...summary, total }))
       .catch((error: unknown) =>
         onAnalysisSettled?.({ failed: total, total, firstError: error instanceof Error ? error.message : "Bilinmeyen hata" }),

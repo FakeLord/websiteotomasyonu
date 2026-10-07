@@ -16,6 +16,8 @@ export default defineConfig(() => ({
   define: {
     __APP_VERSION__: JSON.stringify(packageJson.version),
   },
+  // Site analizi Web Worker'ında çalışır (src/workers/analysis.worker.ts); modül worker'ı kod bölmeyi destekler.
+  worker: { format: "es" as const },
 
   // Monorepo kökündeki tek .env dosyasını okur (CLAUDE.md/README.md ile tutarlı;
   // apps/desktop/.env yerine repo kökü .env kullanılır).
