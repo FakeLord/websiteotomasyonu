@@ -53,6 +53,41 @@ describe("checkRequest (yerel sunucu güvenlik ara katmanı)", () => {
     expect(checkRequest(req({ headers: { "sec-fetch-site": "same-origin" } }), PORT)).toEqual({ ok: true });
   });
 
+  describe("e-postadaki bağlantıdan arayüzü açma (üst düzey gezinme)", () => {
+    const pageNav = (headers: Record<string, string> = {}) =>
+      req({
+        method: "GET",
+        url: "/",
+        headers: { origin: "", "sec-fetch-site": "cross-site", "sec-fetch-mode": "navigate", "sec-fetch-dest": "document", ...headers },
+      });
+    const noOrigin = (r: ReturnType<typeof req>) => {
+      delete (r.headers as Record<string, string | undefined>).origin;
+      return r;
+    };
+
+    it("başka siteden (Gmail) tıklanan bağlantıyla sayfa GET'ine izin verir", () => {
+      expect(checkRequest(noOrigin(pageNav()), PORT)).toEqual({ ok: true });
+    });
+
+    it("sayfa yine de iframe içinde veya alt kaynak olarak yabancı siteden yüklenemez", () => {
+      expect(checkRequest(noOrigin(pageNav({ "sec-fetch-dest": "iframe" })), PORT)).toMatchObject({ ok: false, status: 403 });
+      expect(checkRequest(noOrigin(pageNav({ "sec-fetch-dest": "script", "sec-fetch-mode": "no-cors" })), PORT)).toMatchObject({ ok: false, status: 403 });
+    });
+
+    it("aynı gezinme /api için asla geçmez", () => {
+      const r = noOrigin(pageNav());
+      r.url = "/api/secrets/get";
+      expect(checkRequest(r, PORT)).toMatchObject({ ok: false, status: 403 });
+    });
+
+    it("POST ile üst düzey gezinme geçmez", () => {
+      expect(checkRequest(noOrigin(pageNav({})), PORT)).toEqual({ ok: true });
+      const post = noOrigin(pageNav());
+      post.method = "POST";
+      expect(checkRequest(post, PORT)).toMatchObject({ ok: false });
+    });
+  });
+
   it("x-lbf başlığı olmayan API isteğini reddeder", () => {
     const r = req({ headers: { "x-lbf": "" } });
     expect(checkRequest(r, PORT)).toMatchObject({ ok: false, status: 403 });

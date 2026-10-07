@@ -15,7 +15,8 @@ const deny = (status: number, error: string): Verdict => ({ ok: false, status, e
  * başka bir sitenin `127.0.0.1`'e istek atıp e-posta hesabını veya kasayı
  * kullanmasını engellemektir:
  *  - `Host` ve `Origin` yalnızca bu sunucunun adresi olabilir (DNS rebinding + yabancı site),
- *  - `Sec-Fetch-Site` varsa aynı origin olmalı,
+ *  - `Sec-Fetch-Site` varsa aynı origin olmalı (tek istisna: başka siteden tıklanan bağlantıyla arayüz sayfasının
+ *    üst düzey GET gezinmesi),
  *  - `/api` yalnızca `POST` + JSON + özel `x-lbf` başlığı kabul eder; özel başlık
  *    çapraz-site isteği preflight'a zorlar ve hiçbir CORS başlığı verilmediği için reddedilir.
  */
@@ -29,12 +30,20 @@ export function checkRequest(req: RequestLike, port: number): Verdict {
     return deny(403, "Geçersiz istek kaynağı.");
   }
 
+  const isApi = (req.url ?? "").startsWith("/api/");
+
   const fetchSite = req.headers["sec-fetch-site"];
   if (fetchSite !== undefined && fetchSite !== "same-origin" && fetchSite !== "none") {
-    return deny(403, "Çapraz-site isteklere izin verilmez.");
+    // E-postadaki davet/sıfırlama bağlantısı başka siteden (Gmail) gelen üst düzey bir gezinmedir; arayüz
+    // sayfasını açabilmeli. Yalnızca belge GET'i: iframe, alt kaynak ve /api hâlâ reddedilir.
+    const isPageNavigation =
+      !isApi &&
+      (req.method === "GET" || req.method === "HEAD") &&
+      req.headers["sec-fetch-mode"] === "navigate" &&
+      req.headers["sec-fetch-dest"] === "document";
+    if (!isPageNavigation) return deny(403, "Çapraz-site isteklere izin verilmez.");
   }
 
-  const isApi = (req.url ?? "").startsWith("/api/");
   if (!isApi) {
     return req.method === "GET" || req.method === "HEAD" ? { ok: true } : deny(405, "Yöntem desteklenmiyor.");
   }
