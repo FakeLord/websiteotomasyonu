@@ -1,4 +1,5 @@
-const TIME_ZONE = "Europe/Istanbul";
+/** Ekibin varsayılan saati (workspace_settings.timezone ile aynı varsayılan). */
+export const TIME_ZONE = "Europe/Istanbul";
 
 /** "3 dk önce", "2 saat önce", "dün", yoksa tarih. */
 export function formatRelative(iso: string, now: Date = new Date()): string {
@@ -16,13 +17,13 @@ export function formatRelative(iso: string, now: Date = new Date()): string {
   return formatDate(iso);
 }
 
-export function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("tr-TR", { timeZone: TIME_ZONE, day: "numeric", month: "short", year: "numeric" });
+export function formatDate(iso: string, timeZone: string = TIME_ZONE): string {
+  return new Date(iso).toLocaleDateString("tr-TR", { timeZone, day: "numeric", month: "short", year: "numeric" });
 }
 
-export function formatDateTime(iso: string): string {
+export function formatDateTime(iso: string, timeZone: string = TIME_ZONE): string {
   return new Date(iso).toLocaleString("tr-TR", {
-    timeZone: TIME_ZONE,
+    timeZone,
     day: "numeric",
     month: "short",
     hour: "2-digit",
@@ -32,6 +33,24 @@ export function formatDateTime(iso: string): string {
 
 export function formatCurrency(amount: number, currency = "TRY"): string {
   return new Intl.NumberFormat("tr-TR", { style: "currency", currency, maximumFractionDigits: 0 }).format(amount);
+}
+
+/** İşletmenin yerel saati, ör. "14:32 Salı". Geçersiz saat diliminde boş metin döner. */
+export function formatLocalTime(timeZone: string, now: Date = new Date()): string {
+  try {
+    return now.toLocaleString("tr-TR", { timeZone, hour: "2-digit", minute: "2-digit", weekday: "long" }).replace(/^(\d{2}:\d{2})\s+(.+)$/, "$1 $2");
+  } catch {
+    return "";
+  }
+}
+
+/** Para birimine göre toplamlar: { TRY: 1000, USD: 500 } → "₺1.000 · US$500" (boşsa "—"). */
+export function formatMoneyTotals(totals: Record<string, number>): string {
+  const parts = Object.entries(totals)
+    .filter(([, amount]) => amount !== 0)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([currency, amount]) => formatCurrency(amount, currency));
+  return parts.length ? parts.join(" · ") : "—";
 }
 
 export function greetingForHour(hour: number): "morning" | "afternoon" | "evening" {

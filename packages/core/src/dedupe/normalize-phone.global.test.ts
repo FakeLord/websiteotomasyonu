@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizePhone } from "./normalize-phone";
+import { formatPhoneInternational, normalizePhone } from "./normalize-phone";
 
 describe("normalizePhone — ülke parametresi", () => {
   it("ulusal biçimdeki numarayı verilen ülkeye göre E.164'e çevirir", () => {
@@ -20,5 +20,16 @@ describe("normalizePhone — ülke parametresi", () => {
 
   it("bilinmeyen ülke kodunda hata fırlatmaz, null döner", () => {
     expect(normalizePhone("0532 123 45 67", "ZZ")).toBeNull();
+  });
+});
+
+describe("formatPhoneInternational", () => {
+  it("E.164'ü uluslararası okunur biçime çevirir", () => {
+    expect(formatPhoneInternational("+15125550132")).toBe("+1 512 555 0132");
+    expect(formatPhoneInternational("+442079460958")).toBe("+44 20 7946 0958");
+    expect(formatPhoneInternational("+905321234567")).toBe("+90 532 123 45 67");
+  });
+  it("çözülemeyen girdiyi olduğu gibi döner", () => {
+    expect(formatPhoneInternational("abc")).toBe("abc");
   });
 });

@@ -7,7 +7,7 @@ import { supabase } from "../../lib/supabase-client";
 import { useWorkspaceMembership } from "../../lib/use-workspace-membership";
 import { useRealtimeTable } from "../../lib/use-realtime-table";
 import { downloadFile, toCsv } from "../../lib/filters";
-import { formatCurrency, formatDate } from "../../lib/format";
+import { formatCurrency, formatDate, formatMoneyTotals } from "../../lib/format";
 import { tr } from "../../i18n/tr";
 import { Button } from "../../components/ui/button";
 import { Input, Select } from "../../components/ui/input";
@@ -22,6 +22,7 @@ export interface CustomerRow {
   name: string;
   category: string | null;
   district: string | null;
+  country_code: string;
   primary_phone_e164: string | null;
   updated_at: string;
   customer_deals: CustomerDealRow | CustomerDealRow[] | null;
@@ -40,7 +41,7 @@ export function CustomersPage() {
   const [search, setSearch] = useState("");
   const { market } = useMarket();
   const [status, setStatus] = useState("");
-  const [editing, setEditing] = useState<{ id: string; name: string } | null>(null);
+  const [editing, setEditing] = useState<{ id: string; name: string; countryCode: string } | null>(null);
   useRealtimeTable("customer_deals", workspaceId, ["customers", workspaceId]);
 
   const query = useQuery({
@@ -49,7 +50,7 @@ export function CustomersPage() {
     queryFn: async (): Promise<CustomerRow[]> => {
       const { data, error } = await supabase
         .from("businesses")
-        .select("id, name, category, district, primary_phone_e164, updated_at, customer_deals(*)")
+        .select("id, name, category, district, country_code, primary_phone_e164, updated_at, customer_deals(*)")
         .eq("workspace_id", workspaceId as string)
         .eq("stage", "WON")
         .is("merged_into", null)
@@ -121,8 +122,8 @@ export function CustomersPage() {
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label={tr.customers.kpi.total} value={rows.length} icon={Users} color="#3b82f6" />
         <StatCard label={tr.customers.kpi.active} value={summary.active} icon={UserCheck} color="#22c55e" />
-        <StatCard label={tr.customers.kpi.revenue} value={formatCurrency(summary.oneTimeAndActiveTotalTry)} icon={Banknote} color="#f59e0b" />
-        <StatCard label={tr.customers.kpi.mrr} value={formatCurrency(summary.monthlyRecurringTry)} icon={Repeat} color="#8b5cf6" />
+        <StatCard label={tr.customers.kpi.revenue} value={formatMoneyTotals(summary.totalsByCurrency)} icon={Banknote} color="#f59e0b" />
+        <StatCard label={tr.customers.kpi.mrr} value={formatMoneyTotals(summary.mrrByCurrency)} icon={Repeat} color="#8b5cf6" />
       </div>
 
       <Card>
@@ -186,7 +187,7 @@ export function CustomersPage() {
                     <Td onClick={(e) => e.stopPropagation()}>
                       <button
                         type="button"
-                        onClick={() => setEditing({ id: row.id, name: row.name })}
+                        onClick={() => setEditing({ id: row.id, name: row.name, countryCode: row.country_code })}
                         className="rounded-md p-1.5 text-muted hover:bg-surface-3 hover:text-text"
                         aria-label={tr.customers.editDeal}
                       >
@@ -202,7 +203,7 @@ export function CustomersPage() {
       </Card>
 
       {editing && (
-        <CustomerDealDialog open onOpenChange={(open) => !open && setEditing(null)} businessId={editing.id} businessName={editing.name} />
+        <CustomerDealDialog open onOpenChange={(open) => !open && setEditing(null)} businessId={editing.id} businessName={editing.name} countryCode={editing.countryCode} />
       )}
     </div>
   );

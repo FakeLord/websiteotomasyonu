@@ -10,6 +10,8 @@ import {
   type OutreachChannel,
   type RoutingChannelCandidate,
 } from "@lbf/core";
+import { countryFlag, getCountryProfile } from "@lbf/core";
+import { formatLocalTime } from "../../lib/format";
 import { supabase } from "../../lib/supabase-client";
 import { useWorkspaceMembership } from "../../lib/use-workspace-membership";
 import { useWorkspaceMembers } from "../../lib/use-workspace-members";
@@ -242,6 +244,8 @@ export function LeadDetailPage() {
   const recommended = recommendChannel(business, channels, settings);
   const recommendedChannel = recommended?.ok && recommended.channel !== "PHONE" ? (recommended.channel as OutreachChannel) : null;
   const location = [business.district, business.city].filter(Boolean).join(", ");
+  const countryName = getCountryProfile(business.country_code).nameTr;
+  const localTime = business.timezone ? formatLocalTime(business.timezone) : "";
 
   return (
     <div className="space-y-5">
@@ -280,6 +284,10 @@ export function LeadDetailPage() {
                   {location}
                 </span>
               )}
+              <span className="flex items-center gap-1" title={business.timezone ?? undefined}>
+                {countryFlag(business.country_code)} {countryName}
+                {localTime && <span className="text-subtle">· {tr.leadDetail.localTime}: {localTime}</span>}
+              </span>
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -348,7 +356,7 @@ export function LeadDetailPage() {
           recommendedChannel={recommendedChannel}
         />
       )}
-      {dealOpen && <CustomerDealDialog open={dealOpen} onOpenChange={setDealOpen} businessId={business.id} businessName={business.name} />}
+      {dealOpen && <CustomerDealDialog open={dealOpen} onOpenChange={setDealOpen} businessId={business.id} businessName={business.name} countryCode={business.country_code} />}
     </div>
   );
 }

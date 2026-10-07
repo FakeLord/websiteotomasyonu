@@ -8,6 +8,15 @@ export interface NormalizedPhone {
   isMobile: boolean;
 }
 
+/** "+15125550132" → "+1 512 555 0132". Çözülemezse girdiyi olduğu gibi döner. */
+export function formatPhoneInternational(e164: string): string {
+  try {
+    return parsePhoneNumberFromString(e164)?.formatInternational() ?? e164;
+  } catch {
+    return e164;
+  }
+}
+
 /**
  * E.164 telefon normalizasyonu (SPEC.md → I.2). `defaultCountry` yalnızca ulusal biçimdeki
  * numaralar için kullanılır (`+` ile başlayanlar ülkeden bağımsızdır); verilmezse eskisi gibi `TR`.

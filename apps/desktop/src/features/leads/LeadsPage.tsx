@@ -16,6 +16,7 @@ import {
   Users,
   X,
 } from "lucide-react";
+import { countryFlag, getCountryProfile } from "@lbf/core";
 import { useMarket } from "../../lib/use-market";
 import { supabase } from "../../lib/supabase-client";
 import { useWorkspaceMembership } from "../../lib/use-workspace-membership";
@@ -144,7 +145,7 @@ export function LeadsPage() {
     enabled: !!workspaceId,
     queryFn: async (): Promise<{ rows: BusinessListRow[]; count: number }> => {
       const { data, error, count } = await buildQuery(
-        "id, name, category, city, district, website_url, website_status, stage, lead_score, assigned_to, updated_at, last_contacted_at, do_not_contact, possible_duplicate_of",
+        "id, name, category, city, district, country_code, website_url, website_status, stage, lead_score, assigned_to, updated_at, last_contacted_at, do_not_contact, possible_duplicate_of",
         true,
       )
         .order("lead_score", { ascending: false })
@@ -196,7 +197,7 @@ export function LeadsPage() {
     setExporting(true);
     try {
       const { data, error } = await buildQuery(
-        "name, category, city, district, website_url, website_status, stage, lead_score, primary_phone_e164, assigned_to, last_contacted_at",
+        "name, category, city, district, country_code, website_url, website_status, stage, lead_score, primary_phone_e164, assigned_to, last_contacted_at",
         false,
       )
         .order("lead_score", { ascending: false })
@@ -213,6 +214,7 @@ export function LeadsPage() {
       const csv = toCsv(rows, [
         { key: "name", label: tr.leads.columns.name },
         { key: "category", label: tr.leads.columns.category },
+        { key: "country_code", label: tr.discover.countryLabel },
         { key: "city", label: tr.leads.cityLabel },
         { key: "district", label: tr.leads.districtLabel },
         { key: "primary_phone_e164", label: tr.leads.phoneLabel },
@@ -476,7 +478,10 @@ export function LeadsPage() {
                     </Td>
                     {show("category") && <Td className="text-muted">{row.category ?? "—"}</Td>}
                     {show("location") && (
-                      <Td className="text-muted">{[row.district, row.city].filter(Boolean).join(", ") || "—"}</Td>
+                      <Td className="text-muted">
+                        <span title={getCountryProfile(row.country_code).nameTr}>{countryFlag(row.country_code)}</span>{" "}
+                        {[row.district, row.city].filter(Boolean).join(", ") || "—"}
+                      </Td>
                     )}
                     {show("website") && (
                       <Td>

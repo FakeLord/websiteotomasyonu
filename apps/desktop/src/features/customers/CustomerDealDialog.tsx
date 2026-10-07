@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../../lib/supabase-client";
 import { useWorkspaceMembership } from "../../lib/use-workspace-membership";
 import { tr } from "../../i18n/tr";
+import { DEAL_CURRENCIES, defaultDealCurrency, type DealCurrency } from "./customer-metrics";
 import { Button } from "../../components/ui/button";
 import { Input, Label, Select, Textarea } from "../../components/ui/input";
 import { Dialog, DialogContent } from "../../components/ui/primitives";
@@ -13,7 +14,7 @@ export interface CustomerDealRow {
   package_id: string | null;
   package_name: string | null;
   amount: number | null;
-  currency: "TRY" | "USD" | "EUR";
+  currency: DealCurrency;
   billing: "ONE_TIME" | "MONTHLY" | "YEARLY";
   start_date: string;
   status: "ACTIVE" | "PAUSED" | "ENDED";
@@ -38,11 +39,14 @@ export function CustomerDealDialog({
   onOpenChange,
   businessId,
   businessName,
+  countryCode,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   businessId: string;
   businessName: string;
+  /** İşletmenin ülkesi; yeni anlaşmanın varsayılan para birimini belirler. */
+  countryCode?: string;
 }) {
   const queryClient = useQueryClient();
   const workspaceId = useWorkspaceMembership().data?.workspaceId;
@@ -50,7 +54,7 @@ export function CustomerDealDialog({
     packageId: "",
     packageName: "",
     amount: "",
-    currency: "TRY",
+    currency: defaultDealCurrency(countryCode),
     billing: "ONE_TIME",
     startDate: today(),
     status: "ACTIVE",
@@ -157,9 +161,11 @@ export function CustomerDealDialog({
             <div>
               <Label>{tr.customers.currency}</Label>
               <Select value={form.currency} onChange={(e) => set("currency", e.target.value as FormState["currency"])}>
-                <option value="TRY">TRY</option>
-                <option value="USD">USD</option>
-                <option value="EUR">EUR</option>
+                {DEAL_CURRENCIES.map((code) => (
+                  <option key={code} value={code}>
+                    {code}
+                  </option>
+                ))}
               </Select>
             </div>
             <div>

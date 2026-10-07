@@ -1,5 +1,5 @@
 export { normalizeDomain } from "./normalize-domain";
-export { normalizePhone, type NormalizedPhone } from "./dedupe/normalize-phone";
+export { normalizePhone, formatPhoneInternational, type NormalizedPhone } from "./dedupe/normalize-phone";
 export { normalizeSocial, type SocialPlatform } from "./dedupe/normalize-social";
 export { trigramSimilarity } from "./dedupe/string-similarity";
 export {

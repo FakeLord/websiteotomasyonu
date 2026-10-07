@@ -6,7 +6,7 @@ import { useMarket } from "../../lib/use-market";
 import { supabase } from "../../lib/supabase-client";
 import { useWorkspaceMembership } from "../../lib/use-workspace-membership";
 import { formatDayLabel, percentDelta, type PeriodCounts } from "../../lib/use-metrics";
-import { formatCurrency } from "../../lib/format";
+import { formatMoneyTotals } from "../../lib/format";
 import { tr } from "../../i18n/tr";
 import { Input, Select } from "../../components/ui/input";
 import { Card, CardBody, CardHeader } from "../../components/ui/card";
@@ -66,7 +66,6 @@ export function ReportsPage() {
   const totals = m?.totals;
   const delta = (key: keyof PeriodCounts) => (m ? percentDelta(m.totals[key], m.previous[key]) : null);
   const replyPct = totals && totals.sent > 0 ? Math.round((totals.replied / totals.sent) * 100) : 0;
-  const tryRevenue = m?.revenue.TRY ?? 0;
 
   const series = [
     { key: "found", label: tr.dashboard.series.found, color: SERIES_COLORS[0] },
@@ -127,7 +126,7 @@ export function ReportsPage() {
             <StatCard label={tr.reports.kpi.sent} value={totals?.sent ?? "—"} icon={Send} color="#f59e0b" delta={delta("sent")} />
             <StatCard label={tr.reports.kpi.replyRate} value={`%${replyPct}`} icon={MessageSquareReply} color="#ec4899" />
             <StatCard label={tr.reports.kpi.won} value={totals?.won ?? "—"} icon={UserCheck} color="#22c55e" delta={delta("won")} />
-            <StatCard label={tr.reports.kpi.revenue} value={formatCurrency(tryRevenue)} icon={Banknote} color="#8b5cf6" />
+            <StatCard label={tr.reports.kpi.revenue} value={formatMoneyTotals(m?.revenue ?? {})} icon={Banknote} color="#8b5cf6" />
           </div>
           <div className="grid gap-5 xl:grid-cols-3">
             <Card className="xl:col-span-2">

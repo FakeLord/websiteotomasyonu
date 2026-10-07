@@ -133,11 +133,19 @@ export async function loadFollowupPolicy(workspaceId: string): Promise<FollowupP
 }
 
 /** Politika gereği bir sonraki follow-up tarihi; sekans bittiyse null. */
-export function nextFollowUpDate(policy: FollowupPolicy | null, completedStep: number, from: Date = new Date()): Date | null {
+export function nextFollowUpDate(
+  policy: FollowupPolicy | null,
+  completedStep: number,
+  from: Date = new Date(),
+  geo: { timeZone?: string | null; countryCode?: string | null } = {},
+): Date | null {
   if (!policy) return null;
   const step = policy.steps[completedStep];
   if (!step || completedStep >= (policy.maxFollowUps ?? 0)) return null;
-  return computeFollowUpDueDate(from, step.afterDays, policy.sendWindow, policy.skipHolidays);
+  return computeFollowUpDueDate(from, step.afterDays, policy.sendWindow, policy.skipHolidays, {
+    ...(geo.timeZone ? { timeZone: geo.timeZone } : {}),
+    ...(geo.countryCode ? { countryCode: geo.countryCode } : {}),
+  });
 }
 
 /**
@@ -170,15 +178,22 @@ async function finalizeSent(workspaceId: string, target: SendTarget, message: Se
   if (followUpError) throw followUpError;
 
   const policy = await loadFollowupPolicy(workspaceId);
+  // Takip günü ve saati işletmenin yerel saat diliminde, tatiller işletmenin ülkesine göre hesaplanır.
+  const { data: businessGeo } = await supabase
+    .from("businesses")
+    .select("timezone, country_code")
+    .eq("id", target.businessId)
+    .maybeSingle();
+  const geo = { timeZone: businessGeo?.timezone as string | null | undefined, countryCode: businessGeo?.country_code as string | null | undefined };
   if (followUp) {
-    const nextDue = nextFollowUpDate(policy, followUp.step as number);
+    const nextDue = nextFollowUpDate(policy, followUp.step as number, new Date(), geo);
     await rpc("mark_followup_sent", {
       p_followup_id: followUp.id,
       p_message_id: message.id,
       p_next_due_at: nextDue?.toISOString() ?? null,
     });
   } else if ((previousSent ?? 0) === 0) {
-    const dueAt = nextFollowUpDate(policy, 0);
+    const dueAt = nextFollowUpDate(policy, 0, new Date(), geo);
     if (dueAt) {
       await rpc("schedule_next_followup", {
         ws: workspaceId,

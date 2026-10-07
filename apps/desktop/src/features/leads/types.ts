@@ -9,6 +9,7 @@ export interface BusinessListRow {
   category: string | null;
   city: string | null;
   district: string | null;
+  country_code: string;
   website_url: string | null;
   website_status: WebsiteStatus | null;
   last_contacted_at: string | null;
@@ -21,6 +22,10 @@ export interface BusinessListRow {
 
 export interface BusinessDetail extends BusinessListRow {
   address: string | null;
+  region: string | null;
+  postal_code: string | null;
+  timezone: string | null;
+  language: string | null;
   website_domain: string | null;
   primary_phone_e164: string | null;
   rating: number | null;

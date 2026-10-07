@@ -25,6 +25,7 @@ interface PipelineCard {
   name: string;
   category: string | null;
   district: string | null;
+  country_code: string;
   stage: BusinessStage;
   lead_score: number;
   assigned_to: string | null;
@@ -41,7 +42,7 @@ export function PipelinePage() {
   const [dragId, setDragId] = useState<string | null>(null);
   const [overColumn, setOverColumn] = useState<BusinessStage | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [dealFor, setDealFor] = useState<{ id: string; name: string } | null>(null);
+  const [dealFor, setDealFor] = useState<{ id: string; name: string; countryCode: string } | null>(null);
   const { market } = useMarket();
   const queryKey = ["pipeline", workspaceId, market.country, market.city];
   useRealtimeTable("businesses", workspaceId, queryKey);
@@ -52,7 +53,7 @@ export function PipelinePage() {
     queryFn: async (): Promise<PipelineCard[]> => {
       const { data, error: qError } = await supabase
         .from("businesses")
-        .select("id, name, category, district, stage, lead_score, assigned_to, version, updated_at, human_handoffs(summary, status)")
+        .select("id, name, category, district, country_code, stage, lead_score, assigned_to, version, updated_at, human_handoffs(summary, status)")
         .eq("workspace_id", workspaceId as string)
         .is("merged_into", null)
         .match({ ...(market.country ? { country_code: market.country } : {}), ...(market.country && market.city ? { city: market.city } : {}) })
@@ -86,7 +87,7 @@ export function PipelinePage() {
     },
     onSuccess: ({ card, to }) => {
       setError(null);
-      if (to === "WON") setDealFor({ id: card.id, name: card.name });
+      if (to === "WON") setDealFor({ id: card.id, name: card.name, countryCode: card.country_code });
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey });
@@ -217,7 +218,7 @@ export function PipelinePage() {
       </div>
 
       {dealFor && (
-        <CustomerDealDialog open onOpenChange={(open) => !open && setDealFor(null)} businessId={dealFor.id} businessName={dealFor.name} />
+        <CustomerDealDialog open onOpenChange={(open) => !open && setDealFor(null)} businessId={dealFor.id} businessName={dealFor.name} countryCode={dealFor.countryCode} />
       )}
     </div>
   );

@@ -692,6 +692,7 @@ export const tr = {
     weak: "Düşük öncelikli bir aday.",
   },
   leadDetail: {
+    localTime: "yerel saat",
     tabs: {
       overview: "Genel",
       website: "Web Sitesi",
