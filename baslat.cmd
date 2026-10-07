@@ -3,6 +3,18 @@ chcp 65001 >nul
 title Local Business Finder
 cd /d "%~dp0"
 
+rem pnpm/node bazen komut penceresinin yolunda olmaz; bilinen klasorleri ekle.
+set "PATH=%PATH%;%ProgramFiles%\nodejs;C:\nvm4w\nodejs;%APPDATA%\npm;%LOCALAPPDATA%\pnpm"
+where node >nul 2>&1
+if errorlevel 1 (
+  echo  HATA: Node.js bulunamadi. Once kurun: https://nodejs.org
+  pause
+  exit /b 1
+)
+set "PNPM=pnpm"
+where pnpm >nul 2>&1
+if errorlevel 1 set "PNPM=corepack pnpm"
+
 echo.
 echo  Local Business Finder - web modu
 echo  ================================
@@ -41,10 +53,10 @@ exit /b 1
 echo      Docker hazir.
 echo.
 echo [2/3] Veritabani (Supabase) kontrol ediliyor...
-call pnpm exec supabase status >nul 2>&1
+call %PNPM% exec supabase status >nul 2>&1
 if errorlevel 1 (
   echo      Supabase baslatiliyor...
-  call pnpm exec supabase start
+  call %PNPM% exec supabase start
   if errorlevel 1 (
     echo      HATA: Supabase baslatilamadi.
     pause
@@ -62,7 +74,7 @@ goto run
 
 :build
 echo      Arayuz derleniyor (ilk seferde 30-60 sn)...
-call pnpm --filter @lbf/desktop build
+call %PNPM% --filter @lbf/desktop build
 if errorlevel 1 (
   echo      HATA: Arayuz derlenemedi.
   pause
@@ -75,5 +87,5 @@ echo.
 echo  Tarayici acilacak: http://127.0.0.1:5174
 echo  Kapatmak icin bu pencereyi kapatin veya Ctrl+C basin.
 echo.
-call pnpm --filter @lbf/local-server start
+call %PNPM% --filter @lbf/local-server start
 pause
