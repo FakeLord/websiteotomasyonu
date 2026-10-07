@@ -40,24 +40,3 @@ export function useMyProfile() {
   const displayName = rawName.includes("@") ? (rawName.split("@")[0] ?? "") : rawName;
   return { displayName, email: email ?? "", userId };
 }
-
-export const TURKISH_CITIES = [
-  "İstanbul",
-  "Ankara",
-  "İzmir",
-  "Bursa",
-  "Antalya",
-  "Kocaeli",
-  "Konya",
-  "Adana",
-  "Gaziantep",
-  "Mersin",
-  "Kayseri",
-  "Eskişehir",
-  "Tekirdağ",
-  "Muğla",
-  "Sakarya",
-  "Samsun",
-  "Trabzon",
-  "Diyarbakır",
-] as const;

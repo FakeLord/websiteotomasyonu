@@ -6,14 +6,20 @@ import {
   normalizeDomain,
   normalizePhone,
   normalizeSocial,
+  SUPPORTED_COUNTRY_CODES,
+  countryFlag,
+  getCountryProfile,
   type DedupeCandidate,
 } from "@lbf/core";
+import { geoDefaultsForCountry, resolveRowCountry } from "../../lib/business-geo";
+import { useUiStore } from "../../lib/ui-store";
 import { supabase } from "../../lib/supabase-client";
 import { recomputeScore } from "../../workers/score-runner";
 import { tr } from "../../i18n/tr";
 import { Button } from "../../components/ui/button";
 import { Dialog, DialogContent } from "../../components/ui/primitives";
 import { Badge } from "../../components/ui/badge";
+import { Select } from "../../components/ui/input";
 import { Table, Td, Th } from "../../components/ui/data-display";
 
 interface ImportCsvDialogProps {
@@ -23,6 +29,7 @@ interface ImportCsvDialogProps {
 
 interface CsvRow {
   name?: string;
+  country?: string;
   category?: string;
   city?: string;
   district?: string;
@@ -41,6 +48,8 @@ interface PreviewRow {
 
 export function ImportCsvDialog({ workspaceId, onClose }: ImportCsvDialogProps) {
   const queryClient = useQueryClient();
+  const marketCountry = useUiStore((state) => state.market.country);
+  const [defaultCountry, setDefaultCountry] = useState(marketCountry || "US");
   const [rows, setRows] = useState<PreviewRow[]>([]);
   const [importing, setImporting] = useState(false);
   const [done, setDone] = useState(false);
@@ -51,7 +60,7 @@ export function ImportCsvDialog({ workspaceId, onClose }: ImportCsvDialogProps) 
 
     const { data: existingRaw } = await supabase
       .from("businesses")
-      .select("id, google_place_id, website_domain, primary_phone_e164, normalized_name, district")
+      .select("id, google_place_id, website_domain, primary_phone_e164, normalized_name, district, country_code")
       .eq("workspace_id", workspaceId)
       .is("merged_into", null);
 
@@ -62,6 +71,7 @@ export function ImportCsvDialog({ workspaceId, onClose }: ImportCsvDialogProps) 
       phoneE164: b.primary_phone_e164 as string | null,
       normalizedName: b.normalized_name as string,
       district: b.district as string | null,
+      countryCode: b.country_code as string | null,
     }));
 
     const seenInFile: DedupeCandidate[] = [];
@@ -71,7 +81,8 @@ export function ImportCsvDialog({ workspaceId, onClose }: ImportCsvDialogProps) 
       const name = raw.name?.trim();
       if (!name) continue;
 
-      const phone = raw.phone ? normalizePhone(raw.phone)?.e164 ?? undefined : undefined;
+      const countryCode = resolveRowCountry(raw.country, defaultCountry);
+      const phone = raw.phone ? normalizePhone(raw.phone, countryCode)?.e164 ?? undefined : undefined;
       const instagram = raw.instagram ? (normalizeSocial(raw.instagram, "INSTAGRAM") ?? undefined) : undefined;
       const facebook = raw.facebook ? (normalizeSocial(raw.facebook, "FACEBOOK") ?? undefined) : undefined;
       const websiteDomain = raw.website ? normalizeDomain(raw.website) || undefined : undefined;
@@ -79,7 +90,7 @@ export function ImportCsvDialog({ workspaceId, onClose }: ImportCsvDialogProps) 
       const district = raw.district?.trim();
 
       const match = classifyMatch(
-        { websiteDomain, phoneE164: phone, instagram, facebook, normalizedName, district },
+        { websiteDomain, phoneE164: phone, instagram, facebook, normalizedName, district, countryCode },
         [...existing, ...seenInFile],
       );
 
@@ -88,6 +99,7 @@ export function ImportCsvDialog({ workspaceId, onClose }: ImportCsvDialogProps) 
         category: raw.category?.trim() || undefined,
         city: raw.city?.trim() || undefined,
         district: district || undefined,
+        ...geoDefaultsForCountry(countryCode),
         phoneE164: phone,
         email: raw.email?.trim() || undefined,
         websiteUrl: raw.website?.trim() || undefined,
@@ -112,6 +124,7 @@ export function ImportCsvDialog({ workspaceId, onClose }: ImportCsvDialogProps) 
           facebook,
           normalizedName,
           district,
+          countryCode,
         });
       }
     }
@@ -139,12 +152,25 @@ export function ImportCsvDialog({ workspaceId, onClose }: ImportCsvDialogProps) 
     setImporting(false);
     setDone(true);
     void queryClient.invalidateQueries({ queryKey: ["businesses", workspaceId] });
+    void queryClient.invalidateQueries({ queryKey: ["market-options", workspaceId] });
   };
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent title={tr.leads.importTitle} description={tr.leads.importDescription} size="lg">
         <div className="space-y-4">
+          {!done && (
+            <div>
+              <p className="mb-1 text-xs text-muted">{tr.leads.csvDefaultCountry}</p>
+              <Select value={defaultCountry} onChange={(e) => setDefaultCountry(e.target.value)}>
+                {SUPPORTED_COUNTRY_CODES.map((code) => (
+                  <option key={code} value={code}>
+                    {countryFlag(code)} {getCountryProfile(code).nameTr}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          )}
           {!done && (
             <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border border-dashed border-border-strong bg-surface-2 px-4 py-6 text-center text-sm text-muted hover:border-primary">
               <span className="font-medium text-text">{tr.leads.importChooseFile}</span>

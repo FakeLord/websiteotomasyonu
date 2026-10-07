@@ -7,7 +7,10 @@ import { supabase } from "../lib/supabase-client";
 import { useUiStore } from "../lib/ui-store";
 import { useWorkspaceMembership } from "../lib/use-workspace-membership";
 import { turkishLikePattern } from "../lib/filters";
-import { TURKISH_CITIES, useMyProfile, useShellCounters } from "../lib/use-shell-data";
+import { useMyProfile, useShellCounters } from "../lib/use-shell-data";
+import { useMarketOptions } from "../lib/use-market";
+import { marketCities, marketCountries } from "../lib/market";
+import { countryFlag, getCountryProfile } from "@lbf/core";
 import { Avatar } from "../components/ui/data-display";
 import { WebsiteStatusBadge } from "../components/domain/badges";
 import {
@@ -140,27 +143,47 @@ function GlobalSearch() {
   );
 }
 
-function CitySelector() {
-  const city = useUiStore((state) => state.city);
-  const setCity = useUiStore((state) => state.setCity);
+function MarketSelector() {
+  const market = useUiStore((state) => state.market);
+  const setMarket = useUiStore((state) => state.setMarket);
+  const options = useMarketOptions().data ?? [];
+  const countries = marketCountries(options);
+  // Seçili ülkenin henüz kaydı yoksa (ör. yeni pazar) seçim kaybolmasın.
+  const hasSelected = countries.some((c) => c.code === market.country);
+  const cities = marketCities(options, market.country);
+  const selectClass = "cursor-pointer appearance-none bg-transparent pr-5 focus-visible:outline-none";
+
   return (
-    <label className="relative flex h-10 items-center gap-2 rounded-lg border border-border bg-surface-2 pr-2 pl-3 text-sm text-text">
-      <MapPin className="size-4 text-primary" />
-      <span className="sr-only">{tr.shell.cityLabel}</span>
-      <select
-        value={city}
-        onChange={(e) => setCity(e.target.value)}
-        className="cursor-pointer appearance-none bg-transparent pr-5 focus-visible:outline-none"
-      >
-        <option value="">{tr.shell.allCities}</option>
-        {TURKISH_CITIES.map((c) => (
-          <option key={c} value={c}>
-            {c}
-          </option>
-        ))}
-      </select>
-      <ChevronDown className="pointer-events-none absolute right-2 size-4 text-subtle" />
-    </label>
+    <div className="flex items-center gap-2">
+      <label className="relative flex h-10 items-center gap-2 rounded-lg border border-border bg-surface-2 pr-2 pl-3 text-sm text-text">
+        <MapPin className="size-4 text-primary" />
+        <span className="sr-only">{tr.shell.marketLabel}</span>
+        <select value={market.country} onChange={(e) => setMarket({ country: e.target.value, city: "" })} className={selectClass}>
+          <option value="">{tr.shell.allMarkets}</option>
+          {!hasSelected && market.country && <option value={market.country}>{countryFlag(market.country)} {getCountryProfile(market.country).nameTr}</option>}
+          {countries.map((c) => (
+            <option key={c.code} value={c.code}>
+              {countryFlag(c.code)} {getCountryProfile(c.code).nameTr} ({c.count})
+            </option>
+          ))}
+        </select>
+        <ChevronDown className="pointer-events-none absolute right-2 size-4 text-subtle" />
+      </label>
+      {market.country && cities.length > 0 && (
+        <label className="relative flex h-10 items-center rounded-lg border border-border bg-surface-2 pr-2 pl-3 text-sm text-text">
+          <span className="sr-only">{tr.shell.cityLabel}</span>
+          <select value={market.city} onChange={(e) => setMarket({ country: market.country, city: e.target.value })} className={selectClass}>
+            <option value="">{tr.shell.allCities}</option>
+            {cities.map((c) => (
+              <option key={c.city} value={c.city}>
+                {c.city} ({c.count})
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-2 size-4 text-subtle" />
+        </label>
+      )}
+    </div>
   );
 }
 
@@ -237,7 +260,7 @@ export function Topbar() {
   return (
     <header className="flex h-16 shrink-0 items-center gap-3 border-b border-border bg-bg/80 px-6 backdrop-blur">
       <GlobalSearch />
-      <CitySelector />
+      <MarketSelector />
       <div className="ml-auto flex items-center gap-1">
         <NotificationsMenu />
         <div className="mx-2 h-6 w-px bg-border" />

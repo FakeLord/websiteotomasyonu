@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Handshake, Plus, XCircle } from "lucide-react";
 import { isValidTransition, type BusinessStage } from "@lbf/core";
+import { useMarket } from "../../lib/use-market";
 import { supabase } from "../../lib/supabase-client";
 import { useWorkspaceMembership } from "../../lib/use-workspace-membership";
 import { useWorkspaceMembers } from "../../lib/use-workspace-members";
@@ -41,7 +42,8 @@ export function PipelinePage() {
   const [overColumn, setOverColumn] = useState<BusinessStage | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dealFor, setDealFor] = useState<{ id: string; name: string } | null>(null);
-  const queryKey = ["pipeline", workspaceId];
+  const { market } = useMarket();
+  const queryKey = ["pipeline", workspaceId, market.country, market.city];
   useRealtimeTable("businesses", workspaceId, queryKey);
 
   const query = useQuery({
@@ -53,6 +55,7 @@ export function PipelinePage() {
         .select("id, name, category, district, stage, lead_score, assigned_to, version, updated_at, human_handoffs(summary, status)")
         .eq("workspace_id", workspaceId as string)
         .is("merged_into", null)
+        .match({ ...(market.country ? { country_code: market.country } : {}), ...(market.country && market.city ? { city: market.city } : {}) })
         .in("stage", COLUMNS)
         .order("updated_at", { ascending: false })
         .limit(500);

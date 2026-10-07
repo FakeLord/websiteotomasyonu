@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useMarket } from "../../lib/use-market";
 import { supabase } from "../../lib/supabase-client";
 import { useWorkspaceMembership } from "../../lib/use-workspace-membership";
 
@@ -48,20 +49,24 @@ export function isAwaitingReply(c: Pick<ConversationListRow, "status" | "last_in
 
 export function useConversations() {
   const workspaceId = useWorkspaceMembership().data?.workspaceId;
+  const { market } = useMarket();
   return useQuery({
-    queryKey: ["conversations", workspaceId],
+    queryKey: ["conversations", workspaceId, market.country, market.city],
     enabled: !!workspaceId,
     refetchInterval: 30_000,
     queryFn: async (): Promise<ConversationListRow[]> => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("conversations")
         .select(
-          "id, business_id, channel, status, handled_by, summary, requirements, interest_level, last_inbound_at, last_outbound_at, updated_at, businesses(name, category, district, city, stage, lead_score, assigned_to, do_not_contact, version), messages(body, direction, status, created_at)",
+          "id, business_id, channel, status, handled_by, summary, requirements, interest_level, last_inbound_at, last_outbound_at, updated_at, businesses!inner(name, category, district, city, stage, lead_score, assigned_to, do_not_contact, version), messages(body, direction, status, created_at)",
         )
         .eq("workspace_id", workspaceId as string)
         .order("updated_at", { ascending: false })
         .order("created_at", { referencedTable: "messages", ascending: false })
         .limit(1, { referencedTable: "messages" });
+      if (market.country) query = query.eq("businesses.country_code", market.country);
+      if (market.country && market.city) query = query.eq("businesses.city", market.city);
+      const { data, error } = await query;
       if (error) throw error;
       return (data ?? []) as unknown as ConversationListRow[];
     },

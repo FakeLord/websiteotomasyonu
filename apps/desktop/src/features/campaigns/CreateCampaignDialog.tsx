@@ -4,8 +4,10 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../../lib/supabase-client";
 import { useWorkspaceMembership } from "../../lib/use-workspace-membership";
 import { useUiStore } from "../../lib/ui-store";
-import { TURKISH_CITIES } from "../../lib/use-shell-data";
-import { DISCOVER_CATEGORIES } from "../../lib/geo";
+import { DISCOVER_CATEGORIES } from "../../lib/discover-markets";
+import { useMarketOptions } from "../../lib/use-market";
+import { marketCities, marketCountries } from "../../lib/market";
+import { countryFlag, getCountryProfile } from "@lbf/core";
 import { tr } from "../../i18n/tr";
 import { Button } from "../../components/ui/button";
 import { Input, Label, Select, Textarea } from "../../components/ui/input";
@@ -21,11 +23,13 @@ export function CreateCampaignDialog({ open, onOpenChange }: { open: boolean; on
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const workspaceId = useWorkspaceMembership().data?.workspaceId;
-  const globalCity = useUiStore((state) => state.city);
+  const globalMarket = useUiStore((state) => state.market);
+  const marketOptions = useMarketOptions().data ?? [];
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [channel, setChannel] = useState<(typeof CHANNELS)[number]>("EMAIL");
-  const [city, setCity] = useState(globalCity);
+  const [country, setCountry] = useState(globalMarket.country);
+  const [city, setCity] = useState(globalMarket.city);
   const [district, setDistrict] = useState("");
   const [category, setCategory] = useState("");
   const [minScore, setMinScore] = useState(40);
@@ -40,7 +44,8 @@ export function CreateCampaignDialog({ open, onOpenChange }: { open: boolean; on
   const create = useMutation({
     mutationFn: async () => {
       const segment: CampaignSegment = {
-        ...(city ? { city } : {}),
+        ...(country ? { country } : {}),
+        ...(country && city ? { city } : {}),
         ...(district.trim() ? { district: district.trim() } : {}),
         ...(category ? { category } : {}),
         ...(minScore > 0 ? { minScore } : {}),
@@ -75,7 +80,8 @@ export function CreateCampaignDialog({ open, onOpenChange }: { open: boolean; on
         .eq("workspace_id", workspaceId as string)
         .is("merged_into", null)
         .eq("do_not_contact", false);
-      if (city) q = q.ilike("city", city.replace(/[İIıi]/g, "_"));
+      if (country) q = q.eq("country_code", country);
+      if (country && city) q = q.eq("city", city);
       if (district.trim()) q = q.ilike("district", district.trim().replace(/[İIıi]/g, "_"));
       if (category) q = q.ilike("category", `%${category.replace(/[İIıi]/g, "_")}%`);
       if (minScore > 0) q = q.gte("lead_score", minScore);
@@ -133,12 +139,29 @@ export function CreateCampaignDialog({ open, onOpenChange }: { open: boolean; on
             <p className="text-sm font-medium text-text">{tr.campaigns.segment}</p>
             <div className="grid grid-cols-2 gap-3">
               <div>
+                <Label>{tr.discover.countryLabel}</Label>
+                <Select
+                  value={country}
+                  onChange={(e) => {
+                    setCountry(e.target.value);
+                    setCity("");
+                  }}
+                >
+                  <option value="">{tr.shell.allMarkets}</option>
+                  {marketCountries(marketOptions).map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {countryFlag(c.code)} {getCountryProfile(c.code).nameTr}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div>
                 <Label>{tr.discover.cityLabel}</Label>
-                <Select value={city} onChange={(e) => setCity(e.target.value)}>
+                <Select value={city} onChange={(e) => setCity(e.target.value)} disabled={!country}>
                   <option value="">{tr.shell.allCities}</option>
-                  {TURKISH_CITIES.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
+                  {marketCities(marketOptions, country).map((c) => (
+                    <option key={c.city} value={c.city}>
+                      {c.city}
                     </option>
                   ))}
                 </Select>
@@ -149,14 +172,12 @@ export function CreateCampaignDialog({ open, onOpenChange }: { open: boolean; on
               </div>
               <div>
                 <Label>{tr.discover.categoryLabel}</Label>
-                <Select value={category} onChange={(e) => setCategory(e.target.value)}>
-                  <option value="">{tr.common.all}</option>
-                  {DISCOVER_CATEGORIES.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
+                <Input list="campaign-categories" value={category} onChange={(e) => setCategory(e.target.value)} placeholder={tr.common.all} />
+                <datalist id="campaign-categories">
+                  {DISCOVER_CATEGORIES.flatMap((c) => [c.tr, c.en]).map((term) => (
+                    <option key={term} value={term} />
                   ))}
-                </Select>
+                </datalist>
               </div>
               <div>
                 <Label>{tr.leads.filterLabels.minScore}</Label>

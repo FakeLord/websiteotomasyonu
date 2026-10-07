@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Banknote, Download, Pencil, Repeat, UserCheck, Users } from "lucide-react";
+import { useMarket } from "../../lib/use-market";
 import { supabase } from "../../lib/supabase-client";
 import { useWorkspaceMembership } from "../../lib/use-workspace-membership";
 import { useRealtimeTable } from "../../lib/use-realtime-table";
@@ -37,12 +38,13 @@ export function CustomersPage() {
   const navigate = useNavigate();
   const workspaceId = useWorkspaceMembership().data?.workspaceId;
   const [search, setSearch] = useState("");
+  const { market } = useMarket();
   const [status, setStatus] = useState("");
   const [editing, setEditing] = useState<{ id: string; name: string } | null>(null);
   useRealtimeTable("customer_deals", workspaceId, ["customers", workspaceId]);
 
   const query = useQuery({
-    queryKey: ["customers", workspaceId],
+    queryKey: ["customers", workspaceId, market.country, market.city],
     enabled: !!workspaceId,
     queryFn: async (): Promise<CustomerRow[]> => {
       const { data, error } = await supabase
@@ -51,6 +53,7 @@ export function CustomersPage() {
         .eq("workspace_id", workspaceId as string)
         .eq("stage", "WON")
         .is("merged_into", null)
+        .match({ ...(market.country ? { country_code: market.country } : {}), ...(market.country && market.city ? { city: market.city } : {}) })
         .order("updated_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as CustomerRow[];

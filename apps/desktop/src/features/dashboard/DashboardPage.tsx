@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Building2, FileText, Heart, MessageSquareReply, Sparkles, UserPlus, UserCheck } from "lucide-react";
+import { useMarket } from "../../lib/use-market";
 import { supabase } from "../../lib/supabase-client";
 import { useWorkspaceMembership } from "../../lib/use-workspace-membership";
 import { useMyProfile } from "../../lib/use-shell-data";
@@ -29,11 +30,12 @@ interface AnalyticsSummary {
 
 function useAnalyticsSummary() {
   const workspaceId = useWorkspaceMembership().data?.workspaceId;
+  const { market, rpcParams } = useMarket();
   return useQuery({
-    queryKey: ["analytics-summary", workspaceId],
+    queryKey: ["analytics-summary", workspaceId, market.country, market.city],
     enabled: !!workspaceId,
     queryFn: async (): Promise<AnalyticsSummary> => {
-      const { data, error } = await supabase.rpc("analytics_summary", { ws: workspaceId as string });
+      const { data, error } = await supabase.rpc("analytics_summary", { ws: workspaceId as string, ...rpcParams });
       if (error) throw error;
       return data as AnalyticsSummary;
     },

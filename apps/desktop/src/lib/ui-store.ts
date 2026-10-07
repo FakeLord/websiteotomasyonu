@@ -1,9 +1,11 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import { ALL_MARKETS, migratePersistedUiState, normalizeMarket, type Market } from "./market";
 
 interface UiState {
-  city: string;
-  setCity: (city: string) => void;
+  /** Üst çubuktaki pazar filtresi (ülke → şehir); boş = tüm pazarlar. */
+  market: Market;
+  setMarket: (market: Market) => void;
   jarvisOpen: boolean;
   setJarvisOpen: (open: boolean) => void;
   jarvisPrompt: string | null;
@@ -12,7 +14,7 @@ interface UiState {
 }
 
 // localStorage erişimi gizli pencere/engelli site verisi durumunda atabilir;
-// bu yalnızca kişisel bir kolaylık (seçili şehir), kaybolursa varsayılana döner.
+// bu yalnızca kişisel bir kolaylık (seçili pazar), kaybolursa varsayılana döner.
 const safeStorage = createJSONStorage(() => ({
   getItem: (name: string) => {
     try {
@@ -40,8 +42,8 @@ const safeStorage = createJSONStorage(() => ({
 export const useUiStore = create<UiState>()(
   persist(
     (set, get) => ({
-      city: "İstanbul",
-      setCity: (city) => set({ city }),
+      market: ALL_MARKETS,
+      setMarket: (market) => set({ market: normalizeMarket(market) }),
       jarvisOpen: false,
       setJarvisOpen: (open) => set({ jarvisOpen: open }),
       jarvisPrompt: null,
@@ -52,6 +54,13 @@ export const useUiStore = create<UiState>()(
         return prompt;
       },
     }),
-    { name: "lbf.ui", storage: safeStorage, partialize: (state) => ({ city: state.city }) },
+    {
+      name: "lbf.ui",
+      storage: safeStorage,
+      version: 2,
+      // v1: Türkiye'ye sabit tek şehir ({ city }); v2: ülke → şehir pazarı.
+      migrate: (persisted) => migratePersistedUiState(persisted),
+      partialize: (state) => ({ market: state.market }),
+    },
   ),
 );

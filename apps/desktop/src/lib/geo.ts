@@ -26,31 +26,3 @@ export const CITY_CENTERS: Record<string, LatLng> = {
 };
 
 export const TURKEY_CENTER: LatLng = { lat: 39.0, lng: 35.2433 };
-
-export const DISCOVER_CATEGORIES = [
-  "Diş Kliniği",
-  "Güzellik Merkezi",
-  "Veteriner",
-  "Kuaför",
-  "Berber",
-  "Fizyoterapi",
-  "Psikolog",
-  "Diyetisyen",
-  "Spor Salonu",
-  "Pilates",
-  "Restoran",
-  "Kafe",
-  "Oto Servis",
-  "Emlak Ofisi",
-  "Hukuk Bürosu",
-  "Eğitim Kurumu",
-  "Düğün Fotoğrafçısı",
-] as const;
-
-/** Places metin sorgusu: "kategori anahtar-kelime ilçe şehir". */
-export function buildTextQuery(fields: { keyword: string; category: string; city: string; district: string }): string {
-  return [fields.category, fields.keyword, fields.district, fields.city]
-    .map((v) => v.trim())
-    .filter(Boolean)
-    .join(" ");
-}

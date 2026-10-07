@@ -16,6 +16,7 @@ import {
   Users,
   X,
 } from "lucide-react";
+import { useMarket } from "../../lib/use-market";
 import { supabase } from "../../lib/supabase-client";
 import { useWorkspaceMembership } from "../../lib/use-workspace-membership";
 import { useRealtimeTable } from "../../lib/use-realtime-table";
@@ -78,6 +79,7 @@ export function LeadsPage() {
   const myUserId = useAuthStore((state) => state.session?.user.id);
   const { members, byId: membersById } = useWorkspaceMembers();
   const stageCounts = useDashboardMetrics(7).data?.stageCounts ?? {};
+  const { market } = useMarket();
   const [params, setParams] = useSearchParams();
   const [showFilters, setShowFilters] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
@@ -114,6 +116,9 @@ export function LeadsPage() {
       .eq("workspace_id", workspaceId as string)
       .is("merged_into", null);
 
+    if (market.country) q = q.eq("country_code", market.country);
+    if (market.country && market.city) q = q.eq("city", market.city);
+
     const group = STAGE_GROUPS.find((g) => g.key === tab);
     if (filters.stage) q = q.eq("stage", filters.stage);
     else if (group) q = q.in("stage", group.stages);
@@ -135,7 +140,7 @@ export function LeadsPage() {
   };
 
   const listQuery = useQuery({
-    queryKey: ["businesses", workspaceId, tab, filters, page, pageSize],
+    queryKey: ["businesses", workspaceId, tab, filters, page, pageSize, market.country, market.city],
     enabled: !!workspaceId,
     queryFn: async (): Promise<{ rows: BusinessListRow[]; count: number }> => {
       const { data, error, count } = await buildQuery(

@@ -1,13 +1,17 @@
 import type { ReactNode } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { importBusinessInputSchema, type ImportBusinessInput } from "@lbf/contracts";
+import { SUPPORTED_COUNTRY_CODES, countryFlag, getCountryProfile, normalizePhone } from "@lbf/core";
+import { geoDefaultsForCountry } from "../../lib/business-geo";
+import { useUiStore } from "../../lib/ui-store";
 import { supabase } from "../../lib/supabase-client";
 import { recomputeScore } from "../../workers/score-runner";
 import { tr } from "../../i18n/tr";
 import { Button } from "../../components/ui/button";
-import { Input, Label } from "../../components/ui/input";
+import { Input, Label, Select } from "../../components/ui/input";
 import { Dialog, DialogContent } from "../../components/ui/primitives";
 
 interface ManualAddDialogProps {
@@ -17,17 +21,32 @@ interface ManualAddDialogProps {
 
 export function ManualAddDialog({ workspaceId, onClose }: ManualAddDialogProps) {
   const queryClient = useQueryClient();
+  const marketCountry = useUiStore((state) => state.market.country);
+  const [phoneError, setPhoneError] = useState(false);
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<ImportBusinessInput>({
     resolver: zodResolver(importBusinessInputSchema),
-    defaultValues: { source: "MANUAL" },
+    defaultValues: { source: "MANUAL", countryCode: marketCountry || "US" },
   });
+  const country = watch("countryCode") ?? "US";
 
   const mutation = useMutation({
-    mutationFn: async (values: ImportBusinessInput) => {
+    mutationFn: async (input: ImportBusinessInput) => {
+      const countryCode = input.countryCode ?? "US";
+      // Telefon ülkeye göre E.164'e çevrilir; geçersizse kayıt yapılmaz.
+      const rawPhone = input.phoneE164?.trim();
+      const phone = rawPhone ? normalizePhone(rawPhone, countryCode)?.e164 : undefined;
+      if (rawPhone && !phone) {
+        setPhoneError(true);
+        return "INVALID_PHONE" as const;
+      }
+      setPhoneError(false);
+      const { phoneE164: _raw, ...rest } = input;
+      const values = { ...rest, ...geoDefaultsForCountry(countryCode), ...(phone ? { phoneE164: phone } : {}) };
       const { data, error } = await supabase.rpc("import_business", {
         ws: workspaceId,
         p_payload: values,
@@ -39,8 +58,10 @@ export function ManualAddDialog({ workspaceId, onClose }: ManualAddDialogProps) 
         await recomputeScore(workspaceId, result.businessId);
       }
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      if (result === "INVALID_PHONE") return;
       void queryClient.invalidateQueries({ queryKey: ["businesses", workspaceId] });
+      void queryClient.invalidateQueries({ queryKey: ["market-options", workspaceId] });
       onClose();
     },
   });
@@ -58,14 +79,23 @@ export function ManualAddDialog({ workspaceId, onClose }: ManualAddDialogProps) 
           <Field label={tr.leads.categoryLabel}>
             <Input {...register("category")} />
           </Field>
+          <Field label={tr.discover.countryLabel}>
+            <Select {...register("countryCode")}>
+              {SUPPORTED_COUNTRY_CODES.map((code) => (
+                <option key={code} value={code}>
+                  {countryFlag(code)} {getCountryProfile(code).nameTr}
+                </option>
+              ))}
+            </Select>
+          </Field>
           <Field label={tr.leads.cityLabel}>
             <Input {...register("city")} />
           </Field>
           <Field label={tr.leads.districtLabel}>
             <Input {...register("district")} />
           </Field>
-          <Field label={tr.leads.phoneLabel}>
-            <Input {...register("phoneE164")} placeholder="+90 5xx xxx xx xx" />
+          <Field label={tr.leads.phoneLabel} error={phoneError ? tr.leads.phoneInvalid : undefined}>
+            <Input {...register("phoneE164")} placeholder={`+${getCountryProfile(country).phoneCode ?? ""} …`} />
           </Field>
           <Field label={tr.leads.emailLabel} error={errors.email?.message}>
             <Input type="email" {...register("email")} />

@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useMarket } from "../../lib/use-market";
 import { supabase } from "../../lib/supabase-client";
 import { useWorkspaceMembership } from "../../lib/use-workspace-membership";
 import { useRealtimeTable } from "../../lib/use-realtime-table";
@@ -6,6 +7,8 @@ import { useRealtimeTable } from "../../lib/use-realtime-table";
 export type CampaignStatus = "DRAFT" | "ACTIVE" | "PAUSED" | "COMPLETED";
 
 export interface CampaignSegment {
+  /** ISO-3166 alpha-2 (büyük harf). */
+  country?: string;
   city?: string;
   district?: string;
   category?: string;
@@ -44,15 +47,19 @@ export function useCampaigns() {
   useRealtimeTable("campaigns", workspaceId, ["campaigns", workspaceId]);
   useRealtimeTable("campaign_members", workspaceId, ["campaign-stats", workspaceId]);
 
+  const { market } = useMarket();
   const campaigns = useQuery({
-    queryKey: ["campaigns", workspaceId],
+    queryKey: ["campaigns", workspaceId, market.country],
     enabled: !!workspaceId,
     queryFn: async (): Promise<CampaignRow[]> => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("campaigns")
         .select("id, name, description, channel, segment, followup_steps, daily_limit, status, created_at, updated_at")
         .eq("workspace_id", workspaceId as string)
         .order("created_at", { ascending: false });
+      // Pazar seçiliyse yalnızca o ülkeyi hedefleyen kampanyalar listelenir.
+      if (market.country) query = query.eq("segment->>country", market.country);
+      const { data, error } = await query;
       if (error) throw error;
       return (data ?? []) as CampaignRow[];
     },

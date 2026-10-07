@@ -7,8 +7,15 @@ import { supabase } from "../../lib/supabase-client";
 import { useWorkspaceMembership } from "../../lib/use-workspace-membership";
 import { useRealtimeTable } from "../../lib/use-realtime-table";
 import { useUiStore } from "../../lib/ui-store";
-import { TURKISH_CITIES } from "../../lib/use-shell-data";
-import { CITY_CENTERS, DISCOVER_CATEGORIES, TURKEY_CENTER, buildTextQuery, type LatLng } from "../../lib/geo";
+import { TURKEY_CENTER, type LatLng } from "../../lib/geo";
+import {
+  DISCOVER_CATEGORIES,
+  categoryQueryTerm,
+  discoverCityCenter,
+  discoverMarket,
+  discoverTextQuery,
+} from "../../lib/discover-markets";
+import { SUPPORTED_COUNTRY_CODES, countryFlag, getCountryProfile } from "@lbf/core";
 import { processSearchQueue, type SearchJobParams } from "../../workers/search-queue-runner";
 import { formatRelative } from "../../lib/format";
 import { tr } from "../../i18n/tr";
@@ -51,12 +58,13 @@ export function DiscoverPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const workspaceId = useWorkspaceMembership().data?.workspaceId;
-  const globalCity = useUiStore((state) => state.city);
+  const globalMarket = useUiStore((state) => state.market);
 
   const [source, setSource] = useState<Source>("GOOGLE_PLACES");
-  const [category, setCategory] = useState<string>(DISCOVER_CATEGORIES[0]);
+  const [category, setCategory] = useState<string>(DISCOVER_CATEGORIES[0]?.tr ?? "");
   const [keyword, setKeyword] = useState("");
-  const [city, setCity] = useState(globalCity || "İstanbul");
+  const [country, setCountry] = useState(globalMarket.country || "US");
+  const [city, setCity] = useState(globalMarket.city || discoverMarket(globalMarket.country || "US")?.cities[0]?.name || "");
   const [district, setDistrict] = useState("");
   const [radiusKm, setRadiusKm] = useState(0);
   const [onlyNoWebsite, setOnlyNoWebsite] = useState(false);
@@ -65,19 +73,24 @@ export function DiscoverPage() {
   const [minReviews, setMinReviews] = useState(0);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
-  const [mapCenter, setMapCenter] = useState<LatLng>(CITY_CENTERS[city] ?? TURKEY_CENTER);
+  const [mapCenter, setMapCenter] = useState<LatLng>(
+    discoverCityCenter(country, city) ?? discoverMarket(country)?.center ?? TURKEY_CENTER,
+  );
   const [flyTarget, setFlyTarget] = useState<{ point: LatLng; zoom: number } | null>(null);
   const [notice, setNotice] = useState<{ tone: "warn" | "error"; text: string } | null>(null);
   const [showImport, setShowImport] = useState(false);
 
+  // Üst çubuktaki pazar değişince Keşfet aramasının varsayılanı da onu izler.
   useEffect(() => {
-    if (globalCity) setCity(globalCity);
-  }, [globalCity]);
+    if (!globalMarket.country) return;
+    setCountry(globalMarket.country);
+    setCity(globalMarket.city || discoverMarket(globalMarket.country)?.cities[0]?.name || "");
+  }, [globalMarket.country, globalMarket.city]);
 
   useEffect(() => {
-    const center = CITY_CENTERS[city];
+    const center = discoverCityCenter(country, city);
     if (center) setFlyTarget({ point: center, zoom: 11 });
-  }, [city]);
+  }, [country, city]);
 
   useRealtimeTable("search_jobs", workspaceId, ["search-jobs", workspaceId]);
 
@@ -164,6 +177,7 @@ export function DiscoverPage() {
       void queryClient.invalidateQueries({ queryKey: ["businesses", workspaceId] });
       void queryClient.invalidateQueries({ queryKey: ["workspace-settings-quota", workspaceId] });
       void queryClient.invalidateQueries({ queryKey: ["dashboard-metrics"] });
+      void queryClient.invalidateQueries({ queryKey: ["market-options", workspaceId] });
     },
     onError: (err) => setNotice({ tone: "error", text: err instanceof Error ? err.message : tr.discover.enqueueError }),
   });
@@ -171,11 +185,14 @@ export function DiscoverPage() {
   const enqueue = useMutation({
     mutationFn: async () => {
       if (!workspaceId) throw new Error(tr.common.error);
+      const selectedCategory = DISCOVER_CATEGORIES.find((c) => c.tr === category);
+      const categoryTerm = selectedCategory ? categoryQueryTerm(selectedCategory, country) : "";
       const params: SearchJobParams = {
-        textQuery: buildTextQuery({ keyword, category, city, district }),
-        ...(city ? { city } : {}),
+        textQuery: discoverTextQuery({ keyword, category: categoryTerm, city, district }),
+        countryCode: country,
+        ...(city.trim() ? { city: city.trim() } : {}),
         ...(district.trim() ? { district: district.trim() } : {}),
-        ...(category ? { category } : {}),
+        ...(categoryTerm ? { category: categoryTerm } : {}),
         ...(radiusKm > 0 ? { location: { lat: mapCenter.lat, lng: mapCenter.lng, radiusMeters: radiusKm * 1000 } } : {}),
       };
       const { data, error } = await supabase.rpc("enqueue_search_job", { ws: workspaceId, p_params: params });
@@ -238,8 +255,8 @@ export function DiscoverPage() {
                 <Label>{tr.discover.categoryLabel}</Label>
                 <Select value={category} onChange={(e) => setCategory(e.target.value)}>
                   {DISCOVER_CATEGORIES.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
+                    <option key={c.tr} value={c.tr}>
+                      {c.tr}
                     </option>
                   ))}
                   <option value="">{tr.discover.otherCategory}</option>
@@ -249,16 +266,35 @@ export function DiscoverPage() {
                 <Label>{tr.discover.keywordLabel}</Label>
                 <Input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder={tr.discover.keywordPlaceholder} />
               </div>
+              <div>
+                <Label>{tr.discover.countryLabel}</Label>
+                <Select
+                  value={country}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setCountry(next);
+                    setCity(discoverMarket(next)?.cities[0]?.name ?? "");
+                    setFlyTarget(null);
+                    const center = discoverMarket(next)?.center;
+                    if (center) setMapCenter(center);
+                  }}
+                >
+                  {SUPPORTED_COUNTRY_CODES.map((code) => (
+                    <option key={code} value={code}>
+                      {countryFlag(code)} {getCountryProfile(code).nameTr}
+                    </option>
+                  ))}
+                </Select>
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <Label>{tr.discover.cityLabel}</Label>
-                  <Select value={city} onChange={(e) => setCity(e.target.value)}>
-                    {TURKISH_CITIES.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
+                  <Input list="discover-cities" value={city} onChange={(e) => setCity(e.target.value)} placeholder={tr.discover.cityPlaceholder} />
+                  <datalist id="discover-cities">
+                    {(discoverMarket(country)?.cities ?? []).map((c) => (
+                      <option key={c.name} value={c.name} />
                     ))}
-                  </Select>
+                  </datalist>
                 </div>
                 <div>
                   <Label>{tr.discover.districtLabel}</Label>
@@ -353,7 +389,7 @@ export function DiscoverPage() {
         <Card className="relative h-[620px] overflow-hidden">
           <DiscoverMap
             fitKey={resultsQuery.data ? activeJobId : null}
-            initialCenter={CITY_CENTERS[city] ?? TURKEY_CENTER}
+            initialCenter={discoverCityCenter(country, city) ?? discoverMarket(country)?.center ?? TURKEY_CENTER}
             flyTarget={flyTarget?.point ?? null}
             flyZoom={flyTarget?.zoom ?? 11}
             businesses={mappable}

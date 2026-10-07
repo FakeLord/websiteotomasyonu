@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Banknote, Building2, Send, Sparkles, UserCheck, MessageSquareReply } from "lucide-react";
+import { useMarket } from "../../lib/use-market";
 import { supabase } from "../../lib/supabase-client";
 import { useWorkspaceMembership } from "../../lib/use-workspace-membership";
 import { formatDayLabel, percentDelta, type PeriodCounts } from "../../lib/use-metrics";
@@ -44,12 +45,18 @@ export function ReportsPage() {
   const [custom, setCustom] = useState(() => rangeForPreset("30", new Date()));
   const range = preset === "custom" ? custom : rangeForPreset(preset, new Date());
   const { campaigns, stats } = useCampaigns();
+  const { market, rpcParams } = useMarket();
 
   const query = useQuery({
-    queryKey: ["report-metrics", workspaceId, range.from, range.to],
+    queryKey: ["report-metrics", workspaceId, range.from, range.to, market.country, market.city],
     enabled: !!workspaceId && !!range.from && !!range.to,
     queryFn: async (): Promise<ReportMetrics> => {
-      const { data, error } = await supabase.rpc("report_metrics", { ws: workspaceId as string, p_from: range.from, p_to: range.to });
+      const { data, error } = await supabase.rpc("report_metrics", {
+        ws: workspaceId as string,
+        p_from: range.from,
+        p_to: range.to,
+        ...rpcParams,
+      });
       if (error) throw error;
       return data as ReportMetrics;
     },

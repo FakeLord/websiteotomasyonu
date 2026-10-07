@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "./supabase-client";
 import { useWorkspaceMembership } from "./use-workspace-membership";
 import { STAGE_GROUPS, countForGroup } from "./stage-groups";
+import { useMarket } from "./use-market";
 import { OTHER_COLOR, SEGMENT_COLORS, type DonutSegment } from "../components/charts/charts";
 
 export interface PeriodCounts {
@@ -24,11 +25,12 @@ export interface DashboardMetrics {
 
 export function useDashboardMetrics(days: number) {
   const workspaceId = useWorkspaceMembership().data?.workspaceId;
+  const { market, rpcParams } = useMarket();
   return useQuery({
-    queryKey: ["dashboard-metrics", workspaceId, days],
+    queryKey: ["dashboard-metrics", workspaceId, days, market.country, market.city],
     enabled: !!workspaceId,
     queryFn: async (): Promise<DashboardMetrics> => {
-      const { data, error } = await supabase.rpc("dashboard_metrics", { ws: workspaceId as string, p_days: days });
+      const { data, error } = await supabase.rpc("dashboard_metrics", { ws: workspaceId as string, p_days: days, ...rpcParams });
       if (error) throw error;
       return data as DashboardMetrics;
     },
