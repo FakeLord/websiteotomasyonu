@@ -55,10 +55,23 @@ for (const table of ["businesses", "workspace_members", "activity_logs", "conver
 const rpc = await call("/rest/v1/rpc/accept_invite", { method: "POST", body: JSON.stringify({ p_token: "smoke-test-gecersiz" }) });
 report(rpc.status >= 400, "Anonim accept_invite reddedilir", `HTTP ${rpc.status}`);
 
-// 4) Edge Function'lar oturumsuz çağrıyı reddeder
-for (const fn of ["admin-invite", "admin-secrets", "ai-gateway", "jarvis-chat", "places-search"]) {
-  const none = await call(`/functions/v1/${fn}`, { method: "POST", body: "{}" });
-  const withKey = await call(`/functions/v1/${fn}`, { method: "POST", body: "{}", bearer: key });
+// 4) Edge Function'lar kullanıcı oturumu olmadan işlem yapmaz. Her fonksiyona KENDİ gövde şekline uygun, zararsız bir
+//    deneme gönderilir (gövde geçersizse fonksiyon yetkiden önce 400 döner ve ölçüm anlamsızlaşır). Sahte workspace kimliği.
+const ws = "00000000-0000-0000-0000-000000000000";
+const probes: Record<string, unknown> = {
+  "admin-invite": { workspaceId: ws, email: "smoke@example.test", role: "MEMBER" },
+  "admin-secrets": { workspaceId: ws, name: "google_places_api_key", action: "status" },
+  "ai-gateway": {
+    workspaceId: ws,
+    inputHash: "smoke",
+    request: { operation: "smoke", promptVersion: 1, system: "x", messages: [], jsonSchema: {}, maxTokens: 1, temperature: 0 },
+  },
+  "jarvis-chat": { workspaceId: ws, messages: [{ role: "user", content: "smoke" }] },
+  "places-search": { workspaceId: ws, textQuery: "smoke" },
+};
+for (const [fn, probe] of Object.entries(probes)) {
+  const none = await call(`/functions/v1/${fn}`, { method: "POST", body: JSON.stringify(probe) });
+  const withKey = await call(`/functions/v1/${fn}`, { method: "POST", body: JSON.stringify(probe), bearer: key });
   const rejected = (status: number) => status === 401 || status === 403;
   report(rejected(none.status) && rejected(withKey.status), `Edge Function oturumsuz reddeder: ${fn}`, `HTTP ${none.status}/${withKey.status}`);
 }
