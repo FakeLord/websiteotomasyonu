@@ -15,7 +15,7 @@ import {
   discoverMarket,
   discoverTextQuery,
 } from "../../lib/discover-markets";
-import { SUPPORTED_COUNTRY_CODES, countryFlag, getCountryProfile } from "@lbf/core";
+import { SUPPORTED_COUNTRY_CODES, getCountryProfile } from "@lbf/core";
 import { processSearchQueue, type SearchJobParams } from "../../workers/search-queue-runner";
 import { formatRelative } from "../../lib/format";
 import { tr } from "../../i18n/tr";
@@ -281,7 +281,7 @@ export function DiscoverPage() {
                 >
                   {SUPPORTED_COUNTRY_CODES.map((code) => (
                     <option key={code} value={code}>
-                      {countryFlag(code)} {getCountryProfile(code).nameTr}
+                      {code} · {getCountryProfile(code).nameTr}
                     </option>
                   ))}
                 </Select>

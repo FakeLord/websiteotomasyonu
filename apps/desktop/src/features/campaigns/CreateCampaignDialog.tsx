@@ -7,7 +7,7 @@ import { useUiStore } from "../../lib/ui-store";
 import { DISCOVER_CATEGORIES } from "../../lib/discover-markets";
 import { useMarketOptions } from "../../lib/use-market";
 import { marketCities, marketCountries } from "../../lib/market";
-import { countryFlag, getCountryProfile } from "@lbf/core";
+import { getCountryProfile } from "@lbf/core";
 import { tr } from "../../i18n/tr";
 import { Button } from "../../components/ui/button";
 import { Input, Label, Select, Textarea } from "../../components/ui/input";
@@ -150,7 +150,7 @@ export function CreateCampaignDialog({ open, onOpenChange }: { open: boolean; on
                   <option value="">{tr.shell.allMarkets}</option>
                   {marketCountries(marketOptions).map((c) => (
                     <option key={c.code} value={c.code}>
-                      {countryFlag(c.code)} {getCountryProfile(c.code).nameTr}
+                      {c.code} · {getCountryProfile(c.code).nameTr}
                     </option>
                   ))}
                 </Select>

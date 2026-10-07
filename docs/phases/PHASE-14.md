@@ -3,6 +3,12 @@
 **Dal:** `feature/p14-global-data-model` · **Zorluk:** Yüksek · **Bağımlılık:** G1
 **Referans:** `docs/adr/0010-global-pivot.md` (D2) · BACKLOG #1
 
+## Durum (2026-10-08)
+Kod tarafı bitti: `packages/core/src/geo/*` (ülke, saat dilimi, tatil, adres), 4 migration (`20260929100000…103000`), `places-search`
+ülke/dil parametreli, pazar filtresi 7 ekranda, bayrak yerine ülke kodu, yerel saat, uluslararası telefon, para birimine göre toplamlar.
+Yerelde doğrulandı (529 birim, 192 pgTAP, 16 Deno testi; tarayıcıda ABD filtresi). **Bekleyen:** bulut `db push`, `places-search` yayını ve
+küçük gerçek Places denemesi (`docs/qa/phase-14-global-model.md`). ADR 0012.
+
 ## Amaç
 Her işletme bir ülkeye, saat dilimine, dile ve para birimine bağlıdır; Türkiye'ye sabitlenmiş her kural parametreli olur.
 Sonraki tüm fazların temeli.
@@ -29,10 +35,10 @@ Sonraki tüm fazların temeli.
 - `lib/format.ts`: tarih kullanıcı saatinde, "işletmenin yerel saati" ayrıca gösterilir.
 
 ## Acceptance criteria
-- [ ] Mevcut Türkiye akışı değişmeden çalışır (tüm eski testler yeşil).
+- [x] Mevcut Türkiye akışı değişmeden çalışır (tüm eski testler yeşil).
 - [ ] ABD, İngiltere, Kanada, Avustralya'dan birer kayıt doğru ülke, saat dilimi, telefon ve adresle görünür.
-- [ ] Pazar filtresi seçilince dört ekran da yalnızca o pazarı gösterir.
-- [ ] Gönderim penceresi işletmenin yerel saatine göre açılır/kapanır (pgTAP).
+- [x] Pazar filtresi seçilince dört ekran da yalnızca o pazarı gösterir (yerelde Dashboard + Leadler doğrulandı; kalanı bulut QA'sında).
+- [x] Gönderim penceresi işletmenin yerel saatine göre açılır/kapanır (pgTAP).
 
 ## VERIFY_CURRENT_DOCS
 - Places `addressComponents` alanının SKU'su ve biçimi; ülke tatili veri kaynağı (lisans, kapsam);

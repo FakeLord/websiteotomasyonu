@@ -16,7 +16,7 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { countryFlag, getCountryProfile } from "@lbf/core";
+import { getCountryProfile } from "@lbf/core";
 import { useMarket } from "../../lib/use-market";
 import { supabase } from "../../lib/supabase-client";
 import { useWorkspaceMembership } from "../../lib/use-workspace-membership";
@@ -479,7 +479,9 @@ export function LeadsPage() {
                     {show("category") && <Td className="text-muted">{row.category ?? "—"}</Td>}
                     {show("location") && (
                       <Td className="text-muted">
-                        <span title={getCountryProfile(row.country_code).nameTr}>{countryFlag(row.country_code)}</span>{" "}
+                        <span title={getCountryProfile(row.country_code).nameTr} className="mr-1 rounded bg-surface-2 px-1 text-[11px] font-medium text-muted">
+                          {row.country_code}
+                        </span>
                         {[row.district, row.city].filter(Boolean).join(", ") || "—"}
                       </Td>
                     )}

@@ -7,7 +7,6 @@ import {
   normalizePhone,
   normalizeSocial,
   SUPPORTED_COUNTRY_CODES,
-  countryFlag,
   getCountryProfile,
   type DedupeCandidate,
 } from "@lbf/core";
@@ -165,7 +164,7 @@ export function ImportCsvDialog({ workspaceId, onClose }: ImportCsvDialogProps) 
               <Select value={defaultCountry} onChange={(e) => setDefaultCountry(e.target.value)}>
                 {SUPPORTED_COUNTRY_CODES.map((code) => (
                   <option key={code} value={code}>
-                    {countryFlag(code)} {getCountryProfile(code).nameTr}
+                    {code} · {getCountryProfile(code).nameTr}
                   </option>
                 ))}
               </Select>

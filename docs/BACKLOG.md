@@ -9,7 +9,7 @@ Durum: ☐ bekliyor · ◐ sürüyor · ☑ bitti. Bir madde bitince buradan iş
 | --- | --- | --- | --- |
 | G0 | 12 | Temizlik ve karar kaydı | ☑ |
 | G1 | 13 | Buluta taşıma | ☑ 2026-10-07 |
-| G2 | 14 | Küresel veri modeli | ☐ |
+| G2 | 14 | Küresel veri modeli | ◐ kod hazır ve yerelde doğrulandı; bulut `db push` + gerçek Places denemesi bekliyor (`docs/qa/phase-14-global-model.md`) |
 | G3 | 15 | Küresel keşif motoru | ☐ |
 | G4 | 16 | Çok dilli analiz ve yapay zekâ | ☐ |
 | G5 | 17 | Ülke bazlı uyum ve gönderim güvenliği | ☐ |
@@ -24,7 +24,7 @@ Durum: ☐ bekliyor · ◐ sürüyor · ☑ bitti. Bir madde bitince buradan iş
 ### A. Yarım çalışan / pasif
 | # | Madde | Faz | Durum |
 | --- | --- | --- | --- |
-| 1 | Üst çubuktaki şehir seçici yalnızca İşletme Bul ve Kampanya'da etkili → her ekranda geçerli pazar filtresi (ülke → şehir) | G2 | ☐ |
+| 1 | Üst çubuktaki şehir seçici yalnızca İşletme Bul ve Kampanya'da etkili → her ekranda geçerli pazar filtresi (ülke → şehir) | G2 | ☑ |
 | 2 | Devir kartı devralınamıyor/kapatılamıyor/atanamıyor | G6 | ☐ |
 | 3 | `secondChannelAfterDays` kullanılmıyor; kanal INVALID olunca otomatik yedek kanal yok | G6 | ☐ |
 | 4 | Telefon kanalı için arama notu ekranı yok | G6 | ☐ |

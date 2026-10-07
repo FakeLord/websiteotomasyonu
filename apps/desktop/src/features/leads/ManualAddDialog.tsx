@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { importBusinessInputSchema, type ImportBusinessInput } from "@lbf/contracts";
-import { SUPPORTED_COUNTRY_CODES, countryFlag, getCountryProfile, normalizePhone } from "@lbf/core";
+import { SUPPORTED_COUNTRY_CODES, getCountryProfile, normalizePhone } from "@lbf/core";
 import { geoDefaultsForCountry } from "../../lib/business-geo";
 import { useUiStore } from "../../lib/ui-store";
 import { supabase } from "../../lib/supabase-client";
@@ -83,7 +83,7 @@ export function ManualAddDialog({ workspaceId, onClose }: ManualAddDialogProps) 
             <Select {...register("countryCode")}>
               {SUPPORTED_COUNTRY_CODES.map((code) => (
                 <option key={code} value={code}>
-                  {countryFlag(code)} {getCountryProfile(code).nameTr}
+                  {code} · {getCountryProfile(code).nameTr}
                 </option>
               ))}
             </Select>

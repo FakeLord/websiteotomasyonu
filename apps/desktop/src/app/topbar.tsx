@@ -10,7 +10,7 @@ import { turkishLikePattern } from "../lib/filters";
 import { useMyProfile, useShellCounters } from "../lib/use-shell-data";
 import { useMarketOptions } from "../lib/use-market";
 import { marketCities, marketCountries } from "../lib/market";
-import { countryFlag, getCountryProfile } from "@lbf/core";
+import { getCountryProfile } from "@lbf/core";
 import { Avatar } from "../components/ui/data-display";
 import { WebsiteStatusBadge } from "../components/domain/badges";
 import {
@@ -160,10 +160,10 @@ function MarketSelector() {
         <span className="sr-only">{tr.shell.marketLabel}</span>
         <select value={market.country} onChange={(e) => setMarket({ country: e.target.value, city: "" })} className={selectClass}>
           <option value="">{tr.shell.allMarkets}</option>
-          {!hasSelected && market.country && <option value={market.country}>{countryFlag(market.country)} {getCountryProfile(market.country).nameTr}</option>}
+          {!hasSelected && market.country && <option value={market.country}>{market.country} · {getCountryProfile(market.country).nameTr}</option>}
           {countries.map((c) => (
             <option key={c.code} value={c.code}>
-              {countryFlag(c.code)} {getCountryProfile(c.code).nameTr} ({c.count})
+              {c.code} · {getCountryProfile(c.code).nameTr} ({c.count})
             </option>
           ))}
         </select>

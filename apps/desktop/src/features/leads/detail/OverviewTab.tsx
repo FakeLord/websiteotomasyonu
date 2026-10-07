@@ -1,5 +1,5 @@
 import { ExternalLink, Info, Sparkles, Star } from "lucide-react";
-import { countryFlag, formatPhoneInternational, getCountryProfile, type Channel } from "@lbf/core";
+import { formatPhoneInternational, getCountryProfile, type Channel } from "@lbf/core";
 import { tr } from "../../../i18n/tr";
 import { Card, CardBody, CardHeader } from "../../../components/ui/card";
 import { Badge, type BadgeTone } from "../../../components/ui/badge";
@@ -57,7 +57,7 @@ export function OverviewTab({
         <CardHeader title={tr.leadDetail.basicInfo} icon={<Info className="size-4 text-primary" />} />
         <CardBody className="divide-y divide-border/60">
           <KeyValue label={tr.discover.countryLabel}>
-            {countryFlag(business.country_code)} {getCountryProfile(business.country_code).nameTr}
+            {business.country_code} · {getCountryProfile(business.country_code).nameTr}
             {business.region ? ` · ${business.region}` : ""}
           </KeyValue>
           <KeyValue label={tr.leads.phoneLabel}>{business.primary_phone_e164 ? formatPhoneInternational(business.primary_phone_e164) : "—"}</KeyValue>

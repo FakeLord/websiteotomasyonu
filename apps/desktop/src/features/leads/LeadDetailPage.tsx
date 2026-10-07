@@ -10,7 +10,7 @@ import {
   type OutreachChannel,
   type RoutingChannelCandidate,
 } from "@lbf/core";
-import { countryFlag, getCountryProfile } from "@lbf/core";
+import { getCountryProfile } from "@lbf/core";
 import { formatLocalTime } from "../../lib/format";
 import { supabase } from "../../lib/supabase-client";
 import { useWorkspaceMembership } from "../../lib/use-workspace-membership";
@@ -285,7 +285,7 @@ export function LeadDetailPage() {
                 </span>
               )}
               <span className="flex items-center gap-1" title={business.timezone ?? undefined}>
-                {countryFlag(business.country_code)} {countryName}
+                {business.country_code} · {countryName}
                 {localTime && <span className="text-subtle">· {tr.leadDetail.localTime}: {localTime}</span>}
               </span>
             </div>
