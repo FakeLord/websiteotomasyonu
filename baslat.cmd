@@ -20,6 +20,25 @@ echo  Global Business Finder - web modu
 echo  ================================
 echo.
 
+rem .env icindeki VITE_SUPABASE_URL yerel (127.0.0.1/localhost) degilse bulut modudur:
+rem Docker ve yerel Supabase gerekmez.
+set "SBURL="
+if exist ".env" (
+  for /f "usebackq tokens=1,* delims==" %%a in (".env") do (
+    if /i "%%a"=="VITE_SUPABASE_URL" set "SBURL=%%b"
+  )
+)
+set "CLOUD=0"
+if defined SBURL (
+  echo %SBURL%| findstr /i /c:"127.0.0.1" /c:"localhost" >nul
+  if errorlevel 1 set "CLOUD=1"
+)
+if "%CLOUD%"=="1" (
+  echo  Bulut modu: %SBURL%
+  echo.
+  goto cloudok
+)
+
 echo [1/3] Docker kontrol ediliyor...
 docker info >nul 2>&1
 if not errorlevel 1 goto dockerok
@@ -67,9 +86,17 @@ for /f %%c in ('docker ps -a --filter "name=supabase_edge_runtime" --filter "sta
 echo      Veritabani hazir.
 echo.
 
+:cloudok
 echo [3/3] Uygulama baslatiliyor...
 if /i "%~1"=="build" goto build
 if not exist "apps\desktop\dist\index.html" goto build
+rem Arayuz baska bir veritabani adresiyle derlendiyse (yerel <-> bulut) yeniden derle.
+set "BUILTURL="
+if exist "apps\desktop\dist\.build-url" set /p BUILTURL=<"apps\desktop\dist\.build-url"
+if not "%BUILTURL%"=="%SBURL%" (
+  echo      Veritabani adresi degisti, arayuz yeniden derlenecek.
+  goto build
+)
 goto run
 
 :build
@@ -80,6 +107,7 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
+>"apps\desktop\dist\.build-url" echo %SBURL%
 
 :run
 if not defined LBF_NO_BROWSER set LBF_OPEN=1

@@ -1,0 +1,67 @@
+name: Haftalık veritabanı yedeği
+
+# ADR 0011 / SPEC D13. Supabase ücretsiz planında otomatik yedek yoktur; bu iş kapsamı (public + auth) şifreli döker.
+# Gerekli depo sırları (Settings → Secrets and variables → Actions):
+#   SUPABASE_DB_URL    "Session pooler" bağlantı dizesi (Project → Connect). Doğrudan bağlantı IPv6'dır, Actions'ta çalışmaz.
+#   BACKUP_PASSPHRASE  Yedeği şifreleyen uzun parola (kaybedilirse yedek açılamaz; parola yöneticisinde saklayın).
+# Vault (API anahtarları) dökülmez: şifreleme anahtarı Supabase'dedir; geri yüklemede anahtarlar Ayarlar'dan yeniden girilir.
+
+on:
+  schedule:
+    - cron: "0 3 * * 1" # her Pazartesi 03:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    name: pg_dump → gpg
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Sırların tanımlı olduğunu denetle
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ] || [ -z "$BACKUP_PASSPHRASE" ]; then
+            echo "::error::SUPABASE_DB_URL ve BACKUP_PASSPHRASE depo sırları tanımlı olmalı."
+            exit 1
+          fi
+
+      - name: Dök (pg_dump 17)
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          docker run --rm -e SUPABASE_DB_URL postgres:17 sh -c \
+            'pg_dump "$SUPABASE_DB_URL" --format=custom --no-owner --no-privileges --schema=public --schema=auth' \
+            > backup.dump
+          test -s backup.dump
+
+      - name: Şifrele (AES-256)
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$BACKUP_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 \
+            --symmetric --cipher-algo AES256 --output "backup-$(date -u +%Y%m%d).dump.gpg" backup.dump
+          rm -f backup.dump
+
+      - name: Şifre çözülüp okunabildiğini doğrula
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          file=$(ls backup-*.dump.gpg)
+          printf '%s' "$BACKUP_PASSPHRASE" | gpg --batch --pinentry-mode loopback --passphrase-fd 0 --decrypt "$file" > check.dump
+          docker run --rm -i postgres:17 pg_restore --list < check.dump | head -n 5
+          rm -f check.dump
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: db-backup
+          path: backup-*.dump.gpg
+          retention-days: 30
+          if-no-files-found: error
