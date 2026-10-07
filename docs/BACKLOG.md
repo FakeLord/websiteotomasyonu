@@ -8,7 +8,7 @@ Durum: ☐ bekliyor · ◐ sürüyor · ☑ bitti. Bir madde bitince buradan iş
 | Kod | Faz | Ad | Durum |
 | --- | --- | --- | --- |
 | G0 | 12 | Temizlik ve karar kaydı | ☑ |
-| G1 | 13 | Buluta taşıma | ☐ (kullanıcı adımı bekliyor) |
+| G1 | 13 | Buluta taşıma | ◐ kod ve belgeler hazır; bulut adımları `docs/qa/phase-13-cloud.md` (kullanıcı bekleniyor) |
 | G2 | 14 | Küresel veri modeli | ☐ |
 | G3 | 15 | Küresel keşif motoru | ☐ |
 | G4 | 16 | Çok dilli analiz ve yapay zekâ | ☐ |

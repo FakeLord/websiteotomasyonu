@@ -3,6 +3,12 @@
 **Dal:** `feature/p13-cloud` · **Zorluk:** Orta · **Bağımlılık:** G0 · **Kullanıcı adımı gerekir**
 **Referans:** `docs/SPEC.md` → F ("Uzak Supabase kurulumu"), P.3, D13, D19 · BACKLOG #28, #26 (yedek)
 
+## Durum (2026-10-07)
+Kod tarafı bitti ve yerelde doğrulandı: `/set-password` sayfası (davet + sıfırlama; yerel Mailpit ile uçtan uca denendi,
+kısa şifre reddi ve ikinci tıklamada "geçersiz bağlantı" dahil), `baslat.cmd` bulut modu, `scripts/smoke/cloud-health.ts`,
+`.github/workflows/backup.yml`, ADR 0011. **Bekleyen:** `docs/qa/phase-13-cloud.md` A–E adımları (bağlantı, panel ayarları,
+`db push`, fonksiyon yayını, ilk yedek). Acceptance kutuları bu adımlar bitince işaretlenir.
+
 ## Amaç
 Veritabanı ve sunucu fonksiyonları bulutta; ekip aynı veriyi kullanır, Docker günlük kullanım için gerekmez.
 
