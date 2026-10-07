@@ -3,11 +3,12 @@
 **Dal:** `feature/p13-cloud` · **Zorluk:** Orta · **Bağımlılık:** G0 · **Kullanıcı adımı gerekir**
 **Referans:** `docs/SPEC.md` → F ("Uzak Supabase kurulumu"), P.3, D13, D19 · BACKLOG #28, #26 (yedek)
 
-## Durum (2026-10-07)
-Kod tarafı bitti ve yerelde doğrulandı: `/set-password` sayfası (davet + sıfırlama; yerel Mailpit ile uçtan uca denendi,
-kısa şifre reddi ve ikinci tıklamada "geçersiz bağlantı" dahil), `baslat.cmd` bulut modu, `scripts/smoke/cloud-health.ts`,
-`.github/workflows/backup.yml`, ADR 0011. **Bekleyen:** `docs/qa/phase-13-cloud.md` A–E adımları (bağlantı, panel ayarları,
-`db push`, fonksiyon yayını, ilk yedek). Acceptance kutuları bu adımlar bitince işaretlenir.
+## Durum (2026-10-07) — TAMAMLANDI
+Bulut projesi (Frankfurt) kuruldu; 31 migration ve 5 Edge Function yayında; kayıt kapalı, şifre ≥ 12, özel SMTP.
+`scripts/smoke/cloud-health.ts` 13/13 ✓. İkinci kullanıcı davet e-postası → `/set-password` → davet kodu ile girdi, aynı ekibi görüyor.
+Yedek: `backup.yml` elle tetiklendi, şifreli döküm alındı ve çözülüp okundu. Canlıda bulunan iki hata düzeltildi:
+yerel sunucu e-postadaki bağlantıyı "çapraz-site" diye reddediyordu (`security.ts`); üyelik sorgusu kullanıcıya göre süzülmediği için
+temsilci kendini yönetici sanıyordu (`membership-query.ts`). Ayarlar'da yöneticiye özel bölümler temsilciden gizlendi.
 
 ## Amaç
 Veritabanı ve sunucu fonksiyonları bulutta; ekip aynı veriyi kullanır, Docker günlük kullanım için gerekmez.
@@ -32,10 +33,10 @@ Veritabanı ve sunucu fonksiyonları bulutta; ekip aynı veriyi kullanır, Docke
 - Security Advisor'da kritik uyarı yok. Edge Function'lar bulutta `scripts/smoke/*` ile elle denenir.
 
 ## Acceptance criteria
-- [ ] İkinci bir kullanıcı davet e-postasıyla girer ve aynı veriyi görür; başka workspace'i göremez.
-- [ ] Docker kapalıyken `baslat.cmd` ile uygulama açılır ve çalışır.
-- [ ] İlk yedek dosyası oluşur ve şifre çözülüp açılabilir.
-- [ ] Repoda ve loglarda hiçbir gizli anahtar yoktur.
+- [x] İkinci bir kullanıcı davet e-postasıyla girer ve aynı veriyi görür; başka workspace'i göremez (izolasyon pgTAP'te).
+- [x] Docker kapalıyken `baslat.cmd` ile uygulama açılır ve çalışır.
+- [x] İlk yedek dosyası oluşur ve şifre çözülüp açılabilir.
+- [x] Repoda ve loglarda hiçbir gizli anahtar yoktur (tüm geçmiş tarandı).
 
 ## VERIFY_CURRENT_DOCS
 - Supabase ücretsiz plan sınırları (DB boyutu, Edge Function çağrıları, duraklatma), `pg_cron` ve Vault'un planda varlığı;

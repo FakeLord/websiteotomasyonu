@@ -8,7 +8,7 @@ Durum: ☐ bekliyor · ◐ sürüyor · ☑ bitti. Bir madde bitince buradan iş
 | Kod | Faz | Ad | Durum |
 | --- | --- | --- | --- |
 | G0 | 12 | Temizlik ve karar kaydı | ☑ |
-| G1 | 13 | Buluta taşıma | ◐ kod ve belgeler hazır; bulut adımları `docs/qa/phase-13-cloud.md` (kullanıcı bekleniyor) |
+| G1 | 13 | Buluta taşıma | ☑ 2026-10-07 |
 | G2 | 14 | Küresel veri modeli | ☐ |
 | G3 | 15 | Küresel keşif motoru | ☐ |
 | G4 | 16 | Çok dilli analiz ve yapay zekâ | ☐ |
@@ -63,7 +63,7 @@ Durum: ☐ bekliyor · ◐ sürüyor · ☑ bitti. Bir madde bitince buradan iş
 ### D. Üretim ve kullanım
 | # | Madde | Faz | Durum |
 | --- | --- | --- | --- |
-| 28 | Buluttaki veritabanı (ekip kullanımı) | G1 | ☐ |
+| 28 | Buluttaki veritabanı (ekip kullanımı) | G1 | ☑ |
 | 29 | IMAP ve zamanlanmış işlerin sekme kapalıyken çalışması | G7 | ☐ |
 | 30 | AI taslak değerlendirme seti (TR + EN, 30'ar örnek) | G4 | ☐ |
 | 31 | Bilgi Bankası'nın gerçek içeriği (hizmet, paket, fiyat, referans, SSS) | kullanıcı | ☐ |

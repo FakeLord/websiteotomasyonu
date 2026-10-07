@@ -10,6 +10,7 @@ import { EmailAccountSection } from "./EmailAccountSection";
 import { DataExportSection } from "./DataExportSection";
 import { AiProvidersSection } from "./AiProvidersSection";
 import { FollowupPolicySection, GeneralSection, IntegrationsSection } from "./OtherSections";
+import { resolveActiveSection, visibleSections } from "./sections";
 
 const SECTIONS = [
   { key: "general", icon: UserRound, adminOnly: false },
@@ -29,8 +30,8 @@ export function SettingsPage() {
   const isAdmin = membership?.role === "ADMIN";
   const [params, setParams] = useSearchParams();
   const requested = params.get("section") as SectionKey | null;
-  const active: SectionKey = SECTIONS.some((s) => s.key === requested) ? (requested as SectionKey) : "general";
-  const activeSection = SECTIONS.find((s) => s.key === active)!;
+  const sections = visibleSections(SECTIONS, isAdmin);
+  const active: SectionKey = resolveActiveSection(sections, requested);
 
   return (
     <div>
@@ -38,7 +39,7 @@ export function SettingsPage() {
       <div className="grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
         <Card className="h-fit p-2">
           <nav className="flex flex-col gap-0.5">
-            {SECTIONS.map((section) => (
+            {sections.map((section) => (
               <button
                 key={section.key}
                 type="button"
@@ -56,11 +57,8 @@ export function SettingsPage() {
         </Card>
 
         <div className="min-w-0">
-          {activeSection.adminOnly && !isAdmin ? (
-            <Card className="p-6 text-sm text-muted">{tr.settings.adminOnly}</Card>
-          ) : (
-            workspaceId && (
-              <>
+          {workspaceId && (
+            <>
                 {active === "general" && <GeneralSection />}
                 {active === "api" && <AiProvidersSection workspaceId={workspaceId} />}
                 {active === "email" && <EmailAccountSection />}
@@ -72,8 +70,7 @@ export function SettingsPage() {
                 {active === "followup" && <FollowupPolicySection workspaceId={workspaceId} />}
                 {active === "integrations" && <IntegrationsSection />}
                 {active === "data" && <DataExportSection workspaceId={workspaceId} />}
-              </>
-            )
+            </>
           )}
         </div>
       </div>
