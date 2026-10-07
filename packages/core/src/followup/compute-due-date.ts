@@ -1,9 +1,7 @@
-import { isTurkishHoliday } from "./tr-holidays";
+import { isHoliday } from "../geo/holidays";
 
-// Türkiye 2016'dan beri yaz saati uygulamıyor; UTC+3 sabit ofset yıl boyu
-// geçerlidir (SPEC.md → D2). Bu yüzden tam bir IANA tz veritabanı olmadan
-// güvenle hesaplanabilir.
-const ISTANBUL_OFFSET_MS = 3 * 60 * 60 * 1000;
+const DEFAULT_TIME_ZONE = "Europe/Istanbul";
+const DEFAULT_COUNTRY = "TR";
 
 export interface SendWindow {
   /** ISO hafta günleri: 1 = Pazartesi … 7 = Pazar. */
@@ -12,15 +10,62 @@ export interface SendWindow {
   from: string;
 }
 
+export interface DueDateOptions {
+  /** IANA saat dilimi (işletmenin yerel saati); varsayılan `Europe/Istanbul`. */
+  timeZone?: string;
+  /** Tatil takvimi için ISO ülke kodu; varsayılan `TR`. */
+  countryCode?: string;
+}
+
 interface CalendarDate {
   y: number;
-  m: number;
+  m: number; // 0..11
   d: number;
 }
 
-function toIstanbulCalendarDate(date: Date): CalendarDate {
-  const shifted = new Date(date.getTime() + ISTANBUL_OFFSET_MS);
-  return { y: shifted.getUTCFullYear(), m: shifted.getUTCMonth(), d: shifted.getUTCDate() };
+const formatters = new Map<string, Intl.DateTimeFormat>();
+
+function partsIn(date: Date, timeZone: string): Record<string, number> {
+  let fmt = formatters.get(timeZone);
+  if (!fmt) {
+    fmt = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      hourCycle: "h23",
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+      hour: "numeric",
+      minute: "numeric",
+      second: "numeric",
+    });
+    formatters.set(timeZone, fmt);
+  }
+  const out: Record<string, number> = {};
+  for (const part of fmt.formatToParts(date)) {
+    if (part.type !== "literal") out[part.type] = Number(part.value);
+  }
+  return out;
+}
+
+function toCalendarDate(date: Date, timeZone: string): CalendarDate {
+  const p = partsIn(date, timeZone);
+  return { y: p.year!, m: p.month! - 1, d: p.day! };
+}
+
+/** `timeZone`'da o anki UTC farkı (ms). */
+function offsetMs(date: Date, timeZone: string): number {
+  const p = partsIn(date, timeZone);
+  const asUtc = Date.UTC(p.year!, p.month! - 1, p.day!, p.hour!, p.minute!, p.second!);
+  return asUtc - Math.floor(date.getTime() / 1000) * 1000;
+}
+
+/** Yerel duvar saatini (örn. 09:00) gerçek UTC anına çevirir; yaz saati geçişine dayanıklıdır. */
+function wallTimeToUtc(cal: CalendarDate, time: string, timeZone: string): Date {
+  const [hh, mm] = time.split(":").map(Number);
+  const guess = Date.UTC(cal.y, cal.m, cal.d, hh, mm);
+  let instant = guess - offsetMs(new Date(guess), timeZone);
+  instant = guess - offsetMs(new Date(instant), timeZone);
+  return new Date(instant);
 }
 
 function addCalendarDays(cal: CalendarDate, days: number): CalendarDate {
@@ -37,30 +82,29 @@ function calendarDateAsUtcMidnight(cal: CalendarDate): Date {
   return new Date(Date.UTC(cal.y, cal.m, cal.d));
 }
 
-function calendarDateAtIstanbulTime(cal: CalendarDate, time: string): Date {
-  const [hh, mm] = time.split(":").map(Number);
-  return new Date(Date.UTC(cal.y, cal.m, cal.d, hh, mm) - ISTANBUL_OFFSET_MS);
-}
-
 /**
- * M bölümündeki `due_at` hesabı: `baseDate + afterDays`, sonra gönderim
- * penceresine (`sendWindow.days`) ve isteğe bağlı resmi tatillere göre bir
- * sonraki uygun güne kaydırılır, saat `sendWindow.from`'a sabitlenir.
+ * M bölümündeki `due_at` hesabı: `baseDate + afterDays`, sonra gönderim penceresine (`sendWindow.days`) ve
+ * isteğe bağlı resmî tatillere göre bir sonraki uygun güne kaydırılır, saat `sendWindow.from`'a sabitlenir.
+ * Takvim günü ve saat, `opts.timeZone` (işletmenin yerel saati) içinde hesaplanır; tatiller `opts.countryCode`'a göredir.
+ * Varsayılanlar eski davranışla aynıdır (İstanbul/TR).
  */
 export function computeFollowUpDueDate(
   baseDate: Date,
   afterDays: number,
   sendWindow: SendWindow,
   skipHolidays: boolean,
+  opts: DueDateOptions = {},
 ): Date {
-  let candidate = addCalendarDays(toIstanbulCalendarDate(baseDate), afterDays);
+  const timeZone = opts.timeZone ?? DEFAULT_TIME_ZONE;
+  const countryCode = opts.countryCode ?? DEFAULT_COUNTRY;
+  let candidate = addCalendarDays(toCalendarDate(baseDate, timeZone), afterDays);
 
   while (
     !sendWindow.days.includes(isoWeekday(candidate)) ||
-    (skipHolidays && isTurkishHoliday(calendarDateAsUtcMidnight(candidate)))
+    (skipHolidays && isHoliday(calendarDateAsUtcMidnight(candidate), countryCode))
   ) {
     candidate = addCalendarDays(candidate, 1);
   }
 
-  return calendarDateAtIstanbulTime(candidate, sendWindow.from);
+  return wallTimeToUtc(candidate, sendWindow.from, timeZone);
 }

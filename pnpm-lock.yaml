@@ -212,6 +212,9 @@ importers:
 
   packages/core:
     dependencies:
+      '@photostructure/tz-lookup':
+        specifier: ^11.7.0
+        version: 11.7.0
       libphonenumber-js:
         specifier: ^1.13.14
         version: 1.13.14
@@ -810,6 +813,9 @@ packages:
 
   '@oxc-project/types@0.151.0':
     resolution: {integrity: sha512-J1yXrIlNDZVzE3ada310xeAw7nH8yCAyLPuUIsjKatFPmfn5bS1oW+cM+QsGOtVWd5nhSpbwZWx/rue+r5Z+PA==}
+
+  '@photostructure/tz-lookup@11.7.0':
+    resolution: {integrity: sha512-QbKHXvleluMIlAHf2JiQTJNU5rLQBeQhLobyRqgXZ6NNGKqNikaRkjYviJ4nMU7Y75QE7bBYM8xjiFGjAukyhw==}
 
   '@pinojs/redact@0.4.0':
     resolution: {integrity: sha512-k2ENnmBugE/rzQfEcdWHcCY+/FM3VLzH9cYEsbdsoqrvzAKRhUZeRNhAZvB8OitQJ1TBed3yqWtdjzS6wJKBwg==}
@@ -3319,6 +3325,8 @@ snapshots:
   '@noble/hashes@1.8.0': {}
 
   '@oxc-project/types@0.151.0': {}
+
+  '@photostructure/tz-lookup@11.7.0': {}
 
   '@pinojs/redact@0.4.0': {}
 

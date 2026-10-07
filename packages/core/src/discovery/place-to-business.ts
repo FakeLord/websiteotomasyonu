@@ -1,11 +1,15 @@
 import { normalizeDomain } from "../normalize-domain";
 import { normalizePhone } from "../dedupe/normalize-phone";
 import { normalizeSocial } from "../dedupe/normalize-social";
+import { getCountryProfile } from "../geo/countries";
+import { parsePlaceAddress, type AddressComponent } from "../geo/address";
+import { resolveTimezone } from "../geo/timezone";
 
 export interface GooglePlaceResult {
   id: string;
   displayName?: { text?: string };
   formattedAddress?: string;
+  addressComponents?: AddressComponent[];
   location?: { latitude?: number; longitude?: number };
   businessStatus?: string;
   nationalPhoneNumber?: string;
@@ -22,6 +26,11 @@ export interface PlaceToBusinessPayload {
   address?: string | undefined;
   city?: string | undefined;
   district?: string | undefined;
+  countryCode?: string | undefined;
+  region?: string | undefined;
+  postalCode?: string | undefined;
+  timezone?: string | undefined;
+  language?: string | undefined;
   lat?: number | undefined;
   lng?: number | undefined;
   rating?: number | undefined;
@@ -73,17 +82,21 @@ export function parseTurkishAddress(address: string | undefined): { district: st
  */
 export function placeToBusinessPayload(
   place: GooglePlaceResult,
-  context: { city?: string; district?: string; category?: string } = {},
+  context: { city?: string; district?: string; category?: string; countryCode?: string } = {},
 ): PlaceToBusinessPayload {
-  // Adres, kullanıcının aramaya yazdığı (çoğu zaman küçük harfli, ilçesiz)
-  // bağlamdan daha güvenilir; yoksa bağlam Türkçe title-case ile kullanılır.
-  const parsed = parseTurkishAddress(place.formattedAddress);
-  const city = parsed.city ?? (context.city?.trim() ? titleCaseTr(context.city) : undefined);
-  const district = parsed.district ?? (context.district?.trim() ? titleCaseTr(context.district) : undefined);
+  // Önce Places adres bileşenleri; yoksa Türkiye adres sonekinden ayrıştırma (eski davranış); en son
+  // kullanıcının aramaya yazdığı bağlam. Bağlam yalnızca Türkiye'de Türkçe title-case yapılır.
+  const components = parsePlaceAddress(place.addressComponents);
+  const countryCode = components.countryCode ?? (context.countryCode?.trim() ? context.countryCode.trim().toUpperCase() : undefined);
+  const isTurkey = countryCode === "TR" || countryCode === undefined;
+  const legacy = components.city || components.district ? { city: null, district: null } : parseTurkishAddress(place.formattedAddress);
+  const tidy = (value: string | undefined) => (value?.trim() ? (isTurkey ? titleCaseTr(value) : value.trim()) : undefined);
+  const city = components.city ?? legacy.city ?? tidy(context.city);
+  const district = components.district ?? legacy.district ?? tidy(context.district);
   const category = context.category?.trim() || undefined;
   const name = place.displayName?.text?.trim() || "Bilinmeyen İşletme";
   const phone = place.internationalPhoneNumber ?? place.nationalPhoneNumber;
-  const normalizedPhone = phone ? normalizePhone(phone)?.e164 : undefined;
+  const normalizedPhone = phone ? normalizePhone(phone, countryCode ?? "TR")?.e164 : undefined;
 
   let websiteUrl: string | undefined;
   let websiteDomain: string | undefined;
@@ -112,14 +125,24 @@ export function placeToBusinessPayload(
       ? place.businessStatus
       : undefined;
 
+  const lat = place.location?.latitude;
+  const lng = place.location?.longitude;
+  const profile = countryCode ? getCountryProfile(countryCode) : undefined;
+  const timezone = countryCode ? (resolveTimezone({ lat, lng, countryCode }) ?? undefined) : undefined;
+
   return {
     name,
     category,
     address: place.formattedAddress,
     city,
     district,
-    lat: place.location?.latitude,
-    lng: place.location?.longitude,
+    countryCode,
+    region: components.region ?? undefined,
+    postalCode: components.postalCode ?? undefined,
+    timezone,
+    language: profile?.defaultLanguage ?? undefined,
+    lat,
+    lng,
     rating: place.rating,
     reviewCount: place.userRatingCount,
     googlePlaceId: place.id,

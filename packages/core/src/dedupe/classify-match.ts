@@ -10,6 +10,8 @@ export interface DedupeCandidate {
   email?: string | null;
   normalizedName: string;
   district?: string | null;
+  /** ISO-3166 alpha-2; bilinmiyorsa (eski kayıt) ülke kapsamı uygulanmaz. */
+  countryCode?: string | null;
 }
 
 export type MatchType = "EXACT" | "POSSIBLE" | "NONE";
@@ -49,6 +51,7 @@ export function classifyMatch(
     (o) =>
       !!candidate.district &&
       candidate.district === o.district &&
+      (!candidate.countryCode || !o.countryCode || candidate.countryCode === o.countryCode) &&
       trigramSimilarity(candidate.normalizedName, o.normalizedName) >= FUZZY_NAME_THRESHOLD,
   );
   if (possible) return { type: "POSSIBLE", matchedId: possible.id };

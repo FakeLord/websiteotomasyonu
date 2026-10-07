@@ -36,8 +36,19 @@ export { computeChecks } from "./website-analyzer/checks";
 export { classifyOpenWebsite, type ClassifyInput, type ClassifyResult } from "./website-analyzer/classify";
 export { isPathAllowed } from "./website-analyzer/robots";
 export { runWebsiteAnalysis } from "./website-analyzer/run-website-analysis";
-export { computeFollowUpDueDate, type SendWindow } from "./followup/compute-due-date";
+export { computeFollowUpDueDate, type SendWindow, type DueDateOptions } from "./followup/compute-due-date";
 export { isTurkishHoliday } from "./followup/tr-holidays";
+export {
+  getCountryProfile,
+  isCountryCode,
+  countryFlag,
+  SUPPORTED_COUNTRY_CODES,
+  type CountryCode,
+  type CountryProfile,
+} from "./geo/countries";
+export { resolveTimezone, type TimezoneInput } from "./geo/timezone";
+export { isHoliday } from "./geo/holidays";
+export { parsePlaceAddress, type AddressComponent, type ParsedAddress } from "./geo/address";
 export { shouldCancelFollowUps, type FollowUpCancelInput } from "./followup/should-cancel-followups";
 export { shouldMarkLostNoResponse, NO_RESPONSE_GRACE_DAYS, type SequenceState } from "./followup/should-mark-lost";
 export { parseEmlHeaders, type EmailHeaders } from "./email/parse-eml-headers";

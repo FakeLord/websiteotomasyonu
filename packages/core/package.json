@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@photostructure/tz-lookup": "^11.7.0",
     "libphonenumber-js": "^1.13.14",
     "node-html-parser": "^9.0.4",
     "postal-mime": "^4"

@@ -14,6 +14,28 @@ describe("importBusinessInputSchema", () => {
   it("rejects a missing source", () => {
     expect(() => importBusinessInputSchema.parse({ name: "ABC" })).toThrow();
   });
+
+  it("accepts the global location fields", () => {
+    const result = importBusinessInputSchema.parse({
+      name: "Congress Ave Dental",
+      source: "GOOGLE_PLACES",
+      countryCode: "US",
+      region: "TX",
+      postalCode: "78701",
+      timezone: "America/Chicago",
+      language: "en",
+    });
+    expect(result.countryCode).toBe("US");
+    expect(result.timezone).toBe("America/Chicago");
+  });
+
+  it("rejects a malformed country code, timezone or language", () => {
+    const base = { name: "X", source: "MANUAL" as const };
+    expect(() => importBusinessInputSchema.parse({ ...base, countryCode: "usa" })).toThrow();
+    expect(() => importBusinessInputSchema.parse({ ...base, countryCode: "us" })).toThrow();
+    expect(() => importBusinessInputSchema.parse({ ...base, timezone: "Not A Zone" })).toThrow();
+    expect(() => importBusinessInputSchema.parse({ ...base, language: "English" })).toThrow();
+  });
 });
 
 describe("transitionStageInputSchema", () => {

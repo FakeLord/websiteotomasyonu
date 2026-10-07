@@ -1,7 +1,7 @@
 // "libphonenumber-js" ana paketi küçük ("min") metadata kullanır ve telefon
 // TÜRÜNÜ (mobile/fixed-line) ayırt edemez (getType() undefined döner);
 // tip tespiti için tam metadata içeren "/max" alt paketi gerekir.
-import { parsePhoneNumberFromString } from "libphonenumber-js/max";
+import { parsePhoneNumberFromString, type CountryCode as PhoneCountry } from "libphonenumber-js/max";
 
 export interface NormalizedPhone {
   e164: string;
@@ -9,14 +9,20 @@ export interface NormalizedPhone {
 }
 
 /**
- * TR varsayılı E.164 telefon normalizasyonu (SPEC.md → I.2). Geçersiz veya
- * boş girdide `null` döner.
+ * E.164 telefon normalizasyonu (SPEC.md → I.2). `defaultCountry` yalnızca ulusal biçimdeki
+ * numaralar için kullanılır (`+` ile başlayanlar ülkeden bağımsızdır); verilmezse eskisi gibi `TR`.
+ * Geçersiz/boş girdide veya bilinmeyen ülke kodunda `null` döner.
  */
-export function normalizePhone(input: string, defaultCountry: "TR" = "TR"): NormalizedPhone | null {
+export function normalizePhone(input: string, defaultCountry: string = "TR"): NormalizedPhone | null {
   const trimmed = input.trim();
   if (trimmed.length === 0) return null;
 
-  const parsed = parsePhoneNumberFromString(trimmed, defaultCountry);
+  let parsed;
+  try {
+    parsed = parsePhoneNumberFromString(trimmed, defaultCountry.toUpperCase() as PhoneCountry);
+  } catch {
+    return null;
+  }
   if (!parsed || !parsed.isValid()) return null;
 
   return {

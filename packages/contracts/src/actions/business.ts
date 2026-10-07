@@ -28,6 +28,14 @@ export const importBusinessInputSchema = z.object({
   address: z.string().trim().max(300).optional(),
   city: z.string().trim().max(120).optional(),
   district: z.string().trim().max(120).optional(),
+  /** ISO-3166-1 alpha-2, büyük harf. Verilmezse sunucu `workspace_settings.default_country` kullanır. */
+  countryCode: z.string().regex(/^[A-Z]{2}$/).optional(),
+  region: z.string().trim().max(120).optional(),
+  postalCode: z.string().trim().max(20).optional(),
+  /** IANA saat dilimi (ör. America/Chicago). */
+  timezone: z.string().trim().regex(/^(UTC|[A-Za-z_]+(\/[A-Za-z0-9_+-]+)+)$/).max(64).optional(),
+  /** BCP-47 (ör. en, en-US, tr). */
+  language: z.string().trim().regex(/^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$/).max(35).optional(),
   lat: z.number().min(-90).max(90).optional(),
   lng: z.number().min(-180).max(180).optional(),
   googlePlaceId: z.string().trim().max(200).optional(),
