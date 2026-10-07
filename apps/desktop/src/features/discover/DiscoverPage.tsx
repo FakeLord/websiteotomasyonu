@@ -93,6 +93,8 @@ export function DiscoverPage() {
   }, [country, city]);
 
   useRealtimeTable("search_jobs", workspaceId, ["search-jobs", workspaceId]);
+  // Otomatik analiz ve puanlama sürerken sonuçlar (puan, site durumu) kendiliğinden güncellenir.
+  useRealtimeTable("businesses", workspaceId, ["search-results"]);
 
   const jobsQuery = useQuery({
     queryKey: ["search-jobs", workspaceId],
@@ -170,7 +172,18 @@ export function DiscoverPage() {
   const mappable = results.filter((b): b is MapBusiness => b.lat !== null && b.lng !== null);
 
   const runQueue = useMutation({
-    mutationFn: async () => (workspaceId ? processSearchQueue(workspaceId) : undefined),
+    mutationFn: async () =>
+      workspaceId
+        ? processSearchQueue(workspaceId, (summary) => {
+            // Otomatik analiz arama bittikten sonra sürer; bitince sonuç listesi ve puanlar tazelenir.
+            void queryClient.invalidateQueries({ queryKey: ["search-results"] });
+            void queryClient.invalidateQueries({ queryKey: ["businesses", workspaceId] });
+            void queryClient.invalidateQueries({ queryKey: ["dashboard-metrics"] });
+            if (summary.failed > 0) {
+              setNotice({ tone: "warn", text: tr.websiteAnalysis.bulkAnalyzeFailed(summary.failed, summary.total, summary.firstError ?? "") });
+            }
+          })
+        : undefined,
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["search-jobs", workspaceId] });
       void queryClient.invalidateQueries({ queryKey: ["search-results"] });

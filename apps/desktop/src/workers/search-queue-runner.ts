@@ -3,7 +3,7 @@ import type { ImportBusinessResult } from "@lbf/contracts";
 import { supabase } from "../lib/supabase-client";
 import { createPlacesSearchAdapter } from "../lib/places-provider";
 import { recomputeScore } from "./score-runner";
-import { analyzeBusinessesInBatches, type AnalyzeTarget } from "./website-analysis-runner";
+import { analyzeBusinessesInBatches, type AnalyzeTarget, type BatchAnalysisSummary } from "./website-analysis-runner";
 
 const JOB_TYPE = "places_search";
 const LEASE_TTL_SECONDS = 120;
@@ -46,7 +46,11 @@ function getDeviceId(): string {
  * çalıştırır ve sonuçları `import_business()` RPC'sine yazar. Kilit başka bir
  * cihazda tutuluyorsa sessizce çıkar (çakışma değil, bekleme).
  */
-export async function processSearchQueue(workspaceId: string): Promise<ProcessQueueResult> {
+export async function processSearchQueue(
+  workspaceId: string,
+  /** Arka plandaki otomatik analiz bitince çağrılır (arayüz sonuçları tazeler, hata varsa gösterir). */
+  onAnalysisSettled?: (summary: BatchAnalysisSummary & { total: number }) => void,
+): Promise<ProcessQueueResult> {
   const deviceId = getDeviceId();
 
   const { data: acquired, error: leaseError } = await supabase.rpc("acquire_worker_lease", {
@@ -83,14 +87,33 @@ export async function processSearchQueue(workspaceId: string): Promise<ProcessQu
 
   // Yeni bulunan işletmeler arka planda otomatik analiz edilir ve puanlanır; arama
   // sonucu beklemez. Hata olursa lead'ler analizsiz kalır, "Toplu Analiz" ile tekrar denenir.
-  if (newTargets.length > 0) {
-    void analyzeBusinessesInBatches(workspaceId, newTargets).catch(() => undefined);
+  // Daha önce bulunmuş ama hiç analiz edilmemiş kayıtlar (ör. eski arama) da dahildir; analizli olanlar atlanır.
+  const pending = await unanalyzedOnly(newTargets);
+  if (pending.length > 0) {
+    const total = pending.length;
+    void analyzeBusinessesInBatches(workspaceId, pending)
+      .then((summary) => onAnalysisSettled?.({ ...summary, total }))
+      .catch((error: unknown) =>
+        onAnalysisSettled?.({ failed: total, total, firstError: error instanceof Error ? error.message : "Bilinmeyen hata" }),
+      );
   }
 
   return { processed, leaseHeldElsewhere: false };
 }
 
-/** İşi çalıştırır; otomatik analiz edilecek (yeni oluşan) işletmeleri döner. */
+async function unanalyzedOnly(targets: AnalyzeTarget[]): Promise<AnalyzeTarget[]> {
+  if (targets.length === 0) return [];
+  const { data, error } = await supabase
+    .from("businesses")
+    .select("id")
+    .in("id", targets.map((t) => t.id))
+    .is("website_status", null);
+  if (error) return targets;
+  const ids = new Set((data ?? []).map((row) => row.id as string));
+  return targets.filter((t) => ids.has(t.id));
+}
+
+/** İşi çalıştırır; bu işte içe aktarılan (yeni veya mükerrer) işletmeleri döner. */
 async function runOneJob(workspaceId: string, jobId: string, params: SearchJobParams): Promise<AnalyzeTarget[]> {
   const targets: AnalyzeTarget[] = [];
   const { error: runningError } = await supabase
@@ -130,7 +153,7 @@ async function runOneJob(workspaceId: string, jobId: string, params: SearchJobPa
       const status = importResult?.status;
       if (status === "DUPLICATE_MERGED") duplicateCount += 1;
       else newCount += 1;
-      if (importResult && status !== "DUPLICATE_MERGED") {
+      if (importResult) {
         targets.push({
           id: importResult.businessId,
           websiteUrl: payload.websiteUrl ?? null,
