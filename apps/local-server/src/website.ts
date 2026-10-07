@@ -93,6 +93,8 @@ function requestOnce(current: URL, address: string, timeoutMs: number, maxBytes:
         method: "GET",
         headers: { "user-agent": USER_AGENT, accept: "text/html,application/xhtml+xml;q=0.9,*/*;q=0.5", "accept-encoding": "gzip, deflate, br" },
         lookup: pinnedLookup(address),
+        // Her istek yeni bağlantı kurar: havuzdaki (keep-alive) bir soket, doğrulanan IP'ye sabitlemeyi atlardı.
+        agent: false,
         signal: controller.signal,
         // SNI ve sertifika doğrulaması orijinal ada göre yapılır; bağlantı sabit IP'ye gider.
         ...(isHttps && !net.isIP(hostname) ? { servername: hostname } : {}),
@@ -151,7 +153,19 @@ export async function fetchPage(rawUrl: string, deps: FetchPageDeps = {}): Promi
     if (addresses.length === 0) throw new Error("DNS çözümlenemedi");
     if (addresses.some((address) => isBlocked(address))) throw new Error("özel/yerel IP adreslerine istek engellendi");
 
-    const response = await requestOnce(current, addresses[0]!, timeoutMs, maxBytes);
+    // Ad birden çok adrese çözülebilir (ör. önce IPv6); makinede o yol yoksa site yine de
+    // tarayıcıda açılır. Doğrulanmış adreslerin hepsi sırayla denenir, son hata verilir.
+    let response: HopResponse | undefined;
+    let lastError: Error | undefined;
+    for (const address of addresses) {
+      try {
+        response = await requestOnce(current, address, timeoutMs, maxBytes);
+        break;
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error("istek başarısız");
+      }
+    }
+    if (!response) throw lastError ?? new Error("istek başarısız");
 
     if (response.location) {
       redirectCount += 1;

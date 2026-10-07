@@ -69,6 +69,23 @@ describe("runWebsiteAnalysis", () => {
     expect(result.brokenReason).toBe("HTTP_ERROR");
   });
 
+  it("explains that HTTP 403/429 may be bot protection rather than a dead site", async () => {
+    for (const httpStatus of [401, 403, 429]) {
+      const fetcher = new FakeFetcher();
+      fetcher.register("https://abcdis.com", page({ html: "<html>blocked</html>", httpStatus }));
+      const result = await runWebsiteAnalysis(fetcher, { websiteUrl: "abcdis.com" });
+      expect(result.issues[0]).toContain(`HTTP ${httpStatus}`);
+      expect(result.issues[0]).toMatch(/elle kontrol/);
+    }
+  });
+
+  it("does not add the manual-check hint to a plain 404", async () => {
+    const fetcher = new FakeFetcher();
+    fetcher.register("https://abcdis.com", page({ html: "<html>not found</html>", httpStatus: 404 }));
+    const result = await runWebsiteAnalysis(fetcher, { websiteUrl: "abcdis.com" });
+    expect(result.issues[0]).not.toMatch(/elle kontrol/);
+  });
+
   it("returns BROKEN_WEBSITE for a parked page", async () => {
     const fetcher = new FakeFetcher();
     fetcher.register("https://abcdis.com", page({ html: "<h1>This domain is for sale</h1>" }));

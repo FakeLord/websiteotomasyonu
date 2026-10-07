@@ -74,6 +74,19 @@ describe("fetchPage — davranış (Rust fetch_page ile aynı sözleşme)", () =
     await expect(fetchPage(url("/asili"), { ...localDns, timeoutMs: 150 })).rejects.toThrow(/zaman aşımı|istek başarısız/);
   });
 
+  it("ilk adrese bağlanılamazsa (ör. IPv6 yok) sıradaki adresi dener", async () => {
+    handlers.set("/ikinci", (_req, res) => void res.writeHead(200).end("ikinci adres"));
+    // 192.0.2.1 (TEST-NET-1) hiçbir yere gitmez → hata/zaman aşımı; site yine de ikinci adresten açılmalı.
+    const result = await fetchPage(url("/ikinci"), { resolve: async () => ["192.0.2.1", "127.0.0.1"], isBlocked: () => false, timeoutMs: 500 });
+    expect(result.html).toBe("ikinci adres");
+  });
+
+  it("tüm adresler başarısız olursa son hatayı verir", async () => {
+    await expect(
+      fetchPage(url("/x"), { resolve: async () => ["192.0.2.1"], isBlocked: () => false, timeoutMs: 500 }),
+    ).rejects.toThrow(/istek başarısız|zaman aşımı/);
+  });
+
   it("bağlantı kurulan IP'ye sabitlenir (DNS ikinci kez sorulmaz)", async () => {
     let lookups = 0;
     handlers.set("/pin", (_req, res) => void res.writeHead(200).end("ok"));
