@@ -56,8 +56,10 @@ jobs:
           set -euo pipefail
           file=$(ls backup-*.dump.gpg)
           printf '%s' "$BACKUP_PASSPHRASE" | gpg --batch --pinentry-mode loopback --passphrase-fd 0 --decrypt "$file" > check.dump
-          docker run --rm -i postgres:17 pg_restore --list < check.dump | head -n 5
-          rm -f check.dump
+          docker run --rm -i postgres:17 pg_restore --list < check.dump > list.txt
+          head -n 5 list.txt
+          test "$(wc -l < list.txt)" -gt 50
+          rm -f check.dump list.txt
 
       - uses: actions/upload-artifact@v4
         with:
