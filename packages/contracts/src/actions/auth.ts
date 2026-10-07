@@ -11,6 +11,21 @@ export const requestPasswordResetInputSchema = z.object({
 });
 export type RequestPasswordResetInput = z.infer<typeof requestPasswordResetInputSchema>;
 
+/** Davet ve şifre sıfırlama e-postalarındaki bağlantı türleri (supabase/templates/*). */
+export const otpLinkTypeSchema = z.enum(["invite", "recovery"]);
+export type OtpLinkType = z.infer<typeof otpLinkTypeSchema>;
+
+/** SPEC.md → F: minimum şifre uzunluğu 12. */
+export const MIN_PASSWORD_LENGTH = 12;
+
+export const setPasswordInputSchema = z
+  .object({
+    password: z.string().min(MIN_PASSWORD_LENGTH).max(128),
+    confirm: z.string(),
+  })
+  .refine((value) => value.password === value.confirm, { path: ["confirm"], message: "PASSWORD_MISMATCH" });
+export type SetPasswordInput = z.infer<typeof setPasswordInputSchema>;
+
 export const acceptInviteInputSchema = z.object({
   inviteCode: z.string().trim().min(1),
 });

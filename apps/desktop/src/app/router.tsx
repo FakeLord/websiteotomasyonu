@@ -4,6 +4,7 @@ import { RouteError } from "./route-error";
 import { AppLayout } from "./layout";
 import { LoginPage } from "../features/auth/LoginPage";
 import { ResetPasswordPage } from "../features/auth/ResetPasswordPage";
+import { SetPasswordPage } from "../features/auth/SetPasswordPage";
 import { InvitePendingPage } from "../features/auth/InvitePendingPage";
 import { DashboardPage } from "../features/dashboard/DashboardPage";
 import { DiscoverPage } from "../features/discover/DiscoverPage";
@@ -34,6 +35,7 @@ export const router = createHashRouter([
     children: [
       { path: "/login", element: <LoginPage /> },
       { path: "/reset-password", element: <ResetPasswordPage /> },
+      { path: "/set-password", element: <SetPasswordPage /> },
       { path: "/invite-pending", element: <InvitePendingPage /> },
       {
         element: <AppLayout />,

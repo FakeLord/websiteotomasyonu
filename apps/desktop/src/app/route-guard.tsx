@@ -17,12 +17,17 @@ export function RouteGuard() {
   }, [init]);
 
   const isPublicPath = PUBLIC_PATHS.includes(location.pathname);
+  // Davet/sıfırlama bağlantısı: belirteç doğrulanınca oturum açılır; şifre kaydedilene kadar
+  // sayfa yerinde kalmalı (yönlendirme formu yarıda keserdi).
+  const isSetPasswordPath = location.pathname === "/set-password";
 
   const membershipQuery = useWorkspaceMembership();
 
   if (!initialized) {
     return <FullScreenMessage text={tr.auth.loadingSession} />;
   }
+
+  if (isSetPasswordPath) return <Outlet />;
 
   if (!session) {
     if (isPublicPath) return <Outlet />;
