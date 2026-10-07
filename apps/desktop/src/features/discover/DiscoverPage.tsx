@@ -79,6 +79,7 @@ export function DiscoverPage() {
   const [flyTarget, setFlyTarget] = useState<{ point: LatLng; zoom: number } | null>(null);
   const [notice, setNotice] = useState<{ tone: "warn" | "error"; text: string } | null>(null);
   const [showImport, setShowImport] = useState(false);
+  const [analysisProgress, setAnalysisProgress] = useState<{ done: number; total: number } | null>(null);
 
   // Üst çubuktaki pazar değişince Keşfet aramasının varsayılanı da onu izler.
   useEffect(() => {
@@ -177,12 +178,14 @@ export function DiscoverPage() {
             void queryClient.invalidateQueries({ queryKey: ["search-results"] });
             void queryClient.invalidateQueries({ queryKey: ["businesses", workspaceId] });
             void queryClient.invalidateQueries({ queryKey: ["dashboard-metrics"] });
+            setAnalysisProgress(null);
             if (summary.failed > 0) {
               setNotice({ tone: "warn", text: tr.websiteAnalysis.bulkAnalyzeFailed(summary.failed, summary.total, summary.firstError ?? "") });
             }
-          }, (done) => {
-            // Her 10 işletmede bir sonuçlar tazelenir; her biri için yenilemek arayüzü yorar.
-            if (done % 10 === 0) void queryClient.invalidateQueries({ queryKey: ["search-results"] });
+          }, (done, total) => {
+            setAnalysisProgress({ done, total });
+            // Her 5 işletmede bir sonuçlar tazelenir; her biri için yenilemek arayüzü yorar.
+            if (done > 0 && done % 5 === 0) void queryClient.invalidateQueries({ queryKey: ["search-results"] });
           })
         : undefined,
     onSettled: () => {
@@ -447,6 +450,11 @@ export function DiscoverPage() {
 
         <Card className="flex h-[620px] min-h-0 flex-col lg:col-span-2 xl:col-span-1">
           <CardHeader title={tr.discover.foundBusinesses(results.length)} />
+          {analysisProgress && (
+            <p role="status" className="px-4 pb-2 text-xs text-muted-foreground">
+              {tr.websiteAnalysis.autoAnalyzing(analysisProgress.done, analysisProgress.total)}
+            </p>
+          )}
           <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
             {results.length === 0 ? (
               <EmptyState icon={MapPin} title={activeJobId ? tr.discover.noResults : tr.discover.empty} description={tr.discover.emptyHint} />

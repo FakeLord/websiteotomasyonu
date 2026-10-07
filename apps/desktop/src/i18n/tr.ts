@@ -765,6 +765,7 @@ export const tr = {
     staleWarning: "Bu analiz 30 günden eski; yeniden analiz önerilir.",
     bulkAnalyzeButton: "Toplu Analiz",
     bulkAnalyzeProgress: (done: number, total: number) => `Analiz ediliyor: ${done}/${total}`,
+    autoAnalyzing: (done: number, total: number) => `Web siteleri analiz ediliyor… ${done}/${total}`,
     bulkAnalyzeFailed: (failed: number, total: number, reason: string) => `${total} işletmenin ${failed}'i analiz edilemedi. Neden: ${reason}`,
     status: {
       NO_WEBSITE: "Website yok",

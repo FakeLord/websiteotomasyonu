@@ -68,6 +68,7 @@ export async function analyzeBusinessesInBatches(
 ): Promise<BatchAnalysisSummary> {
   let done = 0;
   const summary: BatchAnalysisSummary = { failed: 0, firstError: null };
+  onProgress?.(0, targets.length);
   for (let i = 0; i < targets.length; i += CONCURRENCY) {
     const batch = targets.slice(i, i + CONCURRENCY);
     await Promise.all(
