@@ -7,6 +7,10 @@ begin;
 -- varsayar ve dosya sonundaki rollback her şeyi geri getirir.
 set local client_min_messages = warning;
 truncate table public.workspaces cascade;
+-- G2: businesses.country_code zorunludur (üretimde yalnızca import_business satır ekler). Bu fikstür doğrudan
+-- INSERT yaptığı için varsayılan yalnızca bu transaction'da verilir; dosya sonundaki rollback geri alır.
+alter table public.businesses alter column country_code set default 'TR';
+
 
 select plan(7);
 
