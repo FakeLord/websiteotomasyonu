@@ -43,6 +43,9 @@ export { shouldMarkLostNoResponse, NO_RESPONSE_GRACE_DAYS, type SequenceState } 
 export { parseEmlHeaders, type EmailHeaders } from "./email/parse-eml-headers";
 export { matchEmailThread, type ConversationThreadRef } from "./email/match-thread";
 export { isAutoReply } from "./email/auto-reply";
+export { buildMessageId } from "./email/message-id";
+export { isBlockedIp } from "./website-analyzer/is-blocked-ip";
+export { splitIntoChunks, joinChunks, SECRET_CHUNK_UNITS } from "./secrets/split-chunks";
 export { suggestImapServer, imapSinceDate } from "./email/imap-host";
 export { parseInboundEmail, stripQuotedReply, type ParsedInboundEmail, type BounceInfo } from "./email/parse-inbound";
 export {
