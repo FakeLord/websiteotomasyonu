@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
 import { Inbox, Loader2, Mail, Send } from "lucide-react";
 import { suggestImapServer } from "@lbf/core";
 import { getEmailAccount, setEmailAccount, type EmailAccountConfig } from "../../lib/email-account";
+import { platform } from "../../lib/platform";
 import { useWorkspaceMembership } from "../../lib/use-workspace-membership";
 import { formatDateTime } from "../../lib/format";
 import { pollInboxOnce, useImapStatus } from "../../workers/imap-poller";
@@ -76,8 +76,8 @@ export function EmailAccountSection() {
     setBusy("test");
     setMessage(null);
     try {
-      await invoke("send_email", {
-        smtp: {
+      await platform.sendEmail(
+        {
           host: form.smtpHost,
           port: form.smtpPort,
           username: form.smtpUsername,
@@ -85,8 +85,8 @@ export function EmailAccountSection() {
           from_name: form.fromName,
           from_email: form.fromEmail,
         },
-        message: { to_email: form.fromEmail, subject: tr.settings.testEmailSubject, body: tr.settings.testEmailBody },
-      });
+        { to_email: form.fromEmail, subject: tr.settings.testEmailSubject, body: tr.settings.testEmailBody },
+      );
       setMessage({ ok: true, text: tr.settings.testEmailSent(form.fromEmail) });
     } catch (err) {
       setMessage({ ok: false, text: `${tr.settings.testEmailFailed}: ${err instanceof Error ? err.message : String(err)}` });

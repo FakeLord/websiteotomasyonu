@@ -1,10 +1,10 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { attachConsole } from "@tauri-apps/plugin-log";
+import { platform } from "./lib/platform";
 import App from "./App";
 import "./index.css";
 
-void attachConsole();
+platform.attachLogs();
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>

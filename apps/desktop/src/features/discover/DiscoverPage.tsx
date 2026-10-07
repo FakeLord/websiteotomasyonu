@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { platform } from "../../lib/platform";
 import { AlertTriangle, ExternalLink, History, Loader2, MapPin, Search, Star, Upload } from "lucide-react";
 import { supabase } from "../../lib/supabase-client";
 import { useWorkspaceMembership } from "../../lib/use-workspace-membership";
@@ -41,7 +41,7 @@ const JOB_TONES = { QUEUED: "gray", RUNNING: "blue", DONE: "green", FAILED: "red
 
 async function openExternal(url: string) {
   try {
-    await openUrl(url);
+    await platform.openExternal(url);
   } catch {
     window.open(url, "_blank", "noopener");
   }

@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { platform } from "./platform";
 
 const STORAGE_KEY = "email_account";
 
@@ -19,11 +19,11 @@ export interface EmailAccountConfig {
  * komutları) tutulur — düz metin dosyaya/DB'ye asla yazılmaz (CLAUDE.md #1, P.2).
  */
 export async function getEmailAccount(): Promise<EmailAccountConfig | null> {
-  const raw = await invoke<string | null>("secret_get", { key: STORAGE_KEY });
+  const raw = await platform.secrets.get(STORAGE_KEY);
   if (!raw) return null;
   return JSON.parse(raw) as EmailAccountConfig;
 }
 
 export async function setEmailAccount(config: EmailAccountConfig): Promise<void> {
-  await invoke("secret_set", { key: STORAGE_KEY, value: JSON.stringify(config) });
+  await platform.secrets.set(STORAGE_KEY, JSON.stringify(config));
 }

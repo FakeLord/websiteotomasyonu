@@ -1,13 +1,14 @@
-import { invoke } from "@tauri-apps/api/core";
 import type { WebsiteFetchResult, WebsiteFetcherLike } from "@lbf/core";
+import { platform } from "./platform";
 
 /**
  * `runWebsiteAnalysis`'ın (packages/core) beklediği `WebsiteFetcherLike`
- * sözleşmesini Rust `fetch_page` komutuna bağlar (timeout/boyut/redirect/SSRF
- * engeli Rust tarafında — bkz. src-tauri/src/commands/website.rs).
+ * sözleşmesini kabuğun `fetch_page` uygulamasına bağlar. Timeout/boyut/redirect/
+ * SSRF engeli kabuk tarafındadır (Rust: src-tauri/src/commands/website.rs,
+ * tarayıcı modu: apps/local-server/src/routes/website.ts).
  */
-export const tauriWebsiteFetcher: WebsiteFetcherLike = {
+export const platformWebsiteFetcher: WebsiteFetcherLike = {
   async fetchPage(url: string): Promise<WebsiteFetchResult> {
-    return invoke<WebsiteFetchResult>("fetch_page", { url });
+    return platform.fetchPage(url);
   },
 };

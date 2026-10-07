@@ -1,5 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
-import { error as logError } from "@tauri-apps/plugin-log";
+import { platform } from "../lib/platform";
 import { tr } from "../i18n/tr";
 import { Button } from "../components/ui/button";
 
@@ -19,7 +19,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
-    void logError(`${error.stack ?? error.message}\n${info.componentStack ?? ""}`);
+    platform.logError(`${error.stack ?? error.message}\n${info.componentStack ?? ""}`);
   }
 
   render() {

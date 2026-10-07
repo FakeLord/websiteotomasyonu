@@ -1,5 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { platform } from "../../lib/platform";
 import {
   buildDraftFirstMessagePrompt,
   computeFollowUpDueDate,
@@ -89,8 +88,8 @@ async function deliver(target: SendTarget, message: SendableMessage): Promise<De
     if (error) throw error;
     if (!channelRow) throw new Error(tr.conversations.noEmailAddress);
     const inReplyTo = await lastInboundMessageId(target.conversationId);
-    const externalMessageId = await invoke<string>("send_email", {
-      smtp: {
+    const externalMessageId = await platform.sendEmail(
+      {
         host: account.smtpHost,
         port: account.smtpPort,
         username: account.smtpUsername,
@@ -98,8 +97,8 @@ async function deliver(target: SendTarget, message: SendableMessage): Promise<De
         from_name: account.fromName,
         from_email: account.fromEmail,
       },
-      message: { to_email: channelRow.value, subject: message.subject ?? "", body: message.body, in_reply_to: inReplyTo },
-    });
+      { to_email: channelRow.value, subject: message.subject ?? "", body: message.body, in_reply_to: inReplyTo },
+    );
     return { mode: "SMTP", externalMessageId };
   }
 
@@ -116,7 +115,7 @@ async function deliver(target: SendTarget, message: SendableMessage): Promise<De
     .maybeSingle();
   const handle = (channelRow?.normalized_value as string | undefined)?.split(":").pop();
   if (!handle) return { mode: "MANUAL", externalMessageId: null };
-  await openUrl(linkBuilder(handle));
+  await platform.openExternal(linkBuilder(handle));
   return { mode: "ASSISTED", externalMessageId: null };
 }
 

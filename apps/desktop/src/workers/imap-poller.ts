@@ -1,10 +1,10 @@
-import { invoke } from "@tauri-apps/api/core";
 import { create } from "zustand";
 import { imapSinceDate, parseInboundEmail, resolveBounceTarget, resolveInboundTarget, type InboundMatchContext } from "@lbf/core";
 import { supabase } from "../lib/supabase-client";
 import { getEmailAccount, type EmailAccountConfig } from "../lib/email-account";
 import { ingestInboundMessage } from "../features/outreach/inbound";
 import { rpc } from "../features/outreach/outreach";
+import { platform } from "../lib/platform";
 
 /**
  * IMAP poller (SPEC.md → L, ADR 0008): uygulama açıkken kullanıcının gelen
@@ -16,12 +16,6 @@ import { rpc } from "../features/outreach/outreach";
 export const POLL_INTERVAL_MS = 5 * 60 * 1000;
 const FIRST_RUN_LOOKBACK_DAYS = 3;
 const MATCH_WINDOW_DAYS = 120;
-
-interface ImapFetchResult {
-  uid_validity: number | null;
-  last_uid: number | null;
-  messages: Array<{ uid: number; raw_base64: string }>;
-}
 
 interface PollState {
   uidValidity: number | null;
@@ -43,8 +37,6 @@ interface ImapStatus {
 }
 
 export const useImapStatus = create<ImapStatus>(() => ({ running: false, lastRunAt: null, lastSummary: null, lastError: null }));
-
-export const isTauriRuntime = () => typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
 const stateKey = (account: EmailAccountConfig) => `lbf.imap.${account.smtpUsername.toLowerCase()}`;
 
@@ -107,19 +99,19 @@ async function loadMatchContext(workspaceId: string): Promise<InboundMatchContex
 
 async function runPoll(workspaceId: string, account: EmailAccountConfig): Promise<PollSummary> {
   const state = readState(account);
-  const result = await invoke<ImapFetchResult>("imap_fetch", {
-    imap: {
-      host: account.imapHost,
+  const result = await platform.imapFetch(
+    {
+      host: account.imapHost ?? "",
       port: account.imapPort ?? 993,
       username: account.smtpUsername,
       password: account.smtpPassword,
     },
-    options: {
+    {
       since_uid: state.lastUid,
       since_date: state.lastUid === null ? imapSinceDate(new Date(Date.now() - FIRST_RUN_LOOKBACK_DAYS * 86_400_000)) : null,
       limit: 50,
     },
-  });
+  );
 
   // UIDVALIDITY değiştiyse (kutu yeniden oluşturuldu) UID'ler geçersizdir: tarihten yeniden tara.
   if (state.uidValidity !== null && result.uid_validity !== null && state.uidValidity !== result.uid_validity) {
@@ -204,11 +196,10 @@ async function processMessage(
 
 let inFlight: Promise<PollSummary | null> | null = null;
 
-/** Gelen kutusunu bir kez kontrol eder. Hesap/IMAP ayarı yoksa veya Tauri dışında null döner. */
+/** Gelen kutusunu bir kez kontrol eder. Hesap veya IMAP ayarı yoksa null döner. */
 export function pollInboxOnce(workspaceId: string): Promise<PollSummary | null> {
   if (inFlight) return inFlight;
   inFlight = (async () => {
-    if (!isTauriRuntime()) return null;
     const account = await getEmailAccount();
     if (!account?.imapHost || !account.smtpUsername || !account.smtpPassword) return null;
 

@@ -1,6 +1,6 @@
 import { runWebsiteAnalysis, type WebsiteAnalysisResult } from "@lbf/core";
 import { supabase } from "../lib/supabase-client";
-import { tauriWebsiteFetcher } from "../lib/website-fetcher";
+import { platformWebsiteFetcher } from "../lib/website-fetcher";
 import { recomputeScore } from "./score-runner";
 
 export interface AnalyzeTarget {
@@ -13,11 +13,11 @@ const CONCURRENCY = 4;
 
 /**
  * Tek bir işletmeyi analiz eder ve sonucu `save_website_analysis()` RPC'sine
- * yazar (yetki ve activity log DB tarafında — CLAUDE.md #8). Fetch, Rust
- * `fetch_page` komutunu saran `tauriWebsiteFetcher` üzerinden yapılır.
+ * yazar (yetki ve activity log DB tarafında — CLAUDE.md #8). Fetch, kabuğun
+ * `fetch_page` uygulamasını (Rust veya yerel sunucu) saran `platformWebsiteFetcher` üzerinden yapılır.
  */
 export async function analyzeBusiness(workspaceId: string, target: AnalyzeTarget): Promise<WebsiteAnalysisResult> {
-  const result = await runWebsiteAnalysis(tauriWebsiteFetcher, {
+  const result = await runWebsiteAnalysis(platformWebsiteFetcher, {
     websiteUrl: target.websiteUrl,
     category: target.category ?? undefined,
   });
