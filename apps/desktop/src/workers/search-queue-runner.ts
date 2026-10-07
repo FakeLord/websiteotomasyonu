@@ -3,6 +3,7 @@ import type { ImportBusinessResult } from "@lbf/contracts";
 import { supabase } from "../lib/supabase-client";
 import { createPlacesSearchAdapter } from "../lib/places-provider";
 import { recomputeScore } from "./score-runner";
+import { analyzeBusinessesInBatches, type AnalyzeTarget } from "./website-analysis-runner";
 
 const JOB_TYPE = "places_search";
 const LEASE_TTL_SECONDS = 120;
@@ -58,6 +59,7 @@ export async function processSearchQueue(workspaceId: string): Promise<ProcessQu
   if (!acquired) return { processed: 0, leaseHeldElsewhere: true };
 
   let processed = 0;
+  const newTargets: AnalyzeTarget[] = [];
   try {
     const { data: jobs, error } = await supabase
       .from("search_jobs")
@@ -68,7 +70,7 @@ export async function processSearchQueue(workspaceId: string): Promise<ProcessQu
     if (error) throw error;
 
     for (const job of jobs ?? []) {
-      await runOneJob(workspaceId, job.id as string, job.params as SearchJobParams);
+      newTargets.push(...(await runOneJob(workspaceId, job.id as string, job.params as SearchJobParams)));
       processed += 1;
     }
   } finally {
@@ -79,10 +81,18 @@ export async function processSearchQueue(workspaceId: string): Promise<ProcessQu
     });
   }
 
+  // Yeni bulunan işletmeler arka planda otomatik analiz edilir ve puanlanır; arama
+  // sonucu beklemez. Hata olursa lead'ler analizsiz kalır, "Toplu Analiz" ile tekrar denenir.
+  if (newTargets.length > 0) {
+    void analyzeBusinessesInBatches(workspaceId, newTargets).catch(() => undefined);
+  }
+
   return { processed, leaseHeldElsewhere: false };
 }
 
-async function runOneJob(workspaceId: string, jobId: string, params: SearchJobParams): Promise<void> {
+/** İşi çalıştırır; otomatik analiz edilecek (yeni oluşan) işletmeleri döner. */
+async function runOneJob(workspaceId: string, jobId: string, params: SearchJobParams): Promise<AnalyzeTarget[]> {
+  const targets: AnalyzeTarget[] = [];
   const { error: runningError } = await supabase
     .from("search_jobs")
     .update({ status: "RUNNING" })
@@ -120,6 +130,13 @@ async function runOneJob(workspaceId: string, jobId: string, params: SearchJobPa
       const status = importResult?.status;
       if (status === "DUPLICATE_MERGED") duplicateCount += 1;
       else newCount += 1;
+      if (importResult && status !== "DUPLICATE_MERGED") {
+        targets.push({
+          id: importResult.businessId,
+          websiteUrl: payload.websiteUrl ?? null,
+          category: payload.category ?? null,
+        });
+      }
       // Tekrar bulunan kayıtta da puan/yorum/durum tazelenmiş olabilir; skor
       // her iki durumda yeniden hesaplanır.
       if (importResult) {
@@ -151,4 +168,5 @@ async function runOneJob(workspaceId: string, jobId: string, params: SearchJobPa
       })
       .eq("id", jobId);
   }
+  return targets;
 }
