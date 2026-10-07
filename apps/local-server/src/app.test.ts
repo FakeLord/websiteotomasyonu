@@ -186,6 +186,8 @@ describe("statik arayüz", () => {
     expect(reply.headers["content-security-policy"]).toContain("default-src 'self'");
     expect(reply.headers["x-content-type-options"]).toBe("nosniff");
     expect(reply.headers["x-frame-options"]).toBe("DENY");
+    // OpenStreetMap karoları geçerli bir Referer ister; yalnızca origin gönderilir (tam yol/sorgu asla).
+    expect(reply.headers["referrer-policy"]).toBe("strict-origin-when-cross-origin");
     expect(reply.headers["cache-control"]).toBe("no-cache");
   });
 

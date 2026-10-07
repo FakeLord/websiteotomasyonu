@@ -34,7 +34,9 @@ export function buildCsp(extraConnectSrc = "http://127.0.0.1:54321 ws://127.0.0.
 
 export const SECURITY_HEADERS = {
   "x-content-type-options": "nosniff",
-  "referrer-policy": "no-referrer",
+  // Harita karoları (OpenStreetMap) kullanım politikası gereği geçerli bir Referer ister; yalnızca kaynak (origin) gönderilir,
+  // yol ve sorgu hiçbir zaman gitmez (yerel adres zaten gizli değil).
+  "referrer-policy": "strict-origin-when-cross-origin",
   "x-frame-options": "DENY",
 } as const;
 
