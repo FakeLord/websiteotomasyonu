@@ -1,5 +1,6 @@
 import type { GooglePlaceResult, SearchJobPage, SearchJobProvider } from "@lbf/core";
 import { supabase } from "./supabase-client";
+import { functionErrorMessage } from "./function-error";
 
 interface FunctionsErrorWithContext {
   context?: { status?: number };
@@ -27,7 +28,7 @@ export function createPlacesSearchAdapter(
         if (status === 429) {
           return { places: [], rateLimited: true };
         }
-        throw error;
+        throw new Error(await functionErrorMessage(error, "Places araması başarısız oldu."));
       }
 
       const body = data as { places?: GooglePlaceResult[]; nextPageToken?: string };
