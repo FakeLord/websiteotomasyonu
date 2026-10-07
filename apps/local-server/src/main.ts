@@ -15,7 +15,7 @@ import { fetchPage } from "./website";
  *   LBF_PORT   dinlenen port (varsayılan 5174)
  *   LBF_NO_UI  "1" ise yalnızca /api sunulur (geliştirmede Vite arayüzü sunar)
  *   LBF_CONNECT_SRC  CSP connect-src'e eklenecek ek adresler (varsayılan: yerel Supabase)
- *   --open     hazır olunca varsayılan tarayıcıda açar
+ *   --open veya LBF_OPEN=1   hazır olunca varsayılan tarayıcıda açar
  */
 const here = path.dirname(fileURLToPath(import.meta.url));
 const port = Number(process.env.LBF_PORT ?? 5174);
@@ -50,7 +50,7 @@ server.listen(port, "127.0.0.1", () => {
   const url = `http://127.0.0.1:${port}`;
   console.log(`Local Business Finder hazır: ${url}`);
   console.log("Kapatmak için bu pencerede Ctrl+C.");
-  if (process.argv.includes("--open") && process.platform === "win32") {
+  if ((process.argv.includes("--open") || process.env.LBF_OPEN === "1") && process.platform === "win32") {
     spawn("cmd", ["/c", "start", "", url], { stdio: "ignore", detached: true }).unref();
   }
 });

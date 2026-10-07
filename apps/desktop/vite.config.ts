@@ -6,6 +6,9 @@ import packageJson from "./package.json";
 // @ts-expect-error type error without @types/node package
 import process from "node:process";
 const host = process.env.TAURI_DEV_HOST;
+// `pnpm dev:web`: arayüzü Vite sunar, /api uçlarını yerel sunucu (LBF_DEV_API_PORT) karşılar (ADR 0009).
+const devApiPort = process.env.LBF_DEV_API_PORT ?? "8787";
+const devApiTarget = `http://127.0.0.1:${devApiPort}`;
 
 // https://vite.dev/config/
 export default defineConfig(() => ({
@@ -27,6 +30,16 @@ export default defineConfig(() => ({
     port: 1420,
     strictPort: true,
     host: host || false,
+    proxy: {
+      "/api": {
+        target: devApiTarget,
+        changeOrigin: true, // Host başlığını sunucunun adresine çevirir
+        configure: (proxy) => {
+          // Sunucu yalnızca kendi origin'ini kabul eder; tarayıcının Vite origin'i geliştirmede buna çevrilir.
+          proxy.on("proxyReq", (proxyReq) => proxyReq.setHeader("origin", devApiTarget));
+        },
+      },
+    },
     hmr: host
       ? {
           protocol: "ws",

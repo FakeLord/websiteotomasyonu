@@ -4,7 +4,7 @@
     {
       "name": "desktop-web",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@lbf/desktop", "run", "dev"],
+      "runtimeArgs": ["dev:web"],
       "port": 1420
     }
   ]

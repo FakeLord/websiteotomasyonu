@@ -92,6 +92,22 @@ describe("sendEmail", () => {
     await expect(sendEmail(smtp, { ...message, to_email: "a@b.com\r\nBcc: x@y.com" }, jsonTransport())).rejects.toThrow(/alıcı adresi/);
   });
 
+  it.each([
+    ["EAUTH", /SMTP girişi başarısız/],
+    ["ECONNECTION", /SMTP sunucusuna bağlanılamadı/],
+    ["ETIMEDOUT", /SMTP sunucusuna bağlanılamadı/],
+    ["EDNS", /SMTP sunucusuna bağlanılamadı/],
+    ["ETLS", /TLS\/STARTTLS/],
+    ["EENVELOPE", /alıcı adresi/],
+    ["EMESSAGE", /e-posta gönderilemedi: sunucu/],
+  ])("%s hatasını ayırt edilebilir, şifresiz mesaja çevirir", async (code, expected) => {
+    const failing = { sendMail: async () => { throw Object.assign(new Error("ham ayrıntı gizli"), { code }); } } as unknown as MailTransport;
+    const error = await sendEmail(smtp, message, failing).then(() => new Error("hata beklenmişti"), (e: unknown) => e as Error);
+    expect(error.message).toMatch(/^e-posta gönderilemedi: /);
+    expect(error.message).toMatch(expected);
+    expect(error.message).not.toContain("gizli");
+  });
+
   it("taşıyıcı hatasını şifre sızdırmadan Türkçe mesaja çevirir", async () => {
     const failing = { sendMail: async () => { throw new Error("Invalid login: 535 gizli"); } } as unknown as MailTransport;
     const error = await sendEmail(smtp, message, failing).then(() => new Error("hata beklenmişti"), (e: unknown) => e as Error);

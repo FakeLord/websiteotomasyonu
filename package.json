@@ -9,6 +9,8 @@
   "packageManager": "pnpm@9.15.9",
   "scripts": {
     "dev": "pnpm --filter @lbf/desktop tauri dev",
+    "dev:web": "node scripts/dev-web.mjs",
+    "web": "pnpm --filter @lbf/desktop build && pnpm --filter @lbf/local-server start",
     "lint": "eslint .",
     "typecheck": "pnpm -r --if-present run typecheck",
     "test": "vitest run",

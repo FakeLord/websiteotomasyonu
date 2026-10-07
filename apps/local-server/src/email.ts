@@ -40,6 +40,31 @@ export function buildTransportOptions(smtp: SmtpInput): SMTPTransport.Options {
 }
 
 /**
+ * nodemailer hata kodunu kullanıcıya yol gösteren, ayrıntı sızdırmayan bir mesaja
+ * çevirir (ham hata sunucu yanıtındaki kullanıcı adı/komutları içerebilir).
+ */
+export function describeSmtpFailure(code: string | undefined): string {
+  switch (code) {
+    case "EAUTH":
+      return "SMTP girişi başarısız (kullanıcı adı/şifre veya uygulama şifresi)";
+    case "ECONNECTION":
+    case "ETIMEDOUT":
+    case "ESOCKET":
+    case "EDNS":
+    case "ECONNREFUSED":
+    case "ENOTFOUND":
+      return "SMTP sunucusuna bağlanılamadı (sunucu adı, port veya ağ bağlantısı)";
+    case "ETLS":
+    case "EREQUIRETLS":
+      return "güvenli bağlantı (TLS/STARTTLS) kurulamadı; 587 için STARTTLS, 465 için SSL gerekir";
+    case "EENVELOPE":
+      return "sunucu alıcı adresini veya gönderen adresini kabul etmedi";
+    default:
+      return "sunucu postayı reddetti";
+  }
+}
+
+/**
  * Kişisel SMTP hesabından tek e-posta gönderir ve RFC 5322 `Message-ID`'sini
  * döner (Rust `send_email` ile aynı sözleşme). İş kuralları (DNC, limit, onay)
  * burada değil, masaüstü/web arayüzünde `outreach_guard` ile uygulanır.
@@ -67,9 +92,9 @@ export async function sendEmail(
       messageId,
       ...(parent ? { inReplyTo: parent, references: parent } : {}),
     });
-  } catch {
-    // Hata ayrıntısı sunucu yanıtındaki parametreleri/kimlik bilgilerini içerebilir; gövdeye taşınmaz.
-    throw new Error("e-posta gönderilemedi (SMTP sunucusu veya kimlik bilgileri reddedildi)");
+  } catch (error) {
+    // Ham hata sunucu yanıtındaki parametreleri/kimlik bilgilerini içerebilir; yalnızca türü bildirilir.
+    throw new Error(`e-posta gönderilemedi: ${describeSmtpFailure((error as { code?: string }).code)}`);
   } finally {
     transport.close?.();
   }

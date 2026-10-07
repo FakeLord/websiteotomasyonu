@@ -19,6 +19,7 @@ Windows masaüstü uygulaması (Tauri 2 + React + TypeScript) ve Supabase payla�
 
 ```
 apps/desktop/            Tauri + React uygulaması (src/, src-tauri/)
+apps/local-server/       Web modu için yerel Node sunucusu (SMTP/IMAP/site analizi/kasa; iş kuralı yok)
 packages/core/           Domain mantığı (scoring, dedupe, normalize, pipeline, routing, outreach-rules,
                          website-analyzer, followup, ai/prompts+validators, actions)
 packages/contracts/      zod şemaları, DB tipleri, action sözleşmeleri
@@ -33,6 +34,8 @@ docs/                    SPEC.md, phases/, adr/, qa/
 ```
 pnpm install
 pnpm dev                 # Tauri dev
+pnpm web                 # tarayıcı modu: arayüz + yerel sunucu, 127.0.0.1:5174 (baslat.cmd tek tık)
+pnpm dev:web             # tarayıcı modu, Vite HMR (localhost:1420)
 pnpm test                # Vitest (tüm paketler)
 pnpm lint && pnpm typecheck
 supabase start           # lokal Supabase (Docker)
