@@ -4,6 +4,7 @@
 // (SPEC.md → G.1, docs/adr/0004-places-vault.md).
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { buildSearchRequest, isValidBody } from "./validate.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -16,6 +17,7 @@ const FIELD_MASK = [
   "places.id",
   "places.displayName",
   "places.formattedAddress",
+  "places.addressComponents",
   "places.location",
   "places.types",
   "places.businessStatus",
@@ -28,47 +30,11 @@ const FIELD_MASK = [
   "nextPageToken",
 ].join(",");
 
-interface LocationBias {
-  lat: number;
-  lng: number;
-  radiusMeters: number;
-}
-
-interface RequestBody {
-  workspaceId: string;
-  textQuery: string;
-  pageToken?: string;
-  location?: LocationBias;
-}
-
-function isValidLocation(value: unknown): value is LocationBias {
-  if (typeof value !== "object" || value === null) return false;
-  const loc = value as Record<string, unknown>;
-  return (
-    typeof loc.lat === "number" && loc.lat >= -90 && loc.lat <= 90 &&
-    typeof loc.lng === "number" && loc.lng >= -180 && loc.lng <= 180 &&
-    typeof loc.radiusMeters === "number" && loc.radiusMeters > 0 && loc.radiusMeters <= 50000
-  );
-}
-
 function json(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: { ...corsHeaders, "content-type": "application/json" },
   });
-}
-
-function isValidBody(value: unknown): value is RequestBody {
-  if (typeof value !== "object" || value === null) return false;
-  const body = value as Record<string, unknown>;
-  return (
-    typeof body.workspaceId === "string" &&
-    body.workspaceId.length > 0 &&
-    typeof body.textQuery === "string" &&
-    body.textQuery.trim().length > 0 &&
-    (body.pageToken === undefined || typeof body.pageToken === "string") &&
-    (body.location === undefined || isValidLocation(body.location))
-  );
 }
 
 Deno.serve(async (req) => {
@@ -125,25 +91,7 @@ Deno.serve(async (req) => {
       "X-Goog-Api-Key": apiKey,
       "X-Goog-FieldMask": FIELD_MASK,
     },
-    body: JSON.stringify({
-      textQuery: rawBody.textQuery,
-      languageCode: "tr",
-      regionCode: "TR",
-      pageSize: 20,
-      ...(rawBody.pageToken ? { pageToken: rawBody.pageToken } : {}),
-      // Harita üzerinden seçilen merkez + yarıçap; Places bunu sonuçları o
-      // bölgeye yakın olanlara ağırlık vermek için kullanır (sert filtre değil).
-      ...(rawBody.location
-        ? {
-            locationBias: {
-              circle: {
-                center: { latitude: rawBody.location.lat, longitude: rawBody.location.lng },
-                radius: rawBody.location.radiusMeters,
-              },
-            },
-          }
-        : {}),
-    }),
+    body: JSON.stringify(buildSearchRequest(rawBody)),
   });
 
   if (googleResponse.status === 429) {

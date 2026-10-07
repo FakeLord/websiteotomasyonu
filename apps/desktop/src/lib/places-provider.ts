@@ -14,11 +14,12 @@ interface FunctionsErrorWithContext {
 export function createPlacesSearchAdapter(
   workspaceId: string,
   location?: { lat: number; lng: number; radiusMeters: number },
+  market?: { regionCode: string; languageCode: string },
 ): SearchJobProvider {
   return {
     async search({ textQuery, pageToken }): Promise<SearchJobPage> {
       const { data, error } = await supabase.functions.invoke("places-search", {
-        body: { workspaceId, textQuery, pageToken, location },
+        body: { workspaceId, textQuery, pageToken, location, ...market },
       });
 
       if (error) {

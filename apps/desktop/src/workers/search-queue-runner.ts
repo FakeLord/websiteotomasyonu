@@ -1,4 +1,4 @@
-import { placeToBusinessPayload, runSearchJob, type SearchJobClock } from "@lbf/core";
+import { getCountryProfile, placeToBusinessPayload, runSearchJob, type SearchJobClock } from "@lbf/core";
 import type { ImportBusinessResult } from "@lbf/contracts";
 import { supabase } from "../lib/supabase-client";
 import { createPlacesSearchAdapter } from "../lib/places-provider";
@@ -13,6 +13,10 @@ export interface SearchJobParams {
   city?: string;
   district?: string;
   category?: string;
+  /** ISO-3166 alpha-2 (büyük harf): aramanın pazarı. Yoksa eski davranış (TR/tr). */
+  countryCode?: string;
+  /** Places yanıt dili (BCP-47); yoksa ülkenin varsayılan dili. */
+  languageCode?: string;
   /** Harita üzerinden yarıçaplı arama (Places `locationBias.circle`). */
   location?: { lat: number; lng: number; radiusMeters: number };
 }
@@ -86,14 +90,25 @@ async function runOneJob(workspaceId: string, jobId: string, params: SearchJobPa
   if (runningError) throw runningError;
 
   try {
-    const provider = createPlacesSearchAdapter(workspaceId, params.location);
+    const market = params.countryCode
+      ? {
+          regionCode: params.countryCode,
+          languageCode: params.languageCode ?? getCountryProfile(params.countryCode).defaultLanguage ?? "en",
+        }
+      : undefined;
+    const provider = createPlacesSearchAdapter(workspaceId, params.location, market);
     const result = await runSearchJob(provider, realClock, params.textQuery);
 
     let newCount = 0;
     let duplicateCount = 0;
 
     for (const place of result.places) {
-      const payload = placeToBusinessPayload(place, { city: params.city, district: params.district, category: params.category });
+      const payload = placeToBusinessPayload(place, {
+        ...(params.city ? { city: params.city } : {}),
+        ...(params.district ? { district: params.district } : {}),
+        ...(params.category ? { category: params.category } : {}),
+        ...(params.countryCode ? { countryCode: params.countryCode } : {}),
+      });
       const { data, error } = await supabase.rpc("import_business", {
         ws: workspaceId,
         p_payload: payload,
