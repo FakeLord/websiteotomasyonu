@@ -66,6 +66,7 @@ export {
   type InboundTarget,
 } from "./email/resolve-inbound";
 export { validateDraft, type ValidateDraftInput, type ValidateDraftResult } from "./ai/validate-draft";
+export { stripSignOff } from "./ai/strip-sign-off";
 export {
   normalizeAiConfig,
   activeProviders,

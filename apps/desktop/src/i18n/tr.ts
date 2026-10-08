@@ -147,6 +147,7 @@ export const tr = {
       stage: "Aşama",
       city: "Şehir/İlçe",
       score: "Puan",
+      contact: "İletişim",
       lastActivity: "Son Aktivite",
       lastContacted: "Son iletişim",
       assigned: "Atanan",
@@ -158,6 +159,7 @@ export const tr = {
       website: "Web sitesi",
       stage: "Durum",
       score: "Puan",
+      contact: "İletişim kanalları",
       activity: "Son aktivite",
       assignee: "Atanan",
     },
@@ -617,6 +619,10 @@ export const tr = {
       DELIVERY_MISMATCH: "Paket aralığı dışında teslim süresi",
       INVALID_SHAPE: "AI çıktısı beklenen biçimde değil",
     },
+  },
+  contactChannels: {
+    none: "İletişim yok",
+    ariaLabel: (names: string[]) => `Ulaşılabilir kanallar: ${names.join(", ")}`,
   },
   channels: {
     EMAIL: "E-posta",

@@ -18,6 +18,8 @@ export interface BusinessListRow {
   updated_at: string;
   do_not_contact: boolean;
   possible_duplicate_of: string | null;
+  /** Yalnızca liste sorgusu ekler (PostgREST ilişki gömme). */
+  contact_channels?: Array<{ channel: string; status: string | null }>;
 }
 
 export interface BusinessDetail extends BusinessListRow {

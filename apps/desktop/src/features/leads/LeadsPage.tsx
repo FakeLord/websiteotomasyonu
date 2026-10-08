@@ -44,13 +44,15 @@ import {
   DropdownMenuTrigger,
 } from "../../components/ui/primitives";
 import { ScoreBadge, StageBadge, WebsiteStatusBadge } from "../../components/domain/badges";
+import { ContactChannelBadges } from "../../components/domain/contact-channel-badges";
 import { ManualAddDialog } from "./ManualAddDialog";
 import { ImportCsvDialog } from "./ImportCsvDialog";
 import type { BusinessListRow } from "./types";
 
-const COLUMN_KEYS = ["category", "location", "website", "stage", "score", "activity", "assignee"] as const;
+const COLUMN_KEYS = ["category", "location", "website", "contact", "stage", "score", "activity", "assignee"] as const;
 type ColumnKey = (typeof COLUMN_KEYS)[number];
-const COLUMN_STORAGE_KEY = "lbf.leads.columns";
+// v2: "İletişim" sütunu eklendi; eski kayıtlı tercih yeni sütunu gizli bırakırdı.
+const COLUMN_STORAGE_KEY = "lbf.leads.columns.v2";
 
 function loadColumns(): ColumnKey[] {
   try {
@@ -146,7 +148,7 @@ export function LeadsPage() {
     enabled: !!workspaceId,
     queryFn: async (): Promise<{ rows: BusinessListRow[]; count: number }> => {
       const { data, error, count } = await buildQuery(
-        "id, name, category, city, district, country_code, website_url, website_status, stage, lead_score, assigned_to, updated_at, last_contacted_at, do_not_contact, possible_duplicate_of",
+        "id, name, category, city, district, country_code, website_url, website_status, stage, lead_score, assigned_to, updated_at, last_contacted_at, do_not_contact, possible_duplicate_of, contact_channels(channel, status)",
         true,
       )
         .order("lead_score", { ascending: false })
@@ -454,6 +456,7 @@ export function LeadsPage() {
                 {show("category") && <Th>{tr.leads.columns.category}</Th>}
                 {show("location") && <Th>{tr.leads.columns.location}</Th>}
                 {show("website") && <Th>{tr.leads.columns.website}</Th>}
+                {show("contact") && <Th>{tr.leads.columns.contact}</Th>}
                 {show("stage") && <Th>{tr.leads.columns.status}</Th>}
                 {show("score") && <Th>{tr.leads.columns.score}</Th>}
                 {show("activity") && <Th>{tr.leads.columns.lastActivity}</Th>}
@@ -492,6 +495,11 @@ export function LeadsPage() {
                     {show("website") && (
                       <Td>
                         <WebsiteStatusBadge status={row.website_status} />
+                      </Td>
+                    )}
+                    {show("contact") && (
+                      <Td>
+                        <ContactChannelBadges channels={row.contact_channels} />
                       </Td>
                     )}
                     {show("stage") && (

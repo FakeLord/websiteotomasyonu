@@ -27,6 +27,7 @@ import { Badge } from "../../components/ui/badge";
 import { Avatar, EmptyState, Table, Td, Th, Tr } from "../../components/ui/data-display";
 import { Switch } from "../../components/ui/primitives";
 import { ScoreBadge, WebsiteStatusBadge } from "../../components/domain/badges";
+import { ContactChannelBadges } from "../../components/domain/contact-channel-badges";
 import { ImportCsvDialog } from "../leads/ImportCsvDialog";
 import { DiscoverMap, type MapBusiness } from "./DiscoverMap";
 
@@ -145,7 +146,7 @@ export function DiscoverPage() {
     queryFn: async (): Promise<Array<MapBusiness & { lat: number | null; lng: number | null }>> => {
       const { data, error } = await supabase
         .from("business_sources")
-        .select("businesses(id, name, category, district, lat, lng, lead_score, website_status, rating, review_count, merged_into)")
+        .select("businesses(id, name, category, district, lat, lng, lead_score, website_status, rating, review_count, merged_into, contact_channels(channel, status))")
         .eq("search_job_id", activeJobId as string);
       if (error) throw error;
       const rows = (data ?? []) as unknown as Array<{ businesses: (MapBusiness & { merged_into: string | null }) | null }>;
@@ -483,8 +484,9 @@ export function DiscoverPage() {
                           )}
                           {b.district ?? b.category ?? ""}
                         </p>
-                        <div className="mt-1">
+                        <div className="mt-1 flex flex-wrap items-center gap-2">
                           <WebsiteStatusBadge status={b.website_status} />
+                          <ContactChannelBadges channels={b.contact_channels} />
                         </div>
                       </div>
                       <ScoreBadge score={b.lead_score} />

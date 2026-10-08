@@ -14,6 +14,7 @@ export interface MapBusiness {
   website_status: string | null;
   rating: number | null;
   review_count: number | null;
+  contact_channels?: Array<{ channel: string; status: string | null }>;
 }
 
 function scoreColor(score: number): string {

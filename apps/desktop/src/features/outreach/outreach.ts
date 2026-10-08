@@ -2,6 +2,7 @@ import { platform } from "../../lib/platform";
 import {
   buildDraftFirstMessagePrompt,
   computeFollowUpDueDate,
+  stripSignOff,
   validateDraft,
   type OutreachChannel,
   type ServicePackageInfo,
@@ -379,8 +380,10 @@ export async function generateFirstMessageDraft(
     return { ok: false, body: "", reasons: ["INVALID_SHAPE"], channel };
   }
 
+  // Modelin uydurduğu imza (unvan/isim) atılır; hem referans kontrolünü tetikliyor hem yanlış rol bilgisi taşıyor.
+  const body = stripSignOff(parsed.data.body);
   const validation = validateDraft({
-    body: parsed.data.body,
+    body,
     channel,
     packages: context.packages,
     salesRules: { allowDiscountMention: context.allowDiscountMention, forbiddenWords: FORBIDDEN_WORDS },
@@ -393,7 +396,7 @@ export async function generateFirstMessageDraft(
   return {
     ok: validation.ok,
     subject: parsed.data.subject,
-    body: parsed.data.body,
+    body,
     reasons: validation.reasons,
     channel,
   };
