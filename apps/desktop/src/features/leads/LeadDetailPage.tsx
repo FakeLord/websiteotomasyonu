@@ -7,6 +7,7 @@ import {
   chooseChannel,
   contactOptions,
   googleMapsUrl,
+  type ContactOption,
   type BusinessStage,
   type Channel,
   type OutreachChannel,
@@ -42,6 +43,8 @@ import { ChannelIcon } from "../../components/domain/channel-icon";
 import { CustomerDealDialog } from "../customers/CustomerDealDialog";
 import { useBusiness, useContactChannels, useWorkspaceSettings, type ContactChannelRow, type WorkspaceSettingsRow } from "./detail/lead-data";
 import { DraftMessageDialog } from "./detail/DraftMessageDialog";
+import { ContactOutcomePanel, type PendingContact } from "./detail/ContactOutcomePanel";
+import { logContactAttempt } from "./detail/contact-attempts";
 import { OverviewTab } from "./detail/OverviewTab";
 import { AnalysisTab, ContactTab, ConversationsTab, NotesTab, SOCIAL_CHANNELS, WebsiteTab } from "./detail/tabs";
 import type { BusinessDetail } from "./types";
@@ -247,6 +250,8 @@ export function LeadDetailPage() {
   const settings = useWorkspaceSettings().data;
   const [draftOpen, setDraftOpen] = useState(false);
   const [dealOpen, setDealOpen] = useState(false);
+  const [pending, setPending] = useState<PendingContact | null>(null);
+  const queryClient = useQueryClient();
   useRealtimeTable("businesses", workspaceId, ["business", businessId]);
 
   if (!businessQuery.data || !workspaceId) {
@@ -274,6 +279,17 @@ export function LeadDetailPage() {
     // mailto: yeni sekme açmadan e-posta uygulamasına gitsin.
     if (url.startsWith("mailto:")) window.location.href = url;
     else void platform.openExternal(url);
+  };
+  // Önce bağlantı açılır (tarayıcı açılır pencereyi yalnızca tıklamanın hemen içinde izin verir), sonra temas kaydedilir.
+  const contact = (option: ContactOption) => {
+    openLink(option.url);
+    setPending({ attemptId: null, channel: option.channel, address: option.display, error: null });
+    logContactAttempt(business.id, option.channel, option.display).then(
+      (attemptId) => setPending((current) => (current && current.address === option.display ? { ...current, attemptId } : current)),
+      (error: unknown) =>
+        setPending((current) => (current ? { ...current, error: error instanceof Error ? error.message : tr.common.error } : current)),
+    );
+    void queryClient.invalidateQueries({ queryKey: ["business", business.id] });
   };
 
   return (
@@ -336,7 +352,7 @@ export function LeadDetailPage() {
                 <DropdownMenuContent className="w-80">
                   <DropdownMenuLabel>{contacts.length > 0 ? tr.leadDetail.contactMenuTitle : tr.leadDetail.contactMenuNone}</DropdownMenuLabel>
                   {contacts.map((option) => (
-                    <DropdownMenuItem key={option.url} onSelect={() => openLink(option.url)}>
+                    <DropdownMenuItem key={option.url} onSelect={() => contact(option)}>
                       <ChannelIcon channel={option.channel} />
                       <span className="min-w-0 flex-1">
                         <span className="block text-sm text-text">{tr.leadDetail.contactKinds[option.channel]}</span>
@@ -417,6 +433,7 @@ export function LeadDetailPage() {
           recommendedChannel={recommendedChannel}
         />
       )}
+      {pending && <ContactOutcomePanel key={`${pending.channel}:${pending.address}`} businessId={business.id} pending={pending} onClose={() => setPending(null)} />}
       {dealOpen && <CustomerDealDialog open={dealOpen} onOpenChange={setDealOpen} businessId={business.id} businessName={business.name} countryCode={business.country_code} />}
     </div>
   );
