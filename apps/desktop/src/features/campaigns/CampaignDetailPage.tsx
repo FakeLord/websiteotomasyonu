@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, CheckCircle2, Loader2, MessagesSquare, Pause, Play, SkipForward, Sparkles, Undo2, UserPlus } from "lucide-react";
-import type { OutreachChannel } from "@lbf/core";
+import { OUTREACH_LANGUAGES, type OutreachChannel, type OutreachLanguage } from "@lbf/core";
 import { supabase } from "../../lib/supabase-client";
 import { useWorkspaceMembership } from "../../lib/use-workspace-membership";
 import { useRealtimeTable } from "../../lib/use-realtime-table";
@@ -49,6 +49,8 @@ export function CampaignDetailPage() {
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [messages, setMessages] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // Bilerek varsayılan yok: taslakların dilini ekip seçer.
+  const [language, setLanguage] = useState<OutreachLanguage | "">("");
   const membersKey = ["campaign-members", campaignId];
   useRealtimeTable("campaign_members", workspaceId, membersKey);
 
@@ -100,6 +102,10 @@ export function CampaignDetailPage() {
 
   const prepareDrafts = async (targets: MemberRow[]) => {
     if (!workspaceId || !campaign) return;
+    if (!language) {
+      setError(tr.draft.selectLanguageFirst);
+      return;
+    }
     setError(null);
     setMessages([]);
     setProgress({ done: 0, total: targets.length });
@@ -108,7 +114,7 @@ export function CampaignDetailPage() {
       const business = member.businesses;
       if (!business) continue;
       try {
-        const draft = await generateFirstMessageDraft(workspaceId, business, campaign.channel as OutreachChannel);
+        const draft = await generateFirstMessageDraft(workspaceId, business, campaign.channel as OutreachChannel, language);
         if (!draft.ok) {
           notes.push(`${business.name}: ${draft.reasons.map(draftReasonLabel).join(", ")}`);
         } else {
@@ -220,10 +226,25 @@ export function CampaignDetailPage() {
             <UserPlus />
             {tr.campaigns.refill}
           </Button>
+          <label className="flex items-center gap-2 text-xs text-muted">
+            {tr.draft.languageLabel}
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value as OutreachLanguage | "")}
+              className="rounded-md border border-border bg-surface-2 px-2 py-1 text-sm text-text"
+            >
+              <option value="">{tr.draft.languagePlaceholder}</option>
+              {OUTREACH_LANGUAGES.map((l) => (
+                <option key={l} value={l}>
+                  {tr.draft.languages[l]}
+                </option>
+              ))}
+            </select>
+          </label>
           <Button
             size="sm"
             variant="violet"
-            disabled={!!progress || nextBatch.length === 0 || campaign.status !== "ACTIVE"}
+            disabled={!!progress || nextBatch.length === 0 || campaign.status !== "ACTIVE" || !language}
             onClick={() => void prepareDrafts(nextBatch)}
             title={campaign.status !== "ACTIVE" ? tr.campaigns.startFirst : undefined}
           >
@@ -289,7 +310,7 @@ export function CampaignDetailPage() {
                   <Td>
                     <div className="flex justify-end gap-1">
                       {member.status === "QUEUED" && campaign.status === "ACTIVE" && (
-                        <Button size="sm" variant="outline" disabled={!!progress} onClick={() => void prepareDrafts([member])}>
+                        <Button size="sm" variant="outline" disabled={!!progress || !language} onClick={() => void prepareDrafts([member])}>
                           <Sparkles />
                           {tr.campaigns.prepare}
                         </Button>

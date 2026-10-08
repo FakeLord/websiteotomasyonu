@@ -96,7 +96,12 @@ export {
   type JarvisReply,
 } from "./ai/jarvis";
 export type { AIMessage, AIPromptRequest, ServicePackageInfo, SalesRules, OutreachChannel } from "./ai/types";
-export { buildDraftFirstMessagePrompt, type DraftFirstMessageInput } from "./ai/prompts/draft-first-message";
+export {
+  buildDraftFirstMessagePrompt,
+  OUTREACH_LANGUAGES,
+  type DraftFirstMessageInput,
+  type OutreachLanguage,
+} from "./ai/prompts/draft-first-message";
 export {
   buildClassifyReplyPrompt,
   hasStopKeyword,

@@ -6,6 +6,8 @@ import { buildUpdateSummaryPrompt } from "./update-summary";
 import { buildGenerateHandoffPrompt } from "./generate-handoff";
 import { buildFollowupDraftPrompt } from "./followup-draft";
 
+const EXTRA = { city: null, rating: null, reviewCount: null, language: "tr" as const, companyFacts: "Biz bir yazılım şirketiyiz." };
+
 describe("buildDraftFirstMessagePrompt", () => {
   it("includes at most 3 website issues and mentions the channel", () => {
     const req = buildDraftFirstMessagePrompt({
@@ -14,6 +16,7 @@ describe("buildDraftFirstMessagePrompt", () => {
       district: "Kadıköy",
       websiteIssues: ["a", "b", "c", "d", "e"],
       channel: "EMAIL",
+      ...EXTRA,
       relevantPackages: [],
       salesRulesSummary: "",
     });
@@ -32,6 +35,7 @@ describe("buildDraftFirstMessagePrompt", () => {
       district: null,
       websiteIssues: [],
       channel: "INSTAGRAM",
+      ...EXTRA,
       relevantPackages: [],
       salesRulesSummary: "",
     });
@@ -45,6 +49,7 @@ describe("buildDraftFirstMessagePrompt — imza ve bot engeli", () => {
     category: "Dentist",
     district: null,
     channel: "EMAIL" as const,
+    ...EXTRA,
     relevantPackages: [],
     salesRulesSummary: "",
   };

@@ -27,8 +27,9 @@ const CHANNEL_MAX_LENGTH: Record<OutreachChannel, number> = {
   TIKTOK: 600,
 };
 
-const MONEY_REGEX = /(?:₺|TL|\$)\s*[\d.,]+|[\d.,]+\s*(?:₺|TL|bin\s*TL|bin\s*₺)/gi;
-const DELIVERY_REGEX = /(\d+)\s*(gün|hafta)/gi;
+const MONEY_REGEX =
+  /(?:₺|TL|\$|€|£)\s*[\d.,]+|[\d.,]+\s*(?:₺|TL|bin\s*TL|bin\s*₺|€|£|\$|USD|EUR|GBP|CAD|AUD|dollars?|euros?|pounds?)/gi;
+const DELIVERY_REGEX = /(\d+)\s*(gün|hafta|days?|weeks?)/gi;
 
 /**
  * Bir para ifadesini kabaca sayısal TL değerine çevirir ("bin" çarpanı dahil).
@@ -36,7 +37,11 @@ const DELIVERY_REGEX = /(\d+)\s*(gün|hafta)/gi;
  */
 function parseMoneyAmount(match: string): number | null {
   const isBin = /bin/i.test(match);
-  const numeric = match.replace(/[₺TL$]/gi, "").replace(/bin/gi, "").trim();
+  const numeric = match
+    .replace(/USD|EUR|GBP|CAD|AUD|dollars?|euros?|pounds?/gi, "")
+    .replace(/[₺TL$€£]/gi, "")
+    .replace(/bin/gi, "")
+    .trim();
   const normalized = numeric.replace(/\./g, "").replace(",", ".");
   const value = Number.parseFloat(normalized);
   if (Number.isNaN(value)) return null;
@@ -61,8 +66,13 @@ const GENERIC_ROLE_TITLES = new Set(
   ["satış asistanı", "müşteri temsilcisi", "satış ekibi", "müşteri hizmetleri", "satış temsilcisi", "dijital asistan"].map(foldName),
 );
 
+// Selamlama, kapanış ve "ekip" gibi cümle başı kelimeleri (TR + EN) marka adı adayına karışmasın.
 const GREETING_WORDS = new Set(
-  ["merhaba", "merhabalar", "selam", "sayın", "değerli", "günaydın", "iyi", "kolay", "saygılarımla"].map(foldName),
+  [
+    "merhaba", "merhabalar", "selam", "sayın", "değerli", "günaydın", "iyi", "kolay", "saygılarımla",
+    "hello", "hi", "hey", "dear", "good", "morning", "afternoon", "best", "kind", "warm", "regards",
+    "sincerely", "cheers", "thanks", "thank", "you", "team", "staff",
+  ].map(foldName),
 );
 
 function findReferenceCandidates(body: string): string[] {
@@ -140,7 +150,7 @@ export function validateDraft(input: ValidateDraftInput): ValidateDraftResult {
   for (const match of deliveryMatches) {
     const amount = Number.parseInt(match[1] ?? "0", 10);
     const unit = match[2]?.toLowerCase();
-    const days = unit === "hafta" ? amount * 7 : amount;
+    const days = unit === "hafta" || unit?.startsWith("week") ? amount * 7 : amount;
     const withinAnyPackage = input.packages.some(
       (pkg) =>
         pkg.deliveryDaysMin != null &&

@@ -5,6 +5,7 @@ import {
   stripSignOff,
   validateDraft,
   type OutreachChannel,
+  type OutreachLanguage,
   type ServicePackageInfo,
 } from "@lbf/core";
 import { draftFirstMessageOutputSchema } from "@lbf/contracts";
@@ -13,7 +14,7 @@ import { callAiGateway } from "../../lib/ai-gateway-client";
 import { getEmailAccount } from "../../lib/email-account";
 import { tr } from "../../i18n/tr";
 
-export const FORBIDDEN_WORDS = ["indirim", "%", "bedava", "garanti"];
+export const FORBIDDEN_WORDS = ["indirim", "%", "bedava", "garanti", "discount", "guarantee", "guaranteed"];
 
 /** Supabase RPC hatasını fırlatır; hiçbir gönderim adımı hatayı sessizce yutmamalı. */
 export async function rpc<T = unknown>(fn: string, args: Record<string, unknown>): Promise<T> {
@@ -299,6 +300,9 @@ export interface FirstMessageDraft {
   ok: boolean;
   subject?: string | undefined;
   body: string;
+  /** Mesaj Türkçe dışında yazıldıysa Türkçe çevirisi; yalnızca ekibin anlaması için, gönderilmez. */
+  translationTr?: string | undefined;
+  subjectTr?: string | undefined;
   reasons: string[];
   channel: OutreachChannel;
 }
@@ -308,10 +312,13 @@ interface SalesContext {
   salesRulesSummary: string;
   allowDiscountMention: boolean;
   verifiedReferenceNames: string[];
+  /** Bilgi Bankası "Şirket" kayıtları: şirketin kim olduğu ve teklifi için tek kaynak. */
+  companyFacts: string;
+  companyNames: string[];
 }
 
 async function loadSalesContext(workspaceId: string): Promise<SalesContext> {
-  const [packages, salesRules, references] = await Promise.all([
+  const [packages, salesRules, references, company] = await Promise.all([
     supabase
       .from("service_packages")
       .select("id, name, summary, price_min, price_max, delivery_days_min, delivery_days_max")
@@ -319,10 +326,12 @@ async function loadSalesContext(workspaceId: string): Promise<SalesContext> {
       .eq("is_active", true),
     supabase.from("kb_entries").select("title, body, data").eq("workspace_id", workspaceId).eq("type", "SALES_RULE").eq("is_active", true),
     supabase.from("kb_entries").select("title").eq("workspace_id", workspaceId).eq("type", "REFERENCE").eq("is_verified_real", true),
+    supabase.from("kb_entries").select("title, body").eq("workspace_id", workspaceId).eq("type", "COMPANY").eq("is_active", true),
   ]);
   if (packages.error) throw packages.error;
   if (salesRules.error) throw salesRules.error;
   if (references.error) throw references.error;
+  if (company.error) throw company.error;
 
   return {
     packages: (packages.data ?? []).map((p) => ({
@@ -339,6 +348,8 @@ async function loadSalesContext(workspaceId: string): Promise<SalesContext> {
       (e) => (e.data as { allowDiscountMention?: boolean } | null)?.allowDiscountMention === true,
     ),
     verifiedReferenceNames: (references.data ?? []).map((e) => e.title as string),
+    companyFacts: (company.data ?? []).map((e) => `${e.title}: ${e.body}`).join("\n"),
+    companyNames: (company.data ?? []).map((e) => e.title as string),
   };
 }
 
@@ -351,8 +362,9 @@ export async function generateFirstMessageDraft(
   workspaceId: string,
   business: DraftBusiness,
   channel: OutreachChannel,
+  language: OutreachLanguage,
 ): Promise<FirstMessageDraft> {
-  const [{ data: analysis, error: analysisError }, context] = await Promise.all([
+  const [{ data: analysis, error: analysisError }, { data: reputation, error: reputationError }, context] = await Promise.all([
     supabase
       .from("website_analyses")
       .select("issues")
@@ -360,16 +372,25 @@ export async function generateFirstMessageDraft(
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle(),
+    supabase.from("businesses").select("rating, review_count").eq("id", business.id).maybeSingle(),
     loadSalesContext(workspaceId),
   ]);
   if (analysisError) throw analysisError;
+  if (reputationError) throw reputationError;
+  // Şirket tanıtımı olmadan model hizmet uydurur; bu yüzden hiç çağırmadan açık hata veririz.
+  if (!context.companyFacts.trim()) throw new Error(tr.draft.noCompanyProfile);
 
   const request = buildDraftFirstMessagePrompt({
     businessName: business.name,
     category: business.category,
     district: business.district,
+    city: business.city,
+    rating: (reputation?.rating as number | null | undefined) ?? null,
+    reviewCount: (reputation?.review_count as number | null | undefined) ?? null,
     websiteIssues: ((analysis?.issues ?? []) as string[]).slice(0, 3),
     channel,
+    language,
+    companyFacts: context.companyFacts,
     relevantPackages: context.packages,
     salesRulesSummary: context.salesRulesSummary,
   });
@@ -379,25 +400,39 @@ export async function generateFirstMessageDraft(
   if (!parsed.success) {
     return { ok: false, body: "", reasons: ["INVALID_SHAPE"], channel };
   }
+  // Türkçe dışı bir mesajın çevirisi olmadan ekip ne gönderdiğini okuyamaz.
+  if (language !== "tr" && !parsed.data.translation_tr) {
+    return { ok: false, body: "", reasons: ["INVALID_SHAPE"], channel };
+  }
 
   // Modelin uydurduğu imza (unvan/isim) atılır; hem referans kontrolünü tetikliyor hem yanlış rol bilgisi taşıyor.
   const body = stripSignOff(parsed.data.body);
-  const validation = validateDraft({
-    body,
+  const translationTr = parsed.data.translation_tr ? stripSignOff(parsed.data.translation_tr) : undefined;
+  const shared = {
     channel,
     packages: context.packages,
     salesRules: { allowDiscountMention: context.allowDiscountMention, forbiddenWords: FORBIDDEN_WORDS },
     verifiedReferenceNames: context.verifiedReferenceNames,
     recipientBusinessName: business.name,
-    contextNames: businessContextNames(business),
+    // Şirketin kendi adı (Şirket kaydının başlığı) müşteri referansı sayılmaz.
+    contextNames: [...businessContextNames(business), ...context.companyNames],
     stopRequest: business.do_not_contact,
-  });
+  };
+  // Gönderilecek metin ve ekibin okuyacağı Türkçe çeviri aynı kurallardan geçer.
+  const reasons = [
+    ...new Set([
+      ...validateDraft({ ...shared, body }).reasons,
+      ...(translationTr ? validateDraft({ ...shared, body: translationTr }).reasons : []),
+    ]),
+  ];
 
   return {
-    ok: validation.ok,
+    ok: reasons.length === 0,
     subject: parsed.data.subject,
     body,
-    reasons: validation.reasons,
+    translationTr,
+    subjectTr: parsed.data.subject_tr,
+    reasons,
     channel,
   };
 }

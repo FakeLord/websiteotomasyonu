@@ -129,6 +129,40 @@ describe("validateDraft", () => {
     }
   });
 
+  it("flags a price quoted in euros, pounds or dollars that no package covers", () => {
+    for (const text of ["only €500", "just £400 per month", "from $300", "for 500 USD", "for 250 euros"]) {
+      const result = validateDraft({ ...baseInput, body: `Hello team, we can build it ${text}.` });
+      expect(result.reasons.some((r) => r.startsWith("PRICE_MISMATCH")), text).toBe(true);
+    }
+  });
+
+  it("flags English delivery promises outside package ranges and accepts those inside", () => {
+    const bad = validateDraft({ ...baseInput, body: "We can deliver in 3 days." });
+    expect(bad.reasons.some((r) => r.startsWith("DELIVERY_MISMATCH"))).toBe(true);
+    const bad2 = validateDraft({ ...baseInput, body: "Ready within 6 weeks." });
+    expect(bad2.reasons.some((r) => r.startsWith("DELIVERY_MISMATCH"))).toBe(true);
+    const ok = validateDraft({ ...baseInput, body: "Delivery in 2 weeks." });
+    expect(ok.reasons).toEqual([]);
+  });
+
+  it("does not flag English greetings, closings and 'Team' as customer references", () => {
+    const result = validateDraft({
+      ...baseInput,
+      body: "Hi Windy Hair Salon Original Team,\n\nWe build modern websites.\n\nBest Regards,",
+      recipientBusinessName: "WINDY HAIR SALON ORIGINAL",
+    });
+    expect(result.reasons).toEqual([]);
+  });
+
+  it("still flags a genuinely different English company name", () => {
+    const result = validateDraft({
+      ...baseInput,
+      body: "Hello Austin Primary Dental team, we built a site for Sunny Beauty Studio.",
+      recipientBusinessName: "Austin Primary Dental",
+    });
+    expect(result.reasons).toEqual(["UNVERIFIED_REFERENCE:Sunny Beauty Studio"]);
+  });
+
   it("still flags a genuinely different name", () => {
     const result = validateDraft({
       ...baseInput,

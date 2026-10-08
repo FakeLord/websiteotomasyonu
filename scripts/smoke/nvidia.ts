@@ -5,6 +5,7 @@
  * Çalıştırma:
  *   NVIDIA_API_KEY=nvapi-... pnpm exec tsx scripts/smoke/nvidia.ts
  *   NVIDIA_MODEL=başka/model ile varsayılan model değiştirilebilir.
+ *   SMOKE_LANGUAGE=tr ile Türkçe taslak denenir (varsayılan: en, Türkçe çeviriyle).
  */
 import {
   PROVIDER_DEFAULTS,
@@ -12,6 +13,7 @@ import {
   buildDraftFirstMessagePrompt,
   normalizeAiConfig,
   extractJsonObject,
+  stripSignOff,
   validateDraft,
   type ServicePackageInfo,
 } from "../../packages/core/src/index.ts";
@@ -38,12 +40,19 @@ async function main() {
     },
   ];
 
+  const language = process.env.SMOKE_LANGUAGE === "tr" ? "tr" : "en";
   const request = buildDraftFirstMessagePrompt({
     businessName: "ABC Diş Kliniği",
     category: "Diş Kliniği",
     district: "Kadıköy",
+    city: "İstanbul",
+    rating: 4.6,
+    reviewCount: 120,
     websiteIssues: ["Site HTTPS kullanmıyor", "Mobilde düzgün görünmüyor"],
     channel: "EMAIL",
+    language,
+    companyFacts:
+      "Şirket: Biz bir yazılım şirketiyiz. İşletmeler için premium, canlı hissiyatlı, yeni nesil web siteleri, mobil uygulamalar ve iş süreçlerini kolaylaştıran otomasyonlar geliştiriyoruz. Teklifimiz: 15 dakikalık kısa bir görüşme ve işletmenin sitesi için ücretsiz bir örnek tasarım.",
     relevantPackages: packages,
     salesRulesSummary: "Fiyat, indirim veya teslim süresi verme; ekip arkadaşım netleştirir.",
   });
@@ -76,23 +85,33 @@ async function main() {
   console.log(`✓ Yanıt alındı (${latencyMs}ms):`);
   console.log(rawContent);
 
-  const parsed = extractJsonObject(rawContent) as { subject?: string; body?: string; used_facts?: string[] } | null;
+  const parsed = extractJsonObject(rawContent) as {
+    subject?: string;
+    body?: string;
+    translation_tr?: string;
+    used_facts?: string[];
+  } | null;
   if (!parsed || typeof parsed.body !== "string") {
     console.error("✗ Yanıttan `body` içeren bir JSON nesnesi ayıklanamadı.");
     process.exit(1);
   }
 
-  const validation = validateDraft({
-    body: parsed.body,
-    channel: "EMAIL",
+  const shared = {
+    channel: "EMAIL" as const,
     packages,
-    salesRules: { allowDiscountMention: false, forbiddenWords: [] },
+    salesRules: { allowDiscountMention: false, forbiddenWords: ["indirim", "%", "bedava", "garanti", "discount", "guarantee"] },
     verifiedReferenceNames: [],
     recipientBusinessName: "ABC Diş Kliniği",
+    contextNames: ["Diş Kliniği", "Kadıköy", "İstanbul"],
     stopRequest: false,
-  });
-
-  console.log("\nvalidateDraft() sonucu:", validation);
+  };
+  const validation = validateDraft({ ...shared, body: stripSignOff(parsed.body) });
+  console.log(`\nDil: ${language}${parsed.translation_tr ? " (Türkçe çeviri döndü)" : ""}`);
+  if (language !== "tr" && !parsed.translation_tr) console.warn("⚠ translation_tr alanı yok; arayüz bu taslağı reddeder.");
+  if (parsed.translation_tr) {
+    console.log("Türkçe çeviri doğrulaması:", validateDraft({ ...shared, body: stripSignOff(parsed.translation_tr) }));
+  }
+  console.log("validateDraft() sonucu:", validation);
   if (!validation.ok) {
     console.warn(
       "⚠ Model çıktısı guardrail'lardan geçemedi (fiyat/indirim/referans/teslim süresi uydurmuş olabilir)." +

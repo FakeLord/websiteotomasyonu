@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 import { AlertTriangle, Loader2, Sparkles } from "lucide-react";
-import type { OutreachChannel } from "@lbf/core";
+import { OUTREACH_LANGUAGES, type OutreachChannel, type OutreachLanguage } from "@lbf/core";
 import { tr } from "../../../i18n/tr";
 import { Button } from "../../../components/ui/button";
 import { Input, Label, Select, Textarea } from "../../../components/ui/input";
@@ -32,12 +32,17 @@ export function DraftMessageDialog({
 }: DraftMessageDialogProps) {
   const navigate = useNavigate();
   const [channel, setChannel] = useState<OutreachChannel>(recommendedChannel ?? "EMAIL");
+  // Bilerek varsayılan yok: ekip her taslakta mesajın dilini kendisi seçer.
+  const [language, setLanguage] = useState<OutreachLanguage | "">("");
   const [draft, setDraft] = useState<FirstMessageDraft | null>(null);
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
 
   const generate = useMutation({
-    mutationFn: () => generateFirstMessageDraft(workspaceId, business, channel),
+    mutationFn: () => {
+      if (!language) throw new Error(tr.draft.selectLanguageFirst);
+      return generateFirstMessageDraft(workspaceId, business, channel, language);
+    },
     onSuccess: (result) => {
       setDraft(result);
       setSubject(result.subject ?? "");
@@ -82,7 +87,29 @@ export function DraftMessageDialog({
                 ))}
               </Select>
             </div>
-            <Button variant="violet" disabled={generate.isPending || business.do_not_contact} onClick={() => generate.mutate()}>
+            <div className="min-w-40">
+              <Label>{tr.draft.languageLabel}</Label>
+              <Select
+                value={language}
+                onChange={(e) => {
+                  setLanguage(e.target.value as OutreachLanguage | "");
+                  setDraft(null);
+                }}
+              >
+                <option value="">{tr.draft.languagePlaceholder}</option>
+                {OUTREACH_LANGUAGES.map((l) => (
+                  <option key={l} value={l}>
+                    {tr.draft.languages[l]}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <Button
+              variant="violet"
+              disabled={generate.isPending || business.do_not_contact || !language}
+              title={!language ? tr.draft.selectLanguageFirst : undefined}
+              onClick={() => generate.mutate()}
+            >
               {generate.isPending ? <Loader2 className="animate-spin" /> : <Sparkles />}
               {generate.isPending ? tr.draft.generating : draft ? tr.draft.regenerate : tr.draft.generateButton}
             </Button>
@@ -123,6 +150,18 @@ export function DraftMessageDialog({
                 <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={9} />
                 <p className="mt-1 text-xs text-subtle">{tr.draft.editHint}</p>
               </div>
+              {draft.translationTr && (
+                <div className="rounded-lg border border-border bg-surface-2 p-3">
+                  <Label>{tr.draft.translationLabel}</Label>
+                  {channel === "EMAIL" && draft.subjectTr && (
+                    <p className="mb-2 text-sm text-muted">
+                      <span className="font-medium text-text">{tr.draft.subjectTranslationLabel}:</span> {draft.subjectTr}
+                    </p>
+                  )}
+                  <p className="whitespace-pre-wrap text-sm text-muted">{draft.translationTr}</p>
+                  <p className="mt-2 text-xs text-subtle">{tr.draft.translationHint}</p>
+                </div>
+              )}
               {save.isError && <p className="text-sm text-[#f87171]">{save.error instanceof Error ? save.error.message : tr.common.error}</p>}
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => void navigator.clipboard.writeText(body)}>

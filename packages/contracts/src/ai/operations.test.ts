@@ -20,6 +20,23 @@ describe("draftFirstMessageOutputSchema", () => {
   it("rejects an empty body", () => {
     expect(() => draftFirstMessageOutputSchema.parse({ body: "", used_facts: [] })).toThrow();
   });
+
+  it("accepts an optional Turkish translation of body and subject", () => {
+    const result = draftFirstMessageOutputSchema.parse({
+      subject: "A fresh look for your website",
+      subject_tr: "Web siteniz için yeni bir görünüm",
+      body: "Hello team...",
+      translation_tr: "Merhaba ekip...",
+      used_facts: [],
+    });
+    expect(result.translation_tr).toBe("Merhaba ekip...");
+    expect(result.subject_tr).toBe("Web siteniz için yeni bir görünüm");
+  });
+
+  it("treats translation fields as optional (Turkish drafts have none)", () => {
+    const result = draftFirstMessageOutputSchema.parse({ body: "Merhaba", used_facts: [] });
+    expect(result.translation_tr).toBeUndefined();
+  });
 });
 
 describe("classifyReplyOutputSchema", () => {
