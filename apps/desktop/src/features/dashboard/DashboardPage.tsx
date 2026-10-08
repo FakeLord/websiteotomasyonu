@@ -17,6 +17,7 @@ import { DonutChart, MultiLineChart, SERIES_COLORS } from "../../components/char
 import { RecentActivity } from "../activity-log/RecentActivity";
 import { JARVIS_QUICK_PROMPTS } from "../jarvis/JarvisPanel";
 import { CitySkyline } from "./CitySkyline";
+import { TodayTasksCard } from "./TodayTasksCard";
 
 interface AnalyticsSummary {
   newLeads: number;
@@ -139,6 +140,8 @@ export function DashboardPage() {
           </div>
         </CardBody>
       </Card>
+
+      <TodayTasksCard />
 
       <Card>
         <CardHeader

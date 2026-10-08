@@ -46,3 +46,18 @@ Bulutta elle:
 - [ ] "İlgilenmedi" → Kapanan aşamasına geçer; Fırsatlar listesinden çıkar.
 - [ ] Kutuyu kapatınca temas "Denendi" olarak kalır (İlerleme sekmesinde).
 - [ ] İki ekip üyesi: biri yazınca diğerinin listesinde "Son temas" ve "Yazan" süzgeci güncellenir.
+
+## MVP tamamlama — günlük kullanım eksikleri (2026-10-08/09)
+Otomatik: pgTAP `update_business_details` (24), `bulk_actions` (18), `handoff_actions` (17), `remove_member` (11),
+`rename_workspace` (8), `campaign_edit_delete` (13); birim `edit-patch.test.ts` (16), `contact-attempts.test.ts`.
+Yerelde tarayıcıda gerçek RPC'lerle doğrulandı: lead düzenleme (hata mesajları + kayıt + site değişince yeniden analiz),
+toplu atama (3 işletme, 3 aktivite kaydı), devir kartı devralma, ekipten üye çıkarma (atamalar temizlendi), çalışma alanı adı,
+kampanya düzenleme ve silme (silince listeye döner), Dashboard "Bugünün işleri" ve "Benim işlerim".
+
+Bulutta elle:
+- [ ] Lead detay → kalem simgesi → telefon/site değiştir: eski telefon kanalı kalkar, site değişince analiz yeniden çalışır.
+- [ ] Leadler → birkaç satır seç → Ata / Ele: sonuç mesajı "N işletme atandı"; başka sayfaya geçince seçim temizlenir.
+- [ ] Devir kartı: konuşmadan oluştur → lead detayında Devral → zil sayacından düşer → Kapat.
+- [ ] Ekip: üye çıkar → onun işletmeleri "Atanmamış" olur; bekleyen daveti "Yeniden gönder" → yeni kod gösterilir.
+- [ ] Ayarlar → Genel: şifre değiştir (12+ karakter); yönetici çalışma alanı adını değiştirir, üye göremez.
+- [ ] Kampanya: düzenle / sil; mesaj gönderilmiş kampanyada "silmek yerine Tamamlandı yapın" uyarısı.

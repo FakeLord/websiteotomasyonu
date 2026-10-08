@@ -10,7 +10,7 @@ Durum: ☐ bekliyor · ◐ sürüyor · ☑ bitti. Bir madde bitince buradan iş
 | G0 | 12 | Temizlik ve karar kaydı | ☑ |
 | G1 | 13 | Buluta taşıma | ☑ 2026-10-07 |
 | G2 | 14 | Küresel veri modeli | ◐ kod hazır ve yerelde doğrulandı; bulut `db push` + gerçek Places denemesi bekliyor (`docs/qa/phase-14-global-model.md`) |
-| G3 | 15 | Küresel keşif motoru | ☐ |
+| G3 | 15 | Küresel keşif motoru | ◐ ADR 0014: kare tarama, aylık sayaç, İşler kutusu, Fırsatlar kodda ve yerelde doğrulandı; bulutta denenmedi (`docs/qa/phase-15-automated-prospecting.md`) |
 | G4 | 16 | Çok dilli analiz ve yapay zekâ | ☐ |
 | G5 | 17 | Ülke bazlı uyum ve gönderim güvenliği | ☐ |
 | G6 | 18 | Günlük kullanım eksikleri (CRM) | ☐ |
@@ -25,9 +25,9 @@ Durum: ☐ bekliyor · ◐ sürüyor · ☑ bitti. Bir madde bitince buradan iş
 | # | Madde | Faz | Durum |
 | --- | --- | --- | --- |
 | 1 | Üst çubuktaki şehir seçici yalnızca İşletme Bul ve Kampanya'da etkili → her ekranda geçerli pazar filtresi (ülke → şehir) | G2 | ☑ |
-| 2 | Devir kartı devralınamıyor/kapatılamıyor/atanamıyor | G6 | ☐ |
+| 2 | Devir kartı devralınamıyor/kapatılamıyor/atanamıyor | G6 | ☑ 2026-10-08 (`accept_handoff`/`close_handoff`, detay sayfasında kart) |
 | 3 | `secondChannelAfterDays` kullanılmıyor; kanal INVALID olunca otomatik yedek kanal yok | G6 | ☐ |
-| 4 | Telefon kanalı için arama notu ekranı yok | G6 | ☐ |
+| 4 | Telefon kanalı için arama notu ekranı yok | G6 | ☑ 2026-10-08 (temas kutusunda not alanı; İlerleme sekmesinde görünür) |
 | 5 | Arama iptali ve kayıtlı aramalar (`is_saved`) arayüzde yok | G3 | ☐ |
 | 6 | Bildirim zili yalnızca sayaç; ses/masaüstü bildirimi yok | G6 | ☐ |
 | 7 | Masaüstünde 587 portlu SMTP bağlanamıyor | G0 | ☑ (`62da7d3`) |
@@ -36,15 +36,15 @@ Durum: ☐ bekliyor · ◐ sürüyor · ☑ bitti. Bir madde bitince buradan iş
 | # | Madde | Faz | Durum |
 | --- | --- | --- | --- |
 | 8 | Kalıcı veri silme RPC'si + bastırma listesi | G5 | ☐ |
-| 9 | Lead düzenleme (ad, telefon, site, kategori) | G6 | ☐ |
-| 10 | Leadler'de sıralama ve toplu işlem | G6 | ☐ |
-| 11 | Dashboard "bugünün işleri" / "benim işlerim" | G6 | ☐ |
+| 9 | Lead düzenleme (ad, telefon, site, kategori) | G6 | ☑ 2026-10-08 (`update_business_details`) |
+| 10 | Leadler'de sıralama ve toplu işlem | G6 | ☑ 2026-10-08 (sıralama + toplu atama/eleme) |
+| 11 | Dashboard "bugünün işleri" / "benim işlerim" | G6 | ☑ 2026-10-08 (kart + Leadler → Takip) |
 | 12 | Tanılama log paketi dışa aktarma | G6 | ☐ |
 | 13 | Google Haritalar linkiyle işletme ekleme | G3 | ☐ |
 | 14 | Google kredi/ücretsiz kota takibi ve otomatik geçiş | G3 | ☐ |
-| 15 | Ekip: üye çıkarma, daveti yeniden gönderme | G6 | ☐ |
-| 16 | Şifre değiştirme, profil, çalışma alanı adı | G6 | ☐ |
-| 17 | Kampanya düzenleme/silme, anlaşma silme | G6 | ☐ |
+| 15 | Ekip: üye çıkarma, daveti yeniden gönderme | G6 | ☑ 2026-10-08 (`remove_workspace_member`, daveti yeniden gönder) |
+| 16 | Şifre değiştirme, profil, çalışma alanı adı | G6 | ☑ 2026-10-08 (`rename_workspace`; profil adı zaten vardı) |
+| 17 | Kampanya düzenleme/silme, anlaşma silme | G6 | ◐ kampanya ☑ 2026-10-08; anlaşma silme ☐ |
 | 18 | Raporlarda dışa aktarma | G6 | ☐ |
 | 19 | "X düzenliyor" göstergesi (presence) | G6 | ☐ |
 | 20 | Kanal modu ayarları (AUTO / ASSISTED / MANUAL) | G6 | ☐ |

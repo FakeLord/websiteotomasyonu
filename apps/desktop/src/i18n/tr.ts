@@ -397,6 +397,13 @@ export const tr = {
     invalidTransition: "Bu aşamaya geçiş yapılamaz.",
   },
   dashboard: {
+    todayTasks: {
+      title: "Bugünün işleri",
+      all: "Hepsi",
+      mine: "Benim işlerim",
+      empty: "Bugün takip edilecek işletme yok.",
+      more: (n: number) => `+${n} işletme daha. Hepsi için Takip görünümünü açın.`,
+    },
     greeting: { morning: "Günaydın", afternoon: "İyi günler", evening: "İyi akşamlar" },
     todayLine: (followUps: number, replied: number) =>
       `Bekleyen ${followUps} follow-up ve cevap vermiş ${replied} lead var.`,

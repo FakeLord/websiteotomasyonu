@@ -21,7 +21,8 @@ import { useMarket } from "../../lib/use-market";
 import { supabase } from "../../lib/supabase-client";
 import { useWorkspaceMembership } from "../../lib/use-workspace-membership";
 import { useRealtimeTable } from "../../lib/use-realtime-table";
-import { contactRecencyFilter, endOfLocalDay } from "../../lib/contact-filters";
+import { contactRecencyFilter } from "../../lib/contact-filters";
+import { applyDue } from "../../lib/due-filter";
 import { useWorkspaceMembers } from "../../lib/use-workspace-members";
 import { useDashboardMetrics } from "../../lib/use-metrics";
 import { useAuthStore } from "../../lib/auth-store";
@@ -117,18 +118,6 @@ const FILTER_PARAMS = [
 const DUE_TAB = "due";
 const CONTACT_OUTCOME_FILTERS = ["SENT", "REPLIED", "UNREACHABLE", "NOT_INTERESTED", "LATER", "ATTEMPTED"] as const;
 const CONTACT_CHANNEL_FILTERS = ["EMAIL", "WHATSAPP", "INSTAGRAM", "FACEBOOK", "LINKEDIN", "TIKTOK", "PHONE"] as const;
-const FINISHED_STAGES = "(WON,LOST,DISQUALIFIED)";
-
-interface DueFilterable<Q> {
-  lte(column: string, value: string): Q;
-  not(column: string, operator: string, value: string): Q;
-  eq(column: string, value: boolean): Q;
-}
-
-/** "Takip" görünümü: takip tarihi bugün veya geçmiş, bitmemiş aşamada, aranabilir işletmeler. */
-function applyDue<Q extends DueFilterable<Q>>(q: Q): Q {
-  return q.lte("next_action_at", endOfLocalDay(new Date()).toISOString()).not("stage", "in", FINISHED_STAGES).eq("do_not_contact", false);
-}
 const SORTS = ["score", "reviews"] as const;
 type Sort = (typeof SORTS)[number];
 
