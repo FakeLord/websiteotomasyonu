@@ -1,5 +1,6 @@
 -- =====================================================================================================
 -- UYGULAMA VERİSİNİ SIFIRLAMA — elle, yalnızca proje sahibi tarafından, Supabase SQL Editor'de çalıştırılır.
+-- Geliştirme sürerken her güncellemeden sonra temiz başlamak için TEKRAR TEKRAR çalıştırılabilir.
 --
 -- SİLİNEN: tüm işletmeler ve onlara bağlı her şey (iletişim kanalları, kaynaklar, notlar, aşama geçmişi,
 --          website analizleri, konuşmalar, mesajlar, devirler, follow-up'lar, müşteri anlaşmaları),
@@ -8,39 +9,34 @@
 --          (workspace_settings: puanlama, AI yapılandırması, limitler, saat dilimi), API anahtarları (Vault),
 --          Bilgi Bankası (kb_entries), hizmetler ve paketler (services, service_packages).
 --
--- GERİ DÖNÜŞ: silinen her tablonun tam kopyası önce `reset_backup_20261009` şemasına alınır. Bu şema API'ye
---          açık değildir. Her şey yolundaysa birkaç hafta sonra en alttaki komutla silinebilir.
+-- GERİ DÖNÜŞ: silinen her tablonun tam kopyası önce `reset_backup_<tarih_saat>` şemasına alınır (her
+--          çalıştırmada yeni bir şema). Bu şemalar API'ye açık değildir. Eskileri en alttaki komutla silinir.
 -- GÜVENLİK: tek işlemdir (transaction); herhangi bir adım hata verirse HİÇBİR ŞEY silinmez.
---          İkinci kez çalıştırılırsa "schema already exists" hatasıyla durur (yedeğin üzerine yazmaz).
 -- NOT:     aktivite günlüğü normalde silinemez (append-only tetikleyici). TRUNCATE satır tetikleyicisini
 --          çalıştırmadığı için burada kullanılır; tetikleyiciye dokunulmaz, koruma olduğu gibi kalır.
 -- =====================================================================================================
 
 begin;
 
--- 1) Yedek: silinecek her tablonun kopyası.
-create schema reset_backup_20261009;
-
-create table reset_backup_20261009.businesses       as table public.businesses;
-create table reset_backup_20261009.contact_channels as table public.contact_channels;
-create table reset_backup_20261009.business_sources as table public.business_sources;
-create table reset_backup_20261009.notes            as table public.notes;
-create table reset_backup_20261009.stage_transitions as table public.stage_transitions;
-create table reset_backup_20261009.website_analyses as table public.website_analyses;
-create table reset_backup_20261009.conversations    as table public.conversations;
-create table reset_backup_20261009.messages         as table public.messages;
-create table reset_backup_20261009.human_handoffs   as table public.human_handoffs;
-create table reset_backup_20261009.follow_ups       as table public.follow_ups;
-create table reset_backup_20261009.customer_deals   as table public.customer_deals;
-create table reset_backup_20261009.campaigns        as table public.campaigns;
-create table reset_backup_20261009.campaign_members as table public.campaign_members;
-create table reset_backup_20261009.search_jobs      as table public.search_jobs;
-create table reset_backup_20261009.ai_runs          as table public.ai_runs;
-create table reset_backup_20261009.ai_output_cache  as table public.ai_output_cache;
-create table reset_backup_20261009.activity_logs    as table public.activity_logs;
-
--- Yedek şeması yalnızca veritabanı sahibine açıktır.
-revoke all on schema reset_backup_20261009 from public, anon, authenticated;
+do $$
+declare
+  v_schema text := 'reset_backup_' || to_char(now() at time zone 'Europe/Istanbul', 'YYYYMMDD_HH24MI');
+  v_table text;
+  v_tables text[] := array[
+    'businesses', 'contact_channels', 'business_sources', 'notes', 'stage_transitions', 'website_analyses',
+    'conversations', 'messages', 'human_handoffs', 'follow_ups', 'customer_deals', 'campaigns',
+    'campaign_members', 'search_jobs', 'ai_runs', 'ai_output_cache', 'activity_logs'
+  ];
+begin
+  -- 1) Yedek: silinecek her tablonun kopyası. Aynı dakikada ikinci çalıştırma "already exists" ile durur.
+  execute format('create schema %I', v_schema);
+  foreach v_table in array v_tables loop
+    execute format('create table %I.%I as table public.%I', v_schema, v_table, v_table);
+  end loop;
+  execute format('revoke all on schema %I from public, anon, authenticated', v_schema);
+  raise notice 'Yedek alındı: % (% işletme)', v_schema, (select count(*) from public.businesses);
+end
+$$;
 
 -- 2) Silme. İşletmeye bağlı tablolar ON DELETE CASCADE ile birlikte gider.
 delete from public.follow_ups;        -- mesajlara cascade'siz bağlı olduğu için önce
@@ -61,7 +57,7 @@ select
   (select count(*) from public.campaigns)       as kampanya,
   (select count(*) from public.search_jobs)     as arama,
   (select count(*) from public.activity_logs)   as aktivite,
-  (select count(*) from reset_backup_20261009.businesses) as yedekteki_isletme,
+  (select string_agg(nspname, ', ' order by nspname) from pg_namespace where nspname like 'reset_backup_%') as yedek_semalari,
   (select count(*) from public.workspace_members) as kalan_uye,
   (select count(*) from public.workspace_settings) as kalan_ayar,
   (select count(*) from public.kb_entries)        as kalan_bilgi_bankasi,
@@ -70,6 +66,6 @@ select
 commit;
 
 -- -----------------------------------------------------------------------------------------------------
--- Her şey yolundaysa, birkaç hafta sonra yedeği kalıcı olarak silmek için (AYRI çalıştırılır):
---   drop schema reset_backup_20261009 cascade;
+-- Eski yedekleri kalıcı olarak silmek için (AYRI çalıştırılır; şema adını kontrol satırından alın):
+--   drop schema reset_backup_20261009_1430 cascade;
 -- -----------------------------------------------------------------------------------------------------
