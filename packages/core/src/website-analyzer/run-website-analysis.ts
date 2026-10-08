@@ -5,6 +5,7 @@ import { extractContacts } from "./extract-contacts";
 import { computeChecks } from "./checks";
 import { classifyOpenWebsite } from "./classify";
 import { isPathAllowed } from "./robots";
+import { httpIssueText } from "./automation-blocked";
 import {
   ANALYZER_VERSION,
   type BrokenReason,
@@ -16,8 +17,6 @@ import {
 
 const INNER_PAGE_KEYWORDS = ["iletisim", "contact", "hakkimizda", "about", "randevu", "appointment"];
 const MAX_INNER_PAGES = 3;
-/** Bot koruması/hız sınırı olarak sık görülen kodlar: site ayakta olabilir, yalnızca bize kapalıdır. */
-const BOT_BLOCK_STATUSES = new Set([401, 403, 406, 429]);
 
 function classifyFetchError(message: string): BrokenReason {
   const lower = message.toLowerCase();
@@ -106,11 +105,7 @@ export async function runWebsiteAnalysis(
     return {
       status: "BROKEN_WEBSITE",
       brokenReason: "HTTP_ERROR",
-      issues: [
-        BOT_BLOCK_STATUSES.has(mainPage.httpStatus)
-          ? `Site HTTP ${mainPage.httpStatus} döndürdü; otomatik erişimi engelliyor olabilir, tarayıcıda açılıyorsa elle kontrol edin.`
-          : `Site HTTP ${mainPage.httpStatus} döndürdü.`,
-      ],
+      issues: [httpIssueText(mainPage.httpStatus)],
       checks: null,
       contacts: [],
       finalUrl: mainPage.finalUrl,

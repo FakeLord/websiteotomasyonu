@@ -1,4 +1,5 @@
 import type { AIPromptRequest, OutreachChannel, ServicePackageInfo } from "../types";
+import { isAutomationBlockedIssue } from "../../website-analyzer/automation-blocked";
 
 export interface DraftFirstMessageInput {
   businessName: string;
@@ -24,7 +25,8 @@ const JSON_SCHEMA = {
 const GUARDRAIL_INSTRUCTIONS =
   "Yalnızca BAĞLAM bölümündeki bilgileri kullan. Bilmediğin bir şey sorulursa bunu ekip " +
   "arkadaşımın netleştireceğini söyle. Fiyat, indirim, tarih, referans uydurma. Karşı taraf " +
-  "istemiyorsa ısrar etme.";
+  "istemiyorsa ısrar etme. Mesajın sonuna isim, unvan veya rol (ör. \"Satış Asistanı\") imzası " +
+  "ekleme; yalnızca \"Saygılarımla\" gibi kısa bir kapanış yaz.";
 
 /**
  * J.2 `draft_first_message` operasyonu için context+prompt derleyicisi.
@@ -32,7 +34,8 @@ const GUARDRAIL_INSTRUCTIONS =
  * gelir); AI yalnızca bunları satış mesajına çevirir (SPEC.md → J.2).
  */
 export function buildDraftFirstMessagePrompt(input: DraftFirstMessageInput): AIPromptRequest {
-  const issues = input.websiteIssues.slice(0, 3);
+  const blocked = input.websiteIssues.filter(isAutomationBlockedIssue);
+  const issues = input.websiteIssues.filter((issue) => !isAutomationBlockedIssue(issue)).slice(0, 3);
   const packagesText = input.relevantPackages
     .map((p) => `- ${p.name}: ${p.summary}`)
     .join("\n");
@@ -47,7 +50,11 @@ export function buildDraftFirstMessagePrompt(input: DraftFirstMessageInput): AIP
     `İşletme: ${input.businessName}`,
     input.category ? `Kategori: ${input.category}` : null,
     input.district ? `İlçe: ${input.district}` : null,
-    issues.length > 0 ? `Website sorunları: ${issues.join("; ")}` : "Website bulunamadı.",
+    issues.length > 0
+      ? `Website sorunları: ${issues.join("; ")}`
+      : blocked.length > 0
+        ? "Website otomatik olarak analiz edilemedi; siteyle ilgili sorun veya yorum belirtme."
+        : "Website bulunamadı.",
     packagesText ? `İlgili paketler:\n${packagesText}` : null,
     input.salesRulesSummary ? `Satış kuralları: ${input.salesRulesSummary}` : null,
   ]

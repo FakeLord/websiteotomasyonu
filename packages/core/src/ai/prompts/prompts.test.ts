@@ -39,6 +39,48 @@ describe("buildDraftFirstMessagePrompt", () => {
   });
 });
 
+describe("buildDraftFirstMessagePrompt — imza ve bot engeli", () => {
+  const base = {
+    businessName: "Austin Primary Dental",
+    category: "Dentist",
+    district: null,
+    channel: "EMAIL" as const,
+    relevantPackages: [],
+    salesRulesSummary: "",
+  };
+
+  it("modele isim/unvan/rol imzası eklememesini söyler (ör. 'Satış Asistanı' referans sanılıyordu)", () => {
+    const req = buildDraftFirstMessagePrompt({ ...base, websiteIssues: [] });
+    expect(req.system).toMatch(/imza|unvan/i);
+  });
+
+  it("otomatik erişimi engelleyen sitenin HTTP hatasını işletmeye söylenecek sorun olarak vermez", () => {
+    const req = buildDraftFirstMessagePrompt({
+      ...base,
+      websiteIssues: ["Site HTTP 403 döndürdü; otomatik erişimi engelliyor olabilir, tarayıcıda açılıyorsa elle kontrol edin."],
+    });
+    const text = req.messages[0]?.content ?? "";
+    expect(text).not.toContain("403");
+    expect(text).not.toMatch(/Website bulunamadı/);
+    expect(text).toMatch(/analiz edilemedi/i);
+  });
+
+  it("eski kayıtlardaki ipucusuz 401/403/429 metinlerini de eler, gerçek sorunları korur", () => {
+    const req = buildDraftFirstMessagePrompt({
+      ...base,
+      websiteIssues: ["Site HTTP 429 döndürdü.", "Site HTTPS kullanmıyor."],
+    });
+    const text = req.messages[0]?.content ?? "";
+    expect(text).not.toContain("429");
+    expect(text).toContain("Site HTTPS kullanmıyor.");
+  });
+
+  it("404 gibi gerçek hataları korur (site gerçekten yok)", () => {
+    const req = buildDraftFirstMessagePrompt({ ...base, websiteIssues: ["Site HTTP 404 döndürdü."] });
+    expect(req.messages[0]?.content).toContain("404");
+  });
+});
+
 describe("buildClassifyReplyPrompt / hasStopKeyword", () => {
   it("builds a low-temperature classification request", () => {
     const req = buildClassifyReplyPrompt({ lastInboundMessage: "Fiyat nedir?", conversationSummary: "" });
