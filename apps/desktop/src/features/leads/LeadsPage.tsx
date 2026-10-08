@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
@@ -49,6 +49,7 @@ import {
 import { ScoreBadge, StageBadge, WebsiteStatusBadge } from "../../components/domain/badges";
 import { ContactChannelBadges } from "../../components/domain/contact-channel-badges";
 import { ManualAddDialog } from "./ManualAddDialog";
+import { BulkActionsBar } from "./BulkActionsBar";
 import { ImportCsvDialog } from "./ImportCsvDialog";
 import type { BusinessListRow } from "./types";
 
@@ -148,6 +149,7 @@ export function LeadsPage() {
   const analysisQueue = useAnalysisStore((state) => state.queue);
   const bulkProgress = analysisQueue.running && analysisQueue.total > 0 ? analysisQueue : null;
   const [exporting, setExporting] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const tab = params.get("tab") ?? "all";
   const isOpportunityTab = tab === OPPORTUNITY_TAB;
@@ -364,7 +366,20 @@ export function LeadsPage() {
   const totalAll = useMemo(() => Object.values(stageCounts).reduce((a, b) => a + b, 0), [stageCounts]);
   const rows = listQuery.data?.rows ?? [];
   const pageCount = Math.max(1, Math.ceil((listQuery.data?.count ?? 0) / pageSize));
+  // Görünmeyen kayıtlar üzerinde toplu işlem yapılmasın: sayfa, sekme veya süzgeç değişince seçim temizlenir.
+  const selectionScope = `${tab}|${opportunityChannel}|${showChains}|${sort}|${page}|${pageSize}|${market.country}|${market.city}|${JSON.stringify(filters)}`;
+  useEffect(() => setSelected(new Set()), [selectionScope]);
   const show = (key: ColumnKey) => columns.includes(key);
+  const pageIds = rows.map((row) => row.id);
+  const allOnPageSelected = pageIds.length > 0 && pageIds.every((id) => selected.has(id));
+  const toggleRow = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const togglePage = () => setSelected(allOnPageSelected ? new Set() : new Set(pageIds));
 
   const chips = FILTER_PARAMS.filter((key) => key !== "q" && filters[key]).map((key) => {
     let value = filters[key];
@@ -442,6 +457,14 @@ export function LeadsPage() {
           )}
         </div>
 
+        {workspaceId && (
+          <BulkActionsBar
+            workspaceId={workspaceId}
+            selectedIds={[...selected]}
+            members={members.map((m) => ({ user_id: m.user_id, name: m.name }))}
+            onClear={() => setSelected(new Set())}
+          />
+        )}
         {isDueTab && <p className="border-b border-border px-3 py-2 text-xs text-muted">{tr.leads.contactFilters.dueHint}</p>}
         {isOpportunityTab && (
           <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2">
@@ -684,6 +707,9 @@ export function LeadsPage() {
           <Table>
             <thead>
               <tr>
+                <Th className="w-8">
+                  <input type="checkbox" checked={allOnPageSelected} onChange={togglePage} aria-label={tr.leads.bulk.selectAll} />
+                </Th>
                 <Th>{tr.leads.columns.name}</Th>
                 {show("category") && <Th>{tr.leads.columns.category}</Th>}
                 {show("location") && <Th>{tr.leads.columns.location}</Th>}
@@ -703,6 +729,9 @@ export function LeadsPage() {
                 const assignee = row.assigned_to ? membersById.get(row.assigned_to) : undefined;
                 return (
                   <Tr key={row.id} className="cursor-pointer" onClick={() => navigate(`/leads/${row.id}`)}>
+                    <Td className="w-8" onClick={(e) => e.stopPropagation()}>
+                      <input type="checkbox" checked={selected.has(row.id)} onChange={() => toggleRow(row.id)} aria-label={tr.leads.bulk.selectRow} />
+                    </Td>
                     <Td>
                       <div className="flex items-center gap-3">
                         <Avatar name={row.name} size="sm" square />

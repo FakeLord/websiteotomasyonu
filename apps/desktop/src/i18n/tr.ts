@@ -79,6 +79,8 @@ export const tr = {
     close: "Kapat",
     closeHint: "Kapatırsan temas \"Denendi\" olarak kalır",
     recording: "Temas kaydediliyor…",
+    noteLabel: "Not",
+    notePlaceholder: "Not (isteğe bağlı): ör. sahibi yarın dönecek",
     notRecorded: "Temas henüz kaydedilemedi; birkaç saniye sonra tekrar deneyin.",
     laterHint: "Ne zaman tekrar yazalım?",
     laterChoices: { tomorrow: "Yarın", threeDays: "3 gün sonra", week: "1 hafta sonra" },
@@ -245,6 +247,23 @@ export const tr = {
   leads: {
     title: "Leadler",
     dueTab: "Takip",
+    bulk: {
+      title: "Toplu işlemler",
+      selectAll: "Bu sayfadaki hepsini seç",
+      selectRow: "Satırı seç",
+      selected: (n: number) => `${n} işletme seçili`,
+      assign: "Ata",
+      removeAssignment: "Atamayı kaldır",
+      disqualify: "Ele",
+      disqualifyConfirm: (n: number) =>
+        `${n} işletme elensin mi? Yalnızca henüz yazılmamış (Yeni/Nitelikli) olanlar elenir, ilerlemiş olanlara dokunulmaz.`,
+      clear: "Seçimi temizle",
+      assigned: (updated: number, skipped: number, name: string) =>
+        `${updated} işletme ${name} kişisine atandı${skipped > 0 ? ` (${skipped} tanesi zaten ondaydı)` : ""}.`,
+      unassigned: (updated: number, skipped: number) => `${updated} işletmenin ataması kaldırıldı${skipped > 0 ? ` (${skipped} tanesi zaten atanmamıştı)` : ""}.`,
+      disqualified: (updated: number, skipped: number) =>
+        `${updated} işletme elendi${skipped > 0 ? `; ${skipped} tanesi atlandı (ilerlemiş veya zaten elenmiş)` : ""}.`,
+    },
     contactFilters: {
       recencyLabel: "Son temas",
       outcomeLabel: "Son sonuç",

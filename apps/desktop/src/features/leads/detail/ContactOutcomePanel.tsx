@@ -44,11 +44,16 @@ export function ContactOutcomePanel({ businessId, pending, onClose }: ContactOut
   const [later, setLater] = useState(false);
   const [customDate, setCustomDate] = useState("");
   const [done, setDone] = useState<string | null>(null);
+  const [note, setNote] = useState("");
 
   const save = useMutation({
     mutationFn: async (input: { outcome: ContactOutcome; followUpAt?: Date }) => {
       if (!pending.attemptId) throw new Error(tr.contactOutcome.notRecorded);
-      return setContactOutcome(pending.attemptId, input.outcome, input.followUpAt ? { followUpAt: input.followUpAt } : {});
+      const trimmed = note.trim();
+      return setContactOutcome(pending.attemptId, input.outcome, {
+        ...(trimmed ? { note: trimmed } : {}),
+        ...(input.followUpAt ? { followUpAt: input.followUpAt } : {}),
+      });
     },
     onSuccess: (result, input) => {
       refresh();
@@ -97,6 +102,14 @@ export function ContactOutcomePanel({ businessId, pending, onClose }: ContactOut
         </p>
       ) : (
         <>
+          <Input
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            maxLength={1000}
+            placeholder={tr.contactOutcome.notePlaceholder}
+            aria-label={tr.contactOutcome.noteLabel}
+            className="h-8"
+          />
           <div className="grid grid-cols-2 gap-2">
             {QUICK_OUTCOMES.map(({ outcome, tone }) => (
               <Button key={outcome} size="sm" variant={tone} disabled={busy || !pending.attemptId} onClick={() => save.mutate({ outcome })}>
