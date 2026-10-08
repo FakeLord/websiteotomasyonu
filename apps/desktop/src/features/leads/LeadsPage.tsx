@@ -21,6 +21,7 @@ import { useMarket } from "../../lib/use-market";
 import { supabase } from "../../lib/supabase-client";
 import { useWorkspaceMembership } from "../../lib/use-workspace-membership";
 import { useRealtimeTable } from "../../lib/use-realtime-table";
+import { contactRecencyFilter, endOfLocalDay } from "../../lib/contact-filters";
 import { useWorkspaceMembers } from "../../lib/use-workspace-members";
 import { useDashboardMetrics } from "../../lib/use-metrics";
 import { useAuthStore } from "../../lib/auth-store";
@@ -109,7 +110,24 @@ function applyOpportunity<Q extends OpportunityFilterable<Q>>(q: Q, viaChannel: 
     .or("status.is.null,status.not.in.(INVALID,BOUNCED)", { referencedTable: "reachable" });
 }
 
-const FILTER_PARAMS = ["q", "city", "district", "category", "minScore", "minReviews", "stage", "website", "assignee", "dnc", "dup"] as const;
+const FILTER_PARAMS = [
+  "q", "city", "district", "category", "minScore", "minReviews", "contact", "outcome", "channel", "by", "stage", "website", "assignee", "dnc", "dup",
+] as const;
+const DUE_TAB = "due";
+const CONTACT_OUTCOME_FILTERS = ["SENT", "REPLIED", "UNREACHABLE", "NOT_INTERESTED", "LATER", "ATTEMPTED"] as const;
+const CONTACT_CHANNEL_FILTERS = ["EMAIL", "WHATSAPP", "INSTAGRAM", "FACEBOOK", "LINKEDIN", "TIKTOK", "PHONE"] as const;
+const FINISHED_STAGES = "(WON,LOST,DISQUALIFIED)";
+
+interface DueFilterable<Q> {
+  lte(column: string, value: string): Q;
+  not(column: string, operator: string, value: string): Q;
+  eq(column: string, value: boolean): Q;
+}
+
+/** "Takip" görünümü: takip tarihi bugün veya geçmiş, bitmemiş aşamada, aranabilir işletmeler. */
+function applyDue<Q extends DueFilterable<Q>>(q: Q): Q {
+  return q.lte("next_action_at", endOfLocalDay(new Date()).toISOString()).not("stage", "in", FINISHED_STAGES).eq("do_not_contact", false);
+}
 const SORTS = ["score", "reviews"] as const;
 type Sort = (typeof SORTS)[number];
 
@@ -133,6 +151,7 @@ export function LeadsPage() {
 
   const tab = params.get("tab") ?? "all";
   const isOpportunityTab = tab === OPPORTUNITY_TAB;
+  const isDueTab = tab === DUE_TAB;
   const channelParam = params.get("ch");
   const opportunityFilter: OpportunityFilter = OPPORTUNITY_FILTERS.find((f) => f === channelParam) ?? "writable";
   const opportunityChannel: OpportunityChannel | null = opportunityFilter === "all" ? null : opportunityFilter;
@@ -172,6 +191,14 @@ export function LeadsPage() {
 
     const group = STAGE_GROUPS.find((g) => g.key === tab);
     if (filters.minReviews) q = q.gte("review_count", Number(filters.minReviews));
+    const recency = contactRecencyFilter(filters.contact);
+    if (recency?.op === "is") q = q.is(recency.column, null);
+    else if (recency?.op === "gte" && recency.value) q = q.gte(recency.column, recency.value);
+    else if (recency?.op === "lt" && recency.value) q = q.lt(recency.column, recency.value);
+    if (filters.outcome) q = q.eq("last_contact_outcome", filters.outcome);
+    if (filters.channel) q = q.eq("last_contact_channel", filters.channel);
+    if (filters.by) q = q.eq("last_contact_by", filters.by);
+    if (isDueTab) q = applyDue(q);
     if (isOpportunityTab) q = applyOpportunity(q, opportunityChannel, !showChains);
     else if (filters.stage) q = q.eq("stage", filters.stage);
     else if (group) q = q.in("stage", group.stages);
@@ -197,10 +224,10 @@ export function LeadsPage() {
     enabled: !!workspaceId,
     queryFn: async (): Promise<{ rows: BusinessListRow[]; count: number }> => {
       const { data, error, count } = await buildQuery(
-        "id, name, category, city, district, country_code, website_url, website_status, stage, lead_score, assigned_to, updated_at, last_contacted_at, do_not_contact, possible_duplicate_of, chain_size, review_count, contact_channels(channel, status)",
+        "id, name, category, city, district, country_code, website_url, website_status, stage, lead_score, assigned_to, updated_at, last_contacted_at, do_not_contact, possible_duplicate_of, chain_size, review_count, next_action_at, last_contact_channel, last_contact_outcome, contact_channels(channel, status)",
         true,
       )
-        .order(sort === "reviews" ? "review_count" : "lead_score", { ascending: false, nullsFirst: false })
+        .order(isDueTab ? "next_action_at" : sort === "reviews" ? "review_count" : "lead_score", { ascending: isDueTab, nullsFirst: false })
         .order("lead_score", { ascending: false })
         .order("updated_at", { ascending: false })
         .range((page - 1) * pageSize, page * pageSize - 1);
@@ -228,6 +255,24 @@ export function LeadsPage() {
       };
       const [visible, withChains] = await Promise.all([count(true), count(false)]);
       return { visible, chains: Math.max(withChains - visible, 0) };
+    },
+  });
+
+  const dueCount = useQuery({
+    queryKey: ["businesses", workspaceId, "due-count", market.country, market.city],
+    enabled: !!workspaceId,
+    refetchInterval: 5 * 60_000,
+    queryFn: async (): Promise<number> => {
+      let q = supabase
+        .from("businesses")
+        .select("id", { count: "exact", head: true })
+        .eq("workspace_id", workspaceId as string)
+        .is("merged_into", null);
+      if (market.country) q = q.eq("country_code", market.country);
+      if (market.country && market.city) q = q.eq("city", market.city);
+      const { count, error } = await applyDue(q);
+      if (error) throw error;
+      return count ?? 0;
     },
   });
 
@@ -326,6 +371,10 @@ export function LeadsPage() {
     if (key === "stage") value = tr.stages[value as keyof typeof tr.stages] ?? value;
     if (key === "website") value = tr.websiteAnalysis.status[value as keyof typeof tr.websiteAnalysis.status] ?? value;
     if (key === "assignee") value = value === "none" ? tr.leads.unassigned : (membersById.get(value)?.name ?? "…");
+    if (key === "contact") value = tr.leads.contactFilters.recency[value as keyof typeof tr.leads.contactFilters.recency] ?? value;
+    if (key === "outcome") value = tr.leads.contactFilters.outcomes[value as keyof typeof tr.leads.contactFilters.outcomes] ?? value;
+    if (key === "channel") value = tr.channels[value as keyof typeof tr.channels] ?? value;
+    if (key === "by") value = membersById.get(value)?.name ?? "…";
     if (key === "dnc" || key === "dup") value = "";
     return { key, label: `${tr.leads.filterLabels[key]}${value ? `: ${value}` : ""}` };
   });
@@ -374,6 +423,7 @@ export function LeadsPage() {
           {[
             { key: "all", label: tr.common.all, count: totalAll },
             { key: OPPORTUNITY_TAB, label: tr.leads.opportunities.tab, count: opportunityCount.data?.visible ?? 0 },
+            { key: DUE_TAB, label: tr.leads.dueTab, count: dueCount.data ?? 0 },
             ...STAGE_GROUPS.map((g) => ({ key: g.key, label: g.label, count: countForGroup(g, stageCounts) }))].map(
             (t) => (
               <button
@@ -392,6 +442,7 @@ export function LeadsPage() {
           )}
         </div>
 
+        {isDueTab && <p className="border-b border-border px-3 py-2 text-xs text-muted">{tr.leads.contactFilters.dueHint}</p>}
         {isOpportunityTab && (
           <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2">
             {OPPORTUNITY_FILTERS.map((filter) => (
@@ -487,7 +538,7 @@ export function LeadsPage() {
         </div>
 
         {showFilters && (
-          <div className="grid gap-3 border-t border-border p-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
+          <div className="grid gap-3 border-t border-border p-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
             <FilterInput label={tr.leads.cityLabel} value={filters.city} onCommit={(v) => updateParams({ city: v })} />
             <FilterInput label={tr.leads.districtLabel} value={filters.district} onCommit={(v) => updateParams({ district: v })} />
             <FilterInput label={tr.leads.categoryLabel} value={filters.category} onCommit={(v) => updateParams({ category: v })} />
@@ -525,6 +576,50 @@ export function LeadsPage() {
               value={filters.minReviews}
               onCommit={(v) => updateParams({ minReviews: v })}
             />
+            <div>
+              <Label>{tr.leads.contactFilters.recencyLabel}</Label>
+              <Select value={filters.contact} onChange={(e) => updateParams({ contact: e.target.value })}>
+                <option value="">{tr.common.all}</option>
+                {Object.entries(tr.leads.contactFilters.recency).map(([key, label]) => (
+                  <option key={key} value={key}>
+                    {label}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div>
+              <Label>{tr.leads.contactFilters.outcomeLabel}</Label>
+              <Select value={filters.outcome} onChange={(e) => updateParams({ outcome: e.target.value })}>
+                <option value="">{tr.common.all}</option>
+                {CONTACT_OUTCOME_FILTERS.map((key) => (
+                  <option key={key} value={key}>
+                    {tr.leads.contactFilters.outcomes[key]}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div>
+              <Label>{tr.leads.contactFilters.channelLabel}</Label>
+              <Select value={filters.channel} onChange={(e) => updateParams({ channel: e.target.value })}>
+                <option value="">{tr.common.all}</option>
+                {CONTACT_CHANNEL_FILTERS.map((key) => (
+                  <option key={key} value={key}>
+                    {tr.channels[key]}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div>
+              <Label>{tr.leads.contactFilters.byLabel}</Label>
+              <Select value={filters.by} onChange={(e) => updateParams({ by: e.target.value })}>
+                <option value="">{tr.common.all}</option>
+                {members.map((m) => (
+                  <option key={m.user_id} value={m.user_id}>
+                    {m.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
             <div>
               <Label>{tr.leads.columns.assigned}</Label>
               <Select value={filters.assignee} onChange={(e) => updateParams({ assignee: e.target.value })}>
@@ -651,7 +746,16 @@ export function LeadsPage() {
                       </Td>
                     )}
                     {show("activity") && (
-                      <Td className="whitespace-nowrap text-muted">{formatRelative(row.last_contacted_at ?? row.updated_at)}</Td>
+                      <Td className="whitespace-nowrap text-muted">
+                        {formatRelative(row.last_contacted_at ?? row.updated_at)}
+                        {row.last_contact_outcome && (
+                          <span className="block text-[11px] text-subtle">
+                            {tr.contactOutcome.outcomes[row.last_contact_outcome as keyof typeof tr.contactOutcome.outcomes] ?? ""}
+                            {row.last_contact_channel ? ` · ${tr.channels[row.last_contact_channel as keyof typeof tr.channels] ?? ""}` : ""}
+                          </span>
+                        )}
+                        {isDueTab && row.next_action_at && <span className="block text-[11px] text-[#fbbf24]">{formatRelative(row.next_action_at)}</span>}
+                      </Td>
                     )}
                     {show("assignee") && (
                       <Td>
