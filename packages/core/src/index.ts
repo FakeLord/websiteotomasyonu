@@ -141,6 +141,13 @@ export type {
   ScoreResult,
 } from "./scoring/types";
 export { chooseChannel } from "./routing/choose-channel";
+export {
+  googleMapsUrl,
+  quickContactTarget,
+  type QuickContactChannel,
+  type QuickContactKind,
+  type QuickContactTarget,
+} from "./routing/quick-contact";
 export type {
   Channel,
   ChannelMode,

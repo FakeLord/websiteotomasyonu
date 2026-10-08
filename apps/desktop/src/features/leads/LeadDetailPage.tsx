@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Ban, CheckCircle2, GitMerge, MapPin, MessageSquarePlus, Sparkles, Star, Tag } from "lucide-react";
+import { ArrowLeft, Ban, CheckCircle2, GitMerge, MapPin, MapPinned, MessageSquarePlus, Send, Sparkles, Star, Tag } from "lucide-react";
 import {
   allowedNextStages,
   chooseChannel,
+  googleMapsUrl,
+  quickContactTarget,
   type BusinessStage,
   type Channel,
   type OutreachChannel,
@@ -12,6 +14,7 @@ import {
 } from "@lbf/core";
 import { getCountryProfile } from "@lbf/core";
 import { formatLocalTime } from "../../lib/format";
+import { platform } from "../../lib/platform";
 import { supabase } from "../../lib/supabase-client";
 import { useWorkspaceMembership } from "../../lib/use-workspace-membership";
 import { useWorkspaceMembers } from "../../lib/use-workspace-members";
@@ -246,6 +249,21 @@ export function LeadDetailPage() {
   const location = [business.district, business.city].filter(Boolean).join(", ");
   const countryName = getCountryProfile(business.country_code).nameTr;
   const localTime = business.timezone ? formatLocalTime(business.timezone) : "";
+  const mapsUrl = googleMapsUrl({
+    name: business.name,
+    address: business.address,
+    city: business.city,
+    googlePlaceId: business.google_place_id,
+  });
+  const quickContact = quickContactTarget(
+    channels.map((c) => ({ channel: c.channel, value: c.value, normalizedValue: c.normalized_value, status: c.status })),
+    business.primary_phone_e164,
+  );
+  const openLink = (url: string) => {
+    // mailto: yeni sekme açmadan e-posta uygulamasına gitsin.
+    if (url.startsWith("mailto:")) window.location.href = url;
+    else void platform.openExternal(url);
+  };
 
   return (
     <div className="space-y-5">
@@ -294,6 +312,21 @@ export function LeadDetailPage() {
             <div className="text-center">
               <ScoreBadge score={business.lead_score} size="lg" />
               <p className="mt-1 text-xs text-muted">{tr.leadDetail.leadScore}</p>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Button
+                disabled={!quickContact || business.do_not_contact}
+                title={tr.leadDetail.quickContactHint}
+                aria-label={quickContact ? tr.leadDetail.quickContact[quickContact.channel] : tr.leadDetail.quickContactNone}
+                onClick={() => quickContact && openLink(quickContact.url)}
+              >
+                <Send />
+                {quickContact ? tr.leadDetail.quickContact[quickContact.channel] : tr.leadDetail.quickContactNone}
+              </Button>
+              <Button variant="outline" onClick={() => openLink(mapsUrl)}>
+                <MapPinned />
+                {tr.leadDetail.openMaps}
+              </Button>
             </div>
             <div className="flex flex-col gap-2">
               <Button variant="violet" onClick={() => setDraftOpen(true)} disabled={business.do_not_contact}>

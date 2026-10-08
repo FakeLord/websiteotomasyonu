@@ -779,6 +779,17 @@ export const tr = {
   },
   leadDetail: {
     localTime: "yerel saat",
+    openMaps: "Google Haritalar'da aç",
+    quickContact: {
+      INSTAGRAM: "Instagram'ı aç",
+      FACEBOOK: "Facebook'u aç",
+      LINKEDIN: "LinkedIn'i aç",
+      TIKTOK: "TikTok'u aç",
+      EMAIL: "E-posta yaz",
+      WHATSAPP: "WhatsApp'tan yaz",
+    },
+    quickContactNone: "İletişim kanalı yok",
+    quickContactHint: "Sosyal medya varsa o, yoksa e-posta, o da yoksa kayıtlı telefona WhatsApp açılır.",
     tabs: {
       overview: "Genel",
       website: "Web Sitesi",
