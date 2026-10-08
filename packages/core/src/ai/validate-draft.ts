@@ -72,6 +72,7 @@ const GREETING_WORDS = new Set(
     "merhaba", "merhabalar", "selam", "sayın", "değerli", "günaydın", "iyi", "kolay", "saygılarımla",
     "hello", "hi", "hey", "dear", "good", "morning", "afternoon", "best", "kind", "warm", "regards",
     "sincerely", "cheers", "thanks", "thank", "you", "team", "staff",
+    "ekibi", "ekibine", "ekibiniz", "ekibinize", "ekip", "yetkilisi", "yetkililerine", "yönetimi",
   ].map(foldName),
 );
 

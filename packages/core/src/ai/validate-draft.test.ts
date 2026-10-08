@@ -129,6 +129,17 @@ describe("validateDraft", () => {
     }
   });
 
+  it("does not flag Turkish team salutations like 'Sayın X Ekibi' as customer references", () => {
+    for (const salutation of ["Sayın DTLA Smile Ekibi", "Merhaba DTLA Smile Ekibine", "Değerli DTLA Smile Yetkilisi"]) {
+      const result = validateDraft({
+        ...baseInput,
+        body: `${salutation},\n\nWeb siteniz için bir fikrimiz var.\n\nSaygılarımla,`,
+        recipientBusinessName: "DTLA Smile",
+      });
+      expect(result.reasons, salutation).toEqual([]);
+    }
+  });
+
   it("flags a price quoted in euros, pounds or dollars that no package covers", () => {
     for (const text of ["only €500", "just £400 per month", "from $300", "for 500 USD", "for 250 euros"]) {
       const result = validateDraft({ ...baseInput, body: `Hello team, we can build it ${text}.` });
