@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CheckCircle2, Loader2, MessagesSquare, Pause, Play, SkipForward, Sparkles, Undo2, UserPlus } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Loader2, MessagesSquare, Pause, Pencil, Play, SkipForward, Sparkles, Trash2, Undo2, UserPlus } from "lucide-react";
 import { OUTREACH_LANGUAGES, type OutreachChannel, type OutreachLanguage } from "@lbf/core";
 import { supabase } from "../../lib/supabase-client";
 import { useWorkspaceMembership } from "../../lib/use-workspace-membership";
@@ -17,6 +17,7 @@ import { ScoreBadge, WebsiteStatusBadge } from "../../components/domain/badges";
 import { draftReasonLabel } from "../leads/detail/lead-data";
 import { ensureConversation, generateFirstMessageDraft, rpc, saveDraftToConversation } from "../outreach/outreach";
 import { CAMPAIGN_STATUS_TONES } from "./CampaignsPage";
+import { EditCampaignDialog } from "./EditCampaignDialog";
 import { EMPTY_STATS, describeSegment, replyRate, useCampaigns, type CampaignStatus } from "./campaign-data";
 
 interface MemberRow {
@@ -49,6 +50,7 @@ export function CampaignDetailPage() {
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [messages, setMessages] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
   // Bilerek varsayılan yok: taslakların dilini ekip seçer.
   const [language, setLanguage] = useState<OutreachLanguage | "">("");
   const membersKey = ["campaign-members", campaignId];
@@ -82,6 +84,18 @@ export function CampaignDetailPage() {
     mutationFn: (status: CampaignStatus) => rpc("set_campaign_status", { p_campaign_id: campaignId, p_status: status }),
     onSuccess: refresh,
     onError,
+  });
+
+  const deleteCampaign = useMutation({
+    mutationFn: () => rpc("delete_campaign", { p_campaign_id: campaignId }),
+    onSuccess: () => {
+      refresh();
+      navigate("/campaigns", { replace: true });
+    },
+    onError: (err) => {
+      const message = err instanceof Error ? err.message : tr.common.error;
+      setError(message.includes("contacted members") ? tr.campaigns.edit.deleteBlocked : message);
+    },
   });
 
   const populate = useMutation({
@@ -170,6 +184,22 @@ export function CampaignDetailPage() {
             {campaign.description && <p className="mt-2 max-w-2xl text-sm text-text">{campaign.description}</p>}
           </div>
           <div className="flex flex-wrap gap-2">
+            {campaign.status !== "COMPLETED" && (
+              <Button variant="ghost" onClick={() => setEditOpen(true)}>
+                <Pencil />
+                {tr.campaigns.edit.open}
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              disabled={deleteCampaign.isPending}
+              onClick={() => {
+                if (window.confirm(tr.campaigns.edit.deleteConfirm(campaign.name))) deleteCampaign.mutate();
+              }}
+            >
+              <Trash2 />
+              {tr.campaigns.edit.delete}
+            </Button>
             {campaign.status === "DRAFT" && (
               <Button onClick={() => setStatus.mutate("ACTIVE")}>
                 <Play />
@@ -340,6 +370,7 @@ export function CampaignDetailPage() {
           </Table>
         )}
       </Card>
+      {editOpen && <EditCampaignDialog campaign={campaign} onClose={() => setEditOpen(false)} />}
     </div>
   );
 }
