@@ -13,6 +13,7 @@ import { marketCities, marketCountries } from "../lib/market";
 import { getCountryProfile } from "@lbf/core";
 import { Avatar } from "../components/ui/data-display";
 import { WebsiteStatusBadge } from "../components/domain/badges";
+import { AnalysisIndicator } from "./analysis-indicator";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -262,6 +263,7 @@ export function Topbar() {
       <GlobalSearch />
       <MarketSelector />
       <div className="ml-auto flex items-center gap-1">
+        <AnalysisIndicator />
         <NotificationsMenu />
         <div className="mx-2 h-6 w-px bg-border" />
         <UserMenu />

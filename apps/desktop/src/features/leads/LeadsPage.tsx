@@ -24,7 +24,9 @@ import { useRealtimeTable } from "../../lib/use-realtime-table";
 import { useWorkspaceMembers } from "../../lib/use-workspace-members";
 import { useDashboardMetrics } from "../../lib/use-metrics";
 import { useAuthStore } from "../../lib/auth-store";
-import { analyzeBusiness, analyzeBusinessesInBatches } from "../../workers/website-analysis-runner";
+import { analyzeBusiness } from "../../workers/website-analysis-runner";
+import { retryFailedAndKick } from "../../workers/background-analysis";
+import { useAnalysisStore } from "../../lib/analysis-store";
 import { STAGE_GROUPS, countForGroup } from "../../lib/stage-groups";
 import { downloadFile, toCsv, turkishLikePattern } from "../../lib/filters";
 import { formatRelative } from "../../lib/format";
@@ -88,8 +90,9 @@ export function LeadsPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [columns, setColumns] = useState<ColumnKey[]>(loadColumns);
-  const [bulkNotice, setBulkNotice] = useState<string | null>(null);
-  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null);
+  const [bulkNotice, setBulkNotice] = useState<{ tone: "error" | "info"; text: string } | null>(null);
+  const analysisQueue = useAnalysisStore((state) => state.queue);
+  const bulkProgress = analysisQueue.running && analysisQueue.total > 0 ? analysisQueue : null;
   const [exporting, setExporting] = useState(false);
 
   const tab = params.get("tab") ?? "all";
@@ -175,25 +178,25 @@ export function LeadsPage() {
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["businesses", workspaceId] }),
   });
 
+  // "Toplu Analiz": arka plan kuyruğunu hemen çalıştırır ve bu oturumda başarısız olanları da yeniden dener.
+  // Sonuç her durumda yazılır; düğmeye basınca "hiçbir şey olmuyor" durumu kalmaz.
   const runBulkAnalyze = async () => {
     if (!workspaceId) return;
-    const { data, error } = await supabase
-      .from("businesses")
-      .select("id, website_url, category")
-      .eq("workspace_id", workspaceId)
-      .is("merged_into", null)
-      .is("website_status", null)
-      .limit(200);
-    if (error || !data || data.length === 0) return;
     setBulkNotice(null);
-    setBulkProgress({ done: 0, total: data.length });
-    const summary = await analyzeBusinessesInBatches(
-      workspaceId,
-      data.map((row) => ({ id: row.id as string, websiteUrl: row.website_url as string | null, category: row.category as string | null })),
-      (done, total) => setBulkProgress({ done, total }),
-    );
-    setBulkProgress(null);
-    if (summary.failed > 0) setBulkNotice(tr.websiteAnalysis.bulkAnalyzeFailed(summary.failed, data.length, summary.firstError ?? ""));
+    const summary = await retryFailedAndKick(workspaceId);
+    if (summary.firstError) {
+      setBulkNotice({
+        tone: "error",
+        text: summary.failed > 0 ? tr.websiteAnalysis.bulkAnalyzeFailed(summary.failed, summary.total, summary.firstError) : summary.firstError,
+      });
+    } else if (summary.blockedBy === "lease") {
+      setBulkNotice({ tone: "info", text: tr.websiteAnalysis.bulkElsewhere });
+    } else {
+      setBulkNotice({
+        tone: "info",
+        text: summary.total === 0 ? tr.websiteAnalysis.bulkNothingPending : tr.websiteAnalysis.bulkDone(summary.total),
+      });
+    }
     void queryClient.invalidateQueries({ queryKey: ["businesses", workspaceId] });
   };
 
@@ -269,7 +272,7 @@ export function LeadsPage() {
                 {tr.websiteAnalysis.bulkAnalyzeProgress(bulkProgress.done, bulkProgress.total)}
               </span>
             )}
-            <Button variant="outline" disabled={!!bulkProgress} onClick={() => void runBulkAnalyze()}>
+            <Button variant="outline" disabled={analysisQueue.running} onClick={() => void runBulkAnalyze()}>
               <ScanSearch />
               {tr.websiteAnalysis.bulkAnalyzeButton}
             </Button>
@@ -285,7 +288,18 @@ export function LeadsPage() {
         }
       />
 
-      {bulkNotice && <p className="mb-3 rounded-lg bg-danger/10 px-3 py-2 text-sm text-[#f87171]">{bulkNotice}</p>}
+      {bulkNotice && (
+        <p
+          role="status"
+          className={
+            bulkNotice.tone === "error"
+              ? "mb-3 rounded-lg bg-danger/10 px-3 py-2 text-sm text-[#f87171]"
+              : "mb-3 rounded-lg bg-surface-2 px-3 py-2 text-sm text-muted"
+          }
+        >
+          {bulkNotice.text}
+        </p>
+      )}
       <Card>
         <div className="flex items-center gap-1 overflow-x-auto border-b border-border px-3">
           {[{ key: "all", label: tr.common.all, count: totalAll }, ...STAGE_GROUPS.map((g) => ({ key: g.key, label: g.label, count: countForGroup(g, stageCounts) }))].map(

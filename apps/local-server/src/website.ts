@@ -141,13 +141,14 @@ function requestOnce(
  * Pasif website fetch (SPEC.md → H): Rust `commands/website.rs::fetch_page` ile aynı
  * sınırlar ve SSRF engeli — yalnızca http/https; her hop'ta ad yeniden çözülür, çözülen
  * IP'lerden biri bile özel/loopback/link-local/CGNAT ise reddedilir ve bağlantı doğrulanan
- * IP'ye sabitlenir; en çok 5 yönlendirme; hop başına 10 sn; gövde en çok 2 MB.
+ * IP'ye sabitlenir; en çok 5 yönlendirme; hop başına 6 sn; gövde en çok 2 MB.
  * Sınıflandırma mantığı burada değil, `packages/core/website-analyzer`'dadır.
  */
 export async function fetchPage(rawUrl: string, deps: FetchPageDeps = {}): Promise<FetchPageResult> {
   const resolve = deps.resolve ?? systemResolve;
   const isBlocked = deps.isBlocked ?? isBlockedIp;
-  const timeoutMs = deps.timeoutMs ?? 10_000;
+  // 10 sn'den 6 sn'ye indirildi: toplu analizde yanıt vermeyen siteler kuyruğu bekletiyordu (Rust tarafı 10 sn'de kaldı).
+  const timeoutMs = deps.timeoutMs ?? 6_000;
   const maxRedirects = deps.maxRedirects ?? 5;
   const maxBytes = deps.maxBytes ?? 2 * 1024 * 1024;
   const started = Date.now();

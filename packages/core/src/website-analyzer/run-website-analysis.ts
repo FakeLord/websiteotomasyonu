@@ -16,7 +16,9 @@ import {
 } from "./types";
 
 const INNER_PAGE_KEYWORDS = ["iletisim", "contact", "hakkimizda", "about", "randevu", "appointment"];
-const MAX_INNER_PAGES = 3;
+const MAX_INNER_PAGES = 2;
+/** Ana sayfası bu kadar yavaş açılan sitede iç sayfalar okunmaz: işletme başına süre patlamasın. */
+const SLOW_MAIN_PAGE_MS = 4000;
 
 function classifyFetchError(message: string): BrokenReason {
   const lower = message.toLowerCase();
@@ -137,6 +139,8 @@ export async function runWebsiteAnalysis(
 
   let robotsAllowsAll = true;
   try {
+    // Yavaş sitede yalnızca ana sayfa analiz edilir (sınıflandırma ve iletişim çıkarımı yine yapılır).
+    if (mainPage.responseMs >= SLOW_MAIN_PAGE_MS) throw new Error("ana sayfa yavaş; iç sayfalar atlandı");
     const robotsUrl = new URL("/robots.txt", mainPage.finalUrl).toString();
     const robots = await fetcher.fetchPage(robotsUrl);
     if (robots.httpStatus < 400) {

@@ -8,15 +8,49 @@ const AGENCY_SIGNATURE_PATTERN = /tasarım|designed by|developed by|yapılmışt
 
 const SOCIAL_PLATFORMS: SocialPlatform[] = ["INSTAGRAM", "FACEBOOK", "LINKEDIN", "TIKTOK"];
 
-// "info [at] example . com" / "info(at)example(dot)com" gibi gizlenmiş
-// e-postaları normal forma çevirir (SPEC.md → I.2).
-function deobfuscateEmails(text: string): string {
-  return text
-    .replace(/\s*[[(]?\s*\bat\b\s*[\])]?\s*/gi, "@")
-    .replace(/\s*[[(]?\s*\bdot\b\s*[\])]?\s*/gi, ".");
+// Tüm niceleyiciler sınırlıdır ve desen bir kelime sınırından başlar: önceki `\s*…\s*…\s*` ve sınırsız `+`
+// biçimleri, uzun boşluk/harf dizileri olan gerçek sayfalarda felaket geri izlemeye girip analizi (ve sayfayı)
+// onlarca saniye kilitliyordu.
+const EMAIL_REGEX = /(?<![a-zA-Z0-9._%+-])[a-zA-Z0-9._%+-]{1,64}@[a-zA-Z0-9-]{1,63}(?:\.[a-zA-Z0-9-]{1,63}){0,4}\.[a-zA-Z]{2,24}/g;
+
+const LOCAL = "[a-zA-Z0-9._%+-]{1,64}";
+const LABEL = "[a-zA-Z0-9-]{1,63}";
+const GAP = "\\s{0,2}";
+const BRACKET_AT = `[\\[({]${GAP}at${GAP}[\\])}]`;
+const BRACKET_DOT = `[\\[({]${GAP}dot${GAP}[\\])}]`;
+const WORD_DOT = "\\s{1,2}dot\\s{1,2}";
+const ANY_DOT = `(?:${GAP}\\.${GAP}|${GAP}${BRACKET_DOT}${GAP}|${WORD_DOT})`;
+const OBFUSCATED_DOT = `(?:${GAP}${BRACKET_DOT}${GAP}|${WORD_DOT})`;
+
+// "info [at] example [dot] com", "info(at)example.com": "at" parantezliyse nokta düz veya gizlenmiş olabilir.
+const BRACKETED_AT_EMAIL = new RegExp(
+  `(?<![a-zA-Z0-9._%+-])(${LOCAL})${GAP}${BRACKET_AT}${GAP}(${LABEL}(?:${ANY_DOT}${LABEL}){1,4})`,
+  "gi",
+);
+// "info at example dot com": düz "at" yalnızca nokta da gizlenmişse kabul edilir; aksi halde
+// "contact us at example.com" gibi sıradan cümleler sahte e-postaya ("us@example.com") dönüşürdü.
+const WORD_AT_EMAIL = new RegExp(
+  `(?<![a-zA-Z0-9._%+-])(${LOCAL})\\s{1,2}at\\s{1,2}(${LABEL}${OBFUSCATED_DOT}${LABEL}(?:${ANY_DOT}${LABEL}){0,3})`,
+  "gi",
+);
+const DOT_FORMS = new RegExp(`${BRACKET_DOT}|\\bdot\\b`, "gi");
+
+/** Gizlenmiş e-postaları ("info [at] example (dot) com") bulur ve normal biçimde döner (SPEC.md → I.2). */
+function findObfuscatedEmails(text: string): string[] {
+  const found: string[] = [];
+  for (const pattern of [BRACKETED_AT_EMAIL, WORD_AT_EMAIL]) {
+    for (const match of text.matchAll(pattern)) {
+      const domain = (match[2] ?? "").replace(DOT_FORMS, ".").replace(/\s+/g, "");
+      const candidate = `${match[1] ?? ""}@${domain}`;
+      const valid = candidate.match(EMAIL_REGEX);
+      if (valid?.[0] === candidate) found.push(candidate);
+    }
+  }
+  return found;
 }
 
-const EMAIL_REGEX = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+/** Metin regex'lerinin tarayacağı en uzun görünür metin; aşırı büyük sayfalarda süreyi sınırlar. */
+const MAX_TEXT_SCAN_CHARS = 300_000;
 
 // TR sabit hat (0212 xxx xx xx) ve mobil (0532 xxx xx xx / +90 532 xxx xx xx) kalıpları.
 const TR_PHONE_TEXT_REGEX = /(?:\+90|0)?\s?5\d{2}[\s.-]?\d{3}[\s.-]?\d{2}[\s.-]?\d{2}|(?:\+90|0)\s?\d{3}[\s.-]?\d{3}[\s.-]?\d{2}[\s.-]?\d{2}/g;
@@ -214,9 +248,8 @@ export function extractContacts(html: string): ExtractedContact[] {
 
   contacts.push(...extractFromJsonLd(html));
 
-  const visibleText = getVisibleText(html);
-  const deobfuscated = deobfuscateEmails(visibleText);
-  for (const match of deobfuscated.match(EMAIL_REGEX) ?? []) {
+  const visibleText = getVisibleText(html).slice(0, MAX_TEXT_SCAN_CHARS);
+  for (const match of [...(visibleText.match(EMAIL_REGEX) ?? []), ...findObfuscatedEmails(visibleText)]) {
     contacts.push({
       channel: "EMAIL",
       value: match,

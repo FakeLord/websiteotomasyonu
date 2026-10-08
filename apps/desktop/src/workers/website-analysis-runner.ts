@@ -11,8 +11,6 @@ export interface AnalyzeTarget {
   category: string | null;
 }
 
-const CONCURRENCY = 4;
-
 /**
  * Web modunda ağır HTML analizi arayüzü dondurmasın diye Web Worker'da çalışır; Tauri'de veya
  * worker yoksa doğrudan (ana iş parçacığında) çalışır.
@@ -46,45 +44,4 @@ export async function analyzeBusiness(workspaceId: string, target: AnalyzeTarget
   await recomputeScore(workspaceId, target.id);
 
   return result;
-}
-
-/**
- * Toplu analiz kuyruğu: SPEC.md → H "domain başına saniyede 1 istek, eş
- * zamanlı en fazla 4 domain" sınırına yaklaşmak için 4'lü gruplar halinde
- * paralel çalışır. Bir işletmenin analizi başarısız olursa diğerleri
- * etkilenmez.
- */
-export interface BatchAnalysisSummary {
-  failed: number;
-  /** İlk hatanın metni (neden görünür olsun diye). */
-  firstError: string | null;
-}
-
-export async function analyzeBusinessesInBatches(
-  workspaceId: string,
-  targets: AnalyzeTarget[],
-  onProgress?: (done: number, total: number) => void,
-  analyze: (workspaceId: string, target: AnalyzeTarget) => Promise<unknown> = analyzeBusiness,
-): Promise<BatchAnalysisSummary> {
-  let done = 0;
-  const summary: BatchAnalysisSummary = { failed: 0, firstError: null };
-  onProgress?.(0, targets.length);
-  for (let i = 0; i < targets.length; i += CONCURRENCY) {
-    const batch = targets.slice(i, i + CONCURRENCY);
-    await Promise.all(
-      batch.map(async (target) => {
-        try {
-          await analyze(workspaceId, target);
-        } catch (error) {
-          // Diğer işletmeler etkilenmez; hata sayılır ve ilk nedeni kullanıcıya gösterilir.
-          summary.failed += 1;
-          summary.firstError ??= error instanceof Error ? error.message : "Bilinmeyen hata";
-        } finally {
-          done += 1;
-          onProgress?.(done, targets.length);
-        }
-      }),
-    );
-  }
-  return summary;
 }

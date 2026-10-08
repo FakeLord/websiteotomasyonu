@@ -140,3 +140,38 @@ describe("extractContacts", () => {
     expect(findAll(extractContacts(html), "TIKTOK")[0]?.normalizedValue).toBe("tiktok:@abcdental");
   });
 });
+
+describe("extractContacts — performans ve gizlenmiş e-posta doğruluğu", () => {
+  const emails = (html: string) => extractContacts(html).filter((c) => c.channel === "EMAIL").map((c) => c.normalizedValue);
+
+  it("uzun boşluk dizileri olan sayfada kilitlenmez (regex geri izleme patlaması)", () => {
+    // Gerçek sitelerde (ör. şablon motoru çıktısı) binlerce boşluk/satır sonu art arda gelir.
+    const filler = `<div>${" \n\t".repeat(4000)}metin${" \n\t".repeat(4000)}</div>`;
+    const html = `<html><body>${filler.repeat(6)}<p>info@abcdis.com</p></body></html>`;
+    const started = Date.now();
+    const result = emails(html);
+    expect(Date.now() - started).toBeLessThan(1500);
+    expect(result).toContain("info@abcdis.com");
+  });
+
+  it("@ içermeyen çok uzun harf-rakam dizisinde kilitlenmez", () => {
+    const html = `<html><body><p>${"a1b2c3d4".repeat(20000)}</p> <p>info@abcdis.com</p></body></html>`;
+    const started = Date.now();
+    const result = emails(html);
+    expect(Date.now() - started).toBeLessThan(1500);
+    expect(result).toContain("info@abcdis.com");
+  });
+
+  it("düz İngilizce 'at' kelimesini e-postaya çevirmez (us@example.com gibi sahte adres üretmez)", () => {
+    expect(emails(`<p>Contact us at example.com or visit us at facebook.com today.</p>`)).toEqual([]);
+    expect(emails(`<p>We are open at 9.30 and close at 18.00, see you at home.com</p>`)).toEqual([]);
+  });
+
+  it("köşeli/normal parantezli ve düz yazılmış gizlemeleri çözer", () => {
+    expect(emails(`<p>info [at] abcdis [dot] com</p>`)).toContain("info@abcdis.com");
+    expect(emails(`<p>info(at)abcdis(dot)com</p>`)).toContain("info@abcdis.com");
+    expect(emails(`<p>info [at] abcdis.com</p>`)).toContain("info@abcdis.com");
+    expect(emails(`<p>Mail: info at abcdis dot com.tr</p>`)).toContain("info@abcdis.com.tr");
+    expect(emails(`<p>destek (at) klinik (dot) com (dot) tr</p>`)).toContain("destek@klinik.com.tr");
+  });
+});

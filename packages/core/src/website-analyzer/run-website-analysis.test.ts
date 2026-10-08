@@ -148,3 +148,46 @@ describe("runWebsiteAnalysis", () => {
     expect(result.issues.length).toBeGreaterThan(0);
   });
 });
+
+describe("runWebsiteAnalysis — hız kuralları", () => {
+  const LINKS_HTML = GOOD_HTML.replace(
+    "</body>",
+    `<a href="/iletisim">İletişim</a><a href="/hakkimizda">Hakkımızda</a><a href="/randevu">Randevu</a><a href="/contact">Contact</a></body>`,
+  );
+
+  class CountingFetcher extends FakeFetcher {
+    readonly requested: string[] = [];
+    override async fetchPage(url: string): Promise<WebsiteFetchResult> {
+      this.requested.push(url);
+      return super.fetchPage(url);
+    }
+  }
+
+  function withInnerPages(fetcher: FakeFetcher): void {
+    fetcher.register("https://abcdis.com/robots.txt", page({ html: "User-agent: *\nAllow: /" }));
+    for (const path of ["iletisim", "hakkimizda", "randevu", "contact"]) {
+      fetcher.register(`https://abcdis.com/${path}`, page({ html: GOOD_HTML }));
+    }
+  }
+
+  it("en fazla 2 iç sayfa okur (işletme başına süre kısalsın)", async () => {
+    const fetcher = new CountingFetcher();
+    fetcher.register("https://abcdis.com", page({ html: LINKS_HTML }));
+    withInnerPages(fetcher);
+    const result = await runWebsiteAnalysis(fetcher, { websiteUrl: "abcdis.com" });
+    expect(result.pagesFetched).toBe(3);
+    expect(fetcher.requested.filter((u) => !u.endsWith("/robots.txt") && u !== "https://abcdis.com")).toHaveLength(2);
+  });
+
+  it("ana sayfa çok yavaş açıldıysa iç sayfalara ve robots.txt'ye hiç gitmez", async () => {
+    const fetcher = new CountingFetcher();
+    fetcher.register("https://abcdis.com", page({ html: LINKS_HTML, responseMs: 4500 }));
+    withInnerPages(fetcher);
+    const result = await runWebsiteAnalysis(fetcher, { websiteUrl: "abcdis.com" });
+    expect(fetcher.requested).toEqual(["https://abcdis.com"]);
+    expect(result.pagesFetched).toBe(1);
+    // Yavaş sitede de ana sayfadan sınıflandırma ve iletişim çıkarımı yapılır.
+    expect(result.status).not.toBe("BROKEN_WEBSITE");
+    expect(result.contacts.length).toBeGreaterThan(0);
+  });
+});

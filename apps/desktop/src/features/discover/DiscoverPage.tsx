@@ -17,6 +17,8 @@ import {
 } from "../../lib/discover-markets";
 import { SUPPORTED_COUNTRY_CODES, getCountryProfile } from "@lbf/core";
 import { processSearchQueue, type SearchJobParams } from "../../workers/search-queue-runner";
+import { kickBackgroundAnalysis } from "../../workers/background-analysis";
+import { useAnalysisStore } from "../../lib/analysis-store";
 import { formatRelative } from "../../lib/format";
 import { tr } from "../../i18n/tr";
 import { cn } from "../../lib/cn";
@@ -80,7 +82,8 @@ export function DiscoverPage() {
   const [flyTarget, setFlyTarget] = useState<{ point: LatLng; zoom: number } | null>(null);
   const [notice, setNotice] = useState<{ tone: "warn" | "error"; text: string } | null>(null);
   const [showImport, setShowImport] = useState(false);
-  const [analysisProgress, setAnalysisProgress] = useState<{ done: number; total: number } | null>(null);
+  const analysisQueue = useAnalysisStore((state) => state.queue);
+  const analysisProgress = analysisQueue.running && analysisQueue.total > 0 ? analysisQueue : null;
 
   // Üst çubuktaki pazar değişince Keşfet aramasının varsayılanı da onu izler.
   useEffect(() => {
@@ -172,24 +175,10 @@ export function DiscoverPage() {
   const mappable = results.filter((b): b is MapBusiness => b.lat !== null && b.lng !== null);
 
   const runQueue = useMutation({
-    mutationFn: async () =>
-      workspaceId
-        ? processSearchQueue(workspaceId, (summary) => {
-            // Otomatik analiz arama bittikten sonra sürer; bitince sonuç listesi ve puanlar tazelenir.
-            void queryClient.invalidateQueries({ queryKey: ["search-results"] });
-            void queryClient.invalidateQueries({ queryKey: ["businesses", workspaceId] });
-            void queryClient.invalidateQueries({ queryKey: ["dashboard-metrics"] });
-            setAnalysisProgress(null);
-            if (summary.failed > 0) {
-              setNotice({ tone: "warn", text: tr.websiteAnalysis.bulkAnalyzeFailed(summary.failed, summary.total, summary.firstError ?? "") });
-            }
-          }, (done, total) => {
-            setAnalysisProgress({ done, total });
-            // Her 5 işletmede bir sonuçlar tazelenir; her biri için yenilemek arayüzü yorar.
-            if (done > 0 && done % 5 === 0) void queryClient.invalidateQueries({ queryKey: ["search-results"] });
-          })
-        : undefined,
+    mutationFn: async () => (workspaceId ? processSearchQueue(workspaceId) : undefined),
     onSettled: () => {
+      // Bulunan işletmeler arka plan kuyruğunda analiz edilir; beklemeden hemen tetiklenir.
+      if (workspaceId) void kickBackgroundAnalysis(workspaceId);
       void queryClient.invalidateQueries({ queryKey: ["search-jobs", workspaceId] });
       void queryClient.invalidateQueries({ queryKey: ["search-results"] });
       void queryClient.invalidateQueries({ queryKey: ["businesses", workspaceId] });
