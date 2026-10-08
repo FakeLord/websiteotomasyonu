@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Copy, Mail, Trash2, UserPlus } from "lucide-react";
+import { Copy, Mail, RotateCw, Trash2, UserMinus, UserPlus } from "lucide-react";
 import { adminInviteInputSchema, type AdminInviteInput, type WorkspaceRole } from "@lbf/contracts";
 import { supabase } from "../../lib/supabase-client";
 import { useWorkspaceMembership } from "../../lib/use-workspace-membership";
@@ -40,6 +40,7 @@ export function TeamPage() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteCode, setInviteCode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const invites = useQuery({
     queryKey: ["workspace-invites", workspaceId],
@@ -66,6 +67,47 @@ export function TeamPage() {
       if (uError) throw uError;
     },
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["workspace-members", workspaceId] }),
+    onError: (err) => setError(err instanceof Error ? err.message : tr.common.error),
+  });
+
+  const removeMember = useMutation({
+    mutationFn: async (member: { user_id: string; name: string }) => {
+      if (!window.confirm(tr.team.removeConfirm(member.name))) return null;
+      const { data, error: rError } = await supabase.rpc("remove_workspace_member", {
+        p_workspace_id: workspaceId as string,
+        p_user_id: member.user_id,
+      });
+      if (rError) throw new Error(rError.message);
+      return { name: member.name, ...(data as { unassignedBusinesses: number; reopenedHandoffs: number }) };
+    },
+    onSuccess: (result) => {
+      if (!result) return;
+      setError(null);
+      setNotice(tr.team.removeDone(result.name, result.unassignedBusinesses, result.reopenedHandoffs));
+      for (const queryKey of [["workspace-members", workspaceId], ["businesses"], ["shell-counters", workspaceId]]) {
+        void queryClient.invalidateQueries({ queryKey });
+      }
+    },
+    onError: (err) => setError(err instanceof Error ? err.message : tr.common.error),
+  });
+
+  const resendInvite = useMutation({
+    mutationFn: async (invite: InviteRow) => {
+      const { data, error: fnError } = await supabase.functions.invoke("admin-invite", {
+        body: { workspaceId, email: invite.email, role: invite.role },
+      });
+      if (fnError) throw new Error(await functionErrorMessage(fnError, tr.team.inviteError));
+      // Yeni davet oluştuktan sonra eskisi iptal edilir (aynı e-postaya iki geçerli kod kalmasın).
+      const { error: dError } = await supabase.from("workspace_invites").delete().eq("id", invite.id);
+      if (dError) throw dError;
+      return (data as { inviteCode: string }).inviteCode;
+    },
+    onSuccess: (code) => {
+      setError(null);
+      setInviteCode(code);
+      setInviteOpen(true);
+      void queryClient.invalidateQueries({ queryKey: ["workspace-invites", workspaceId] });
+    },
     onError: (err) => setError(err instanceof Error ? err.message : tr.common.error),
   });
 
@@ -116,6 +158,11 @@ export function TeamPage() {
         }
       />
       {error && <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-[#f87171]">{error}</p>}
+      {notice && (
+        <p role="status" className="rounded-lg bg-surface-2 px-3 py-2 text-sm text-muted">
+          {notice}
+        </p>
+      )}
 
       <Card>
         <CardHeader title={tr.team.members(members.length)} />
@@ -127,6 +174,11 @@ export function TeamPage() {
               <Th>{tr.team.assignedLeads}</Th>
               <Th>{tr.team.lastSeen}</Th>
               <Th>{tr.team.joined}</Th>
+              {isAdmin && (
+                <Th className="w-10">
+                  <span className="sr-only">{tr.common.actions}</span>
+                </Th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -164,6 +216,22 @@ export function TeamPage() {
                 <Td className="tabular-nums">{member.assigned_count}</Td>
                 <Td className="text-muted">{member.last_sign_in_at ? formatRelative(member.last_sign_in_at) : "—"}</Td>
                 <Td className="text-muted">{formatDate(member.joined_at)}</Td>
+                {isAdmin && (
+                  <Td>
+                    {member.user_id !== myId && (
+                      <button
+                        type="button"
+                        disabled={removeMember.isPending}
+                        onClick={() => removeMember.mutate(member)}
+                        className="rounded-md p-1.5 text-muted hover:bg-danger/15 hover:text-danger disabled:opacity-40"
+                        aria-label={tr.team.removeMember}
+                        title={tr.team.removeMember}
+                      >
+                        <UserMinus className="size-4" />
+                      </button>
+                    )}
+                  </Td>
+                )}
               </Tr>
             ))}
           </tbody>
@@ -179,7 +247,7 @@ export function TeamPage() {
                 <Th>{tr.auth.email}</Th>
                 <Th>{tr.team.role}</Th>
                 <Th>{tr.team.expires}</Th>
-                <Th className="w-10">
+                <Th className="w-20">
                   <span className="sr-only">{tr.common.actions}</span>
                 </Th>
               </tr>
@@ -194,7 +262,17 @@ export function TeamPage() {
                       <Badge tone={ROLE_TONES[invite.role]}>{tr.team.roles[invite.role]}</Badge>
                     </Td>
                     <Td className={expired ? "text-[#f87171]" : "text-muted"}>{expired ? tr.team.expired : formatDate(invite.expires_at)}</Td>
-                    <Td>
+                    <Td className="whitespace-nowrap">
+                      <button
+                        type="button"
+                        disabled={resendInvite.isPending}
+                        onClick={() => resendInvite.mutate(invite)}
+                        className="rounded-md p-1.5 text-muted hover:bg-surface-3 hover:text-text disabled:opacity-40"
+                        aria-label={tr.team.resend}
+                        title={tr.team.resendHint}
+                      >
+                        <RotateCw className="size-4" />
+                      </button>
                       <button
                         type="button"
                         onClick={() => revokeInvite.mutate(invite.id)}

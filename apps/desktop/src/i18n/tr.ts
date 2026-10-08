@@ -462,6 +462,13 @@ export const tr = {
     expires: "Son geçerlilik",
     expired: "Süresi doldu",
     revoke: "Daveti iptal et",
+    resend: "Yeniden gönder",
+    resendHint: "Yeni bir davet e-postası ve yeni kod üretilir; eski davet iptal edilir.",
+    removeMember: "Ekipten çıkar",
+    removeConfirm: (name: string) =>
+      `${name} ekipten çıkarılsın mı? Üzerindeki işletmelerin ataması kalkar ve devraldığı devir kartları yeniden açılır. Kişinin geçmiş kayıtları silinmez.`,
+    removeDone: (name: string, businesses: number, handoffs: number) =>
+      `${name} ekipten çıkarıldı. ${businesses} işletmenin ataması kaldırıldı, ${handoffs} devir kartı yeniden açıldı.`,
     adminOnlyInvites: "Yeni üye davet etmek için yönetici olmanız gerekir.",
   },
   handoff: {
