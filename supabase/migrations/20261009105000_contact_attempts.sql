@@ -95,8 +95,9 @@ begin
         lost_reason = case when v_next = 'LOST' then p_lost_reason else null end
     where id = p_business_id;
 
-    insert into public.stage_transitions (workspace_id, business_id, from_stage, to_stage, reason, actor_type, actor_user_id)
-    values (v_business.workspace_id, p_business_id, v_business.stage, v_next, p_reason, case when v_uid is not null then 'USER' else 'SYSTEM' end, v_uid);
+    -- clock_timestamp: aynı işlemdeki ardışık adımlar zaman çizelgesinde doğru sırada görünsün.
+    insert into public.stage_transitions (workspace_id, business_id, from_stage, to_stage, reason, actor_type, actor_user_id, created_at)
+    values (v_business.workspace_id, p_business_id, v_business.stage, v_next, p_reason, case when v_uid is not null then 'USER' else 'SYSTEM' end, v_uid, clock_timestamp());
 
     perform public.log_activity(
       v_business.workspace_id, 'lead.stage_changed', 'business', p_business_id,

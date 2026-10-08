@@ -13,6 +13,10 @@ export interface BusinessListRow {
   website_url: string | null;
   website_status: WebsiteStatus | null;
   last_contacted_at: string | null;
+  next_action_at?: string | null;
+  last_contact_channel?: string | null;
+  last_contact_outcome?: string | null;
+  last_contact_by?: string | null;
   lead_score: number;
   assigned_to: string | null;
   updated_at: string;

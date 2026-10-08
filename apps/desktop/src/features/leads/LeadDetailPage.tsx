@@ -46,6 +46,7 @@ import { DraftMessageDialog } from "./detail/DraftMessageDialog";
 import { ContactOutcomePanel, type PendingContact } from "./detail/ContactOutcomePanel";
 import { logContactAttempt } from "./detail/contact-attempts";
 import { OverviewTab } from "./detail/OverviewTab";
+import { ProgressTab } from "./detail/ProgressTab";
 import { AnalysisTab, ContactTab, ConversationsTab, NotesTab, SOCIAL_CHANNELS, WebsiteTab } from "./detail/tabs";
 import type { BusinessDetail } from "./types";
 
@@ -390,6 +391,7 @@ export function LeadDetailPage() {
         <Tabs defaultValue="overview" className="min-w-0 space-y-4">
           <PillTabsList>
             <PillTabsTrigger value="overview">{tr.leadDetail.tabs.overview}</PillTabsTrigger>
+            <PillTabsTrigger value="progress">{tr.leadDetail.tabs.progress}</PillTabsTrigger>
             <PillTabsTrigger value="website">{tr.leadDetail.tabs.website}</PillTabsTrigger>
             <PillTabsTrigger value="contact">{tr.leadDetail.tabs.contact}</PillTabsTrigger>
             <PillTabsTrigger value="social">{tr.leadDetail.tabs.social}</PillTabsTrigger>
@@ -399,6 +401,9 @@ export function LeadDetailPage() {
           </PillTabsList>
           <TabsContent value="overview">
             <OverviewTab business={business} channels={channels} settings={settings} />
+          </TabsContent>
+          <TabsContent value="progress">
+            <ProgressTab business={business} />
           </TabsContent>
           <TabsContent value="website">
             <WebsiteTab business={business} workspaceId={workspaceId} />
