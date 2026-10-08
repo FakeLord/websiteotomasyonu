@@ -151,3 +151,16 @@ export function cityBoundsQuery(city: string, countryCode: string): string {
   }
   return `${city.trim()}, ${country}`;
 }
+
+const fold2 = (value: string) => value.normalize("NFD").replace(/\p{M}/gu, "").toLocaleLowerCase("en-US").trim();
+
+/**
+ * Kayıtlı kategori metnini Keşfet kategorisinin Türkçe etiketine çevirir ("Dentist" → "Diş Kliniği").
+ * Elle aramada Türkiye dışında İngilizce terim kaydedildiği için raporlarda aynı sektör tek satırda toplanır.
+ * Listede olmayan kategori olduğu gibi döner.
+ */
+export function canonicalCategory(raw: string): string {
+  const wanted = fold2(raw);
+  const found = DISCOVER_CATEGORIES.find((c) => fold2(c.tr) === wanted || fold2(c.en) === wanted);
+  return found ? found.tr : raw;
+}

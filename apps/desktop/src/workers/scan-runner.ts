@@ -42,7 +42,8 @@ function loopFor(workspaceId: string): Loop {
       // Şehir adres bileşenlerinden gelir; plan şehri yalnızca bileşen yoksa yedektir.
       const payload = placeToBusinessPayload(place, {
         city: tile.city,
-        category: tile.categoryLabel,
+        // Elle aramayla aynı: Türkiye'de Türkçe etiket, diğer pazarlarda Places sorgusundaki terim.
+        category: tile.textQuery,
         countryCode: tile.countryCode,
       });
       const { data, error } = await supabase.rpc("import_business", { ws: workspaceId, p_payload: payload });

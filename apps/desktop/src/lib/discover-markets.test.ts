@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   DISCOVER_CATEGORIES,
   DISCOVER_MARKETS,
+  canonicalCategory,
   categoryQueryTerm,
   cityBoundsQuery,
   discoverCityCenter,
@@ -70,5 +71,22 @@ describe("scanCategories", () => {
 describe("cityBoundsQuery", () => {
   it("şehre ülkenin İngilizce adını ekler", () => {
     expect(cityBoundsQuery(" Austin ", "us")).toBe("Austin, United States");
+  });
+});
+
+describe("canonicalCategory", () => {
+  it("İngilizce terimi Türkçe etikete çevirir", () => {
+    expect(canonicalCategory("Dentist")).toBe("Diş Kliniği");
+    expect(canonicalCategory("auto repair shop")).toBe("Oto Servis");
+  });
+
+  it("Türkçe etiketi ve büyük/küçük harf farkını korur", () => {
+    expect(canonicalCategory("Diş Kliniği")).toBe("Diş Kliniği");
+    expect(canonicalCategory("DİŞ KLİNİĞİ")).toBe("Diş Kliniği");
+  });
+
+  it("bilinmeyen kategoriyi olduğu gibi döner", () => {
+    expect(canonicalCategory("Halı Yıkama")).toBe("Halı Yıkama");
+    expect(canonicalCategory("—")).toBe("—");
   });
 });

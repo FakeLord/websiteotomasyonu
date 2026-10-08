@@ -89,17 +89,19 @@ type OpportunityFilter = (typeof OPPORTUNITY_FILTERS)[number];
 
 interface OpportunityFilterable<Q> {
   in(column: string, values: readonly string[]): Q;
-  eq(column: string, value: boolean): Q;
+  eq(column: string, value: boolean | number): Q;
   or(filters: string, options?: { referencedTable?: string }): Q;
 }
 
 /** "Fırsatlar" süzgeci; kural packages/core/pipeline/opportunity.ts (isOpportunity) ile aynıdır. */
-function applyOpportunity<Q extends OpportunityFilterable<Q>>(q: Q, viaChannel: OpportunityChannel | null): Q {
-  const next = q
+function applyOpportunity<Q extends OpportunityFilterable<Q>>(q: Q, viaChannel: OpportunityChannel | null, hideChains: boolean): Q {
+  let next = q
     .in("website_status", OPPORTUNITY_WEBSITE_STATUSES)
     .in("stage", OPPORTUNITY_STAGES)
     .eq("do_not_contact", false)
     .or("business_status.is.null,business_status.eq.OPERATIONAL");
+  // Zincir/şubeler merkezden yönetilir (chain_size > 1); varsayılan olarak gizlenir.
+  if (hideChains) next = next.eq("chain_size", 1);
   if (!viaChannel) return next;
   // `reachable`: buildQuery'nin eklediği inner birleşim; geçersiz/sektirmiş kanal sayılmaz.
   return next
@@ -107,7 +109,9 @@ function applyOpportunity<Q extends OpportunityFilterable<Q>>(q: Q, viaChannel: 
     .or("status.is.null,status.not.in.(INVALID,BOUNCED)", { referencedTable: "reachable" });
 }
 
-const FILTER_PARAMS = ["q", "city", "district", "category", "minScore", "stage", "website", "assignee", "dnc", "dup"] as const;
+const FILTER_PARAMS = ["q", "city", "district", "category", "minScore", "minReviews", "stage", "website", "assignee", "dnc", "dup"] as const;
+const SORTS = ["score", "reviews"] as const;
+type Sort = (typeof SORTS)[number];
 
 export function LeadsPage() {
   const navigate = useNavigate();
@@ -132,6 +136,8 @@ export function LeadsPage() {
   const channelParam = params.get("ch");
   const opportunityFilter: OpportunityFilter = OPPORTUNITY_FILTERS.find((f) => f === channelParam) ?? "writable";
   const opportunityChannel: OpportunityChannel | null = opportunityFilter === "all" ? null : opportunityFilter;
+  const showChains = params.get("chains") === "1";
+  const sort: Sort = SORTS.find((s) => s === params.get("sort")) ?? "score";
   const page = Math.max(1, Number(params.get("page") ?? "1"));
   const pageSize = [20, 50, 100].includes(Number(params.get("size"))) ? Number(params.get("size")) : 20;
   const filters = Object.fromEntries(FILTER_PARAMS.map((key) => [key, params.get(key) ?? ""])) as Record<
@@ -165,7 +171,8 @@ export function LeadsPage() {
     if (market.country && market.city) q = q.eq("city", market.city);
 
     const group = STAGE_GROUPS.find((g) => g.key === tab);
-    if (isOpportunityTab) q = applyOpportunity(q, opportunityChannel);
+    if (filters.minReviews) q = q.gte("review_count", Number(filters.minReviews));
+    if (isOpportunityTab) q = applyOpportunity(q, opportunityChannel, !showChains);
     else if (filters.stage) q = q.eq("stage", filters.stage);
     else if (group) q = q.in("stage", group.stages);
 
@@ -186,13 +193,14 @@ export function LeadsPage() {
   };
 
   const listQuery = useQuery({
-    queryKey: ["businesses", workspaceId, tab, opportunityChannel, filters, page, pageSize, market.country, market.city],
+    queryKey: ["businesses", workspaceId, tab, opportunityChannel, showChains, sort, filters, page, pageSize, market.country, market.city],
     enabled: !!workspaceId,
     queryFn: async (): Promise<{ rows: BusinessListRow[]; count: number }> => {
       const { data, error, count } = await buildQuery(
-        "id, name, category, city, district, country_code, website_url, website_status, stage, lead_score, assigned_to, updated_at, last_contacted_at, do_not_contact, possible_duplicate_of, contact_channels(channel, status)",
+        "id, name, category, city, district, country_code, website_url, website_status, stage, lead_score, assigned_to, updated_at, last_contacted_at, do_not_contact, possible_duplicate_of, chain_size, review_count, contact_channels(channel, status)",
         true,
       )
+        .order(sort === "reviews" ? "review_count" : "lead_score", { ascending: false, nullsFirst: false })
         .order("lead_score", { ascending: false })
         .order("updated_at", { ascending: false })
         .range((page - 1) * pageSize, page * pageSize - 1);
@@ -204,18 +212,22 @@ export function LeadsPage() {
   const opportunityCount = useQuery({
     queryKey: ["businesses", workspaceId, "opportunity-count", market.country, market.city],
     enabled: !!workspaceId,
-    // Sekmedeki sayı varsayılan görünümle aynıdır: yazılabilir kanalı olan fırsatlar.
-    queryFn: async (): Promise<number> => {
-      let q = supabase
-        .from("businesses")
-        .select("id, reachable:contact_channels!inner(channel)", { count: "exact", head: true })
-        .eq("workspace_id", workspaceId as string)
-        .is("merged_into", null);
-      if (market.country) q = q.eq("country_code", market.country);
-      if (market.country && market.city) q = q.eq("city", market.city);
-      const { count, error } = await applyOpportunity(q, "writable");
-      if (error) throw error;
-      return count ?? 0;
+    // Sekmedeki sayı varsayılan görünümle aynıdır: yazılabilir kanalı olan, zincir olmayan fırsatlar.
+    queryFn: async (): Promise<{ visible: number; chains: number }> => {
+      const count = async (hideChains: boolean): Promise<number> => {
+        let q = supabase
+          .from("businesses")
+          .select("id, reachable:contact_channels!inner(channel)", { count: "exact", head: true })
+          .eq("workspace_id", workspaceId as string)
+          .is("merged_into", null);
+        if (market.country) q = q.eq("country_code", market.country);
+        if (market.country && market.city) q = q.eq("city", market.city);
+        const { count: total, error } = await applyOpportunity(q, "writable", hideChains);
+        if (error) throw error;
+        return total ?? 0;
+      };
+      const [visible, withChains] = await Promise.all([count(true), count(false)]);
+      return { visible, chains: Math.max(withChains - visible, 0) };
     },
   });
 
@@ -361,7 +373,7 @@ export function LeadsPage() {
         <div className="flex items-center gap-1 overflow-x-auto border-b border-border px-3">
           {[
             { key: "all", label: tr.common.all, count: totalAll },
-            { key: OPPORTUNITY_TAB, label: tr.leads.opportunities.tab, count: opportunityCount.data ?? 0 },
+            { key: OPPORTUNITY_TAB, label: tr.leads.opportunities.tab, count: opportunityCount.data?.visible ?? 0 },
             ...STAGE_GROUPS.map((g) => ({ key: g.key, label: g.label, count: countForGroup(g, stageCounts) }))].map(
             (t) => (
               <button
@@ -396,6 +408,20 @@ export function LeadsPage() {
               </button>
             ))}
             <p className="text-xs text-muted">{tr.leads.opportunities.hint}</p>
+            {showChains ? (
+              <button type="button" className="text-xs text-primary hover:underline" onClick={() => updateParams({ chains: null })}>
+                {tr.leads.opportunities.hideChains}
+              </button>
+            ) : (
+              (opportunityCount.data?.chains ?? 0) > 0 && (
+                <span className="text-xs text-muted">
+                  {tr.leads.opportunities.chainsHidden(opportunityCount.data?.chains ?? 0)}{" "}
+                  <button type="button" className="text-primary hover:underline" onClick={() => updateParams({ chains: "1" })}>
+                    {tr.leads.opportunities.showChains}
+                  </button>
+                </span>
+              )
+            )}
           </div>
         )}
 
@@ -413,6 +439,18 @@ export function LeadsPage() {
             }}
           />
           <div className="ml-auto flex items-center gap-2">
+            <Select
+              className="w-44"
+              aria-label={tr.leads.sortLabel}
+              value={sort}
+              onChange={(e) => updateParams({ sort: e.target.value === "score" ? null : e.target.value }, false)}
+            >
+              {SORTS.map((s) => (
+                <option key={s} value={s}>
+                  {tr.leads.sortOptions[s]}
+                </option>
+              ))}
+            </Select>
             <Button variant="outline" onClick={() => setShowFilters((v) => !v)}>
               <Filter />
               {tr.common.filters}
@@ -480,6 +518,12 @@ export function LeadsPage() {
               type="number"
               value={filters.minScore}
               onCommit={(v) => updateParams({ minScore: v })}
+            />
+            <FilterInput
+              label={tr.leads.filterLabels.minReviews}
+              type="number"
+              value={filters.minReviews}
+              onCommit={(v) => updateParams({ minReviews: v })}
             />
             <div>
               <Label>{tr.leads.columns.assigned}</Label>
@@ -572,6 +616,7 @@ export function LeadsPage() {
                           <div className="mt-0.5 flex gap-1">
                             {row.do_not_contact && <Badge tone="red">DNC</Badge>}
                             {row.possible_duplicate_of && <Badge tone="orange">{tr.leads.duplicateShort}</Badge>}
+                            {(row.chain_size ?? 1) > 1 && <Badge tone="gray">{tr.leads.chainBadge(row.chain_size ?? 1)}</Badge>}
                           </div>
                         </div>
                       </div>

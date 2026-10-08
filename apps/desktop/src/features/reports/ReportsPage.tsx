@@ -18,7 +18,8 @@ import { ActivityLogTable } from "../activity-log/ActivityLogPage";
 import { EMPTY_STATS, replyRate, useCampaigns } from "../campaigns/campaign-data";
 import { CAMPAIGN_STATUS_TONES } from "../campaigns/CampaignsPage";
 import { Badge } from "../../components/ui/badge";
-import { funnelSteps, rangeForPreset, type FunnelCounts } from "./report-math";
+import { MIN_SEGMENT_SAMPLE, bestSegment, funnelSteps, mergeSegments, rangeForPreset, segmentRate, type FunnelCounts } from "./report-math";
+import { canonicalCategory } from "../../lib/discover-markets";
 
 interface ReportMetrics {
   from: string;
@@ -35,7 +36,122 @@ interface ReportMetrics {
 }
 
 type Preset = "7" | "30" | "90" | "month" | "custom";
-const TABS = ["overview", "source", "channel", "conversion", "team", "campaigns", "activity"] as const;
+const TABS = ["overview", "source", "channel", "conversion", "segments", "team", "campaigns", "activity"] as const;
+
+interface SegmentRow {
+  key: string;
+  country_code: string | null;
+  found: number;
+  opportunities: number;
+  contacted: number;
+  replied: number;
+  won: number;
+}
+
+interface MarketPerformance {
+  byCategory: SegmentRow[];
+  byCity: SegmentRow[];
+}
+
+function SegmentsTab({ workspaceId }: { workspaceId: string | undefined }) {
+  const { market, rpcParams } = useMarket();
+  const [by, setBy] = useState<"category" | "city">("category");
+  const query = useQuery({
+    queryKey: ["market-performance", workspaceId, market.country, market.city],
+    enabled: !!workspaceId,
+    queryFn: async (): Promise<MarketPerformance> => {
+      const { data, error } = await supabase.rpc("market_performance", { ws: workspaceId as string, ...rpcParams });
+      if (error) throw error;
+      return data as MarketPerformance;
+    },
+  });
+  const rows =
+    by === "category" ? mergeSegments(query.data?.byCategory ?? [], canonicalCategory) : (query.data?.byCity ?? []);
+  const best = bestSegment(rows);
+  const bestRate = best ? segmentRate(best.contacted, best.replied).percent : null;
+
+  return (
+    <Card>
+      <CardHeader
+        title={tr.reports.segments.title}
+        action={
+          <div className="flex gap-1">
+            {(["category", "city"] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setBy(value)}
+                className={
+                  "rounded-full px-3 py-1 text-xs font-medium transition-colors " +
+                  (by === value ? "bg-primary text-white" : "bg-surface-2 text-muted hover:text-text")
+                }
+              >
+                {value === "category" ? tr.reports.segments.bySector : tr.reports.segments.byCity}
+              </button>
+            ))}
+          </div>
+        }
+      />
+      <CardBody className="space-y-3">
+        <p className="text-xs text-muted">{tr.reports.segments.hint}</p>
+        {query.isError && <p className="text-sm text-[#f87171]">{query.error instanceof Error ? query.error.message : tr.common.error}</p>}
+        {best && bestRate !== null ? (
+          <p className="rounded-lg bg-success/10 px-3 py-2 text-sm text-[#4ade80]">
+            {tr.reports.segments.best(best.key, bestRate, best.contacted)}
+          </p>
+        ) : (
+          rows.length > 0 && <p className="rounded-lg bg-surface-2 px-3 py-2 text-sm text-muted">{tr.reports.segments.noBest(MIN_SEGMENT_SAMPLE)}</p>
+        )}
+        {rows.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted">{tr.reports.segments.empty}</p>
+        ) : (
+          <Table>
+            <thead>
+              <tr>
+                <Th>{by === "category" ? tr.reports.segments.name.sector : tr.reports.segments.name.city}</Th>
+                <Th>{tr.reports.segments.found}</Th>
+                <Th>{tr.reports.segments.opportunities}</Th>
+                <Th>{tr.reports.segments.contacted}</Th>
+                <Th>{tr.reports.segments.replied}</Th>
+                <Th>{tr.reports.segments.rate}</Th>
+                <Th>{tr.reports.segments.won}</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => {
+                const rate = segmentRate(row.contacted, row.replied);
+                return (
+                  <Tr key={`${row.country_code ?? ""}:${row.key}`}>
+                    <Td className="font-medium">
+                      {row.country_code && <span className="mr-1 rounded bg-surface-2 px-1 text-[11px] text-muted">{row.country_code}</span>}
+                      {row.key}
+                    </Td>
+                    <Td className="tabular-nums">{row.found}</Td>
+                    <Td className="tabular-nums">{row.opportunities}</Td>
+                    <Td className="tabular-nums">{row.contacted}</Td>
+                    <Td className="tabular-nums">{row.replied}</Td>
+                    <Td className="tabular-nums">
+                      {rate.percent === null ? (
+                        "—"
+                      ) : rate.enough ? (
+                        `%${rate.percent}`
+                      ) : (
+                        <span className="text-muted" title={tr.reports.segments.fewData(MIN_SEGMENT_SAMPLE)}>
+                          %{rate.percent} · {tr.reports.segments.fewData(MIN_SEGMENT_SAMPLE)}
+                        </span>
+                      )}
+                    </Td>
+                    <Td className="tabular-nums">{row.won}</Td>
+                  </Tr>
+                );
+              })}
+            </tbody>
+          </Table>
+        )}
+      </CardBody>
+    </Card>
+  );
+}
 
 export function ReportsPage() {
   const workspaceId = useWorkspaceMembership().data?.workspaceId;
@@ -224,6 +340,10 @@ export function ReportsPage() {
                 ))}
             </CardBody>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="segments">
+          <SegmentsTab workspaceId={workspaceId} />
         </TabsContent>
 
         <TabsContent value="team">

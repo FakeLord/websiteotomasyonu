@@ -21,3 +21,14 @@
 - [ ] Sekme kapatılıp açılınca tarama kaldığı yerden sürer.
 - [ ] Aylık sınır küçük bir değere çekilince plan "Aylık sınır doldu" olur; sınır artırılınca kendiliğinden sürer.
 - [ ] İki cihaz aynı anda açıkken aynı bölge iki kez taranmaz.
+
+## ADR 0015 — uygun işletme bulma (2026-10-08)
+Otomatik: `chain_and_performance.test.sql` (15), `report-math.test.ts` (segmentRate/bestSegment/mergeSegments),
+`discover-markets.test.ts` (canonicalCategory). Yerelde tarayıcıda geçici kayıtlarla doğrulandı: zincir gizleme/gösterme ve
+rozet, yorum süzgeci + sıralama (veritabanı sorgusuyla aynı sıra ve 23 kayıt), Raporlar → "Sektör ve şehir".
+
+Bulutta elle:
+- [ ] `db push` sonrası Leadler → Fırsatlar: "N zincir/şube gizlendi" satırı çıkıyorsa tıklayınca şubeler "Zincir · N şube" rozetiyle gelir.
+- [ ] Zincir sayılan bir işletme gerçekten zincir mi? Yanlış pozitif görürsen ADR 0015'teki kuralı daralt.
+- [ ] Filtrele → "Min. yorum" ve "Yorum sayısına göre" sıralama Google'daki yorum sayısıyla uyuşuyor.
+- [ ] İlk ~60 mesaj gönderildikten sonra Raporlar → "Sektör ve şehir": sektör başına 20+ yazı olunca "en iyi sonuç" satırı çıkıyor.
