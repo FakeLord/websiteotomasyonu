@@ -10,10 +10,14 @@ Durum: kabul edildi (2026-10-09). Kapsam: G4'ün ilk dilimi (çok dilli tam dest
   aynı kalıp cümle yasaktır. Teklifin içeriği (kısa görüşme + ücretsiz örnek tasarım) `COMPANY` kaydında yazılıdır, kodda değil.
 - **Diller: yalnızca Türkçe ve İngilizce.** Varsayılan dil **yoktur**; ekip her taslakta (ve kampanyada) dili seçer, seçmeden
   "Taslak Oluştur" kapalıdır. Almanca kapsam dışıdır.
-- **Türkçe çeviri.** İngilizce taslakta model `translation_tr` (ve e-postada `subject_tr`) alanını da döner; arayüz bunu salt okunur
-  gösterir, kaydetmez ve göndermez. Türkçe taslakta çeviri istenmez. Çeviri yoksa taslak reddedilir (`INVALID_SHAPE`).
+- **Türkçe çeviri ayrı, arka plan çağrısıdır** (`translate_draft`, 2026-10-09 hız düzeltmesi). Başta çeviri taslakla aynı çağrıda
+  isteniyordu; çıktıyı ikiye katlayıp taslağı geciktirdi. Şimdi taslak önce gelir, çeviri ekranda "hazırlanıyor" iken ikinci çağrıyla
+  dolar ("Çeviriyi yenile" düzenlenen metni yeniden çevirir). Çeviri gönderilmediği ve kaydedilmediği için satış guardrail'larından
+  GEÇİRİLMEZ (önceden "Sayın … Ekibi" gibi selamlamalar yüzünden taslak reddediliyordu). Türkçe taslakta çeviri yoktur.
+- **Hız:** kullanılmayan `used_facts` çıktısı kaldırıldı; mesaj uzunluğu e-postada ~90, DM'de ~50 kelimeyle sınırlandı;
+  `maxTokens` 400. Prompt sürümü 3. Hızlı sağlayıcı (OpenAI anahtarı) zincirde NVIDIA'dan önce denenir.
 - **Guardrail'lar çok dilli.** Para (₺ TL $ € £ USD EUR GBP…), teslim süresi (gün/hafta/days/weeks) ve yasak kelimeler (TR + EN)
-  kontrol edilir; hem gönderilecek metin hem Türkçe çeviri aynı kurallardan geçer. Selamlama/kapanış/"Team" gibi İngilizce
+  kontrol edilir; yalnızca gönderilecek metin bu kurallardan geçer. Selamlama/kapanış/"Team" gibi İngilizce
   kelimeler ve Şirket kaydının başlığı (şirket adı) müşteri referansı sayılmaz.
 - **Model imzası atılır.** Kapanış satırından sonraki model imzası (`stripSignOff`) silinir.
 - Prompt sürümü 2'dir (önbellekteki eski taslaklar kullanılmaz).

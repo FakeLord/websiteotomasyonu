@@ -18,23 +18,40 @@ const base: DraftFirstMessageInput = {
 };
 
 describe("buildDraftFirstMessagePrompt — dil ve şirket kimliği", () => {
-  it("İngilizce istenince modele İngilizce yazmasını ve Türkçe çeviriyi translation_tr'ye koymasını söyler", () => {
+  it("İngilizce istenince modele İngilizce yazmasını söyler", () => {
     const req = buildDraftFirstMessagePrompt(base);
     expect(req.system).toMatch(/İngilizce/);
-    expect(req.system).toContain("translation_tr");
-    expect(req.system).toContain("subject_tr");
-    expect(JSON.stringify(req.jsonSchema)).toContain("translation_tr");
   });
 
-  it("e-posta dışındaki kanalda konu çevirisi istenmez", () => {
-    const req = buildDraftFirstMessagePrompt({ ...base, channel: "INSTAGRAM" });
-    expect(req.system).not.toContain("subject_tr");
+  it("çeviriyi bu çağrıda İSTEMEZ: çeviri ayrı, arka plan çağrısıdır (süre yarıya iner)", () => {
+    for (const language of ["en", "tr"] as const) {
+      const req = buildDraftFirstMessagePrompt({ ...base, language });
+      expect(req.system).not.toContain("translation_tr");
+      expect(req.system).not.toContain("subject_tr");
+      expect(JSON.stringify(req.jsonSchema)).not.toContain("translation_tr");
+    }
   });
 
-  it("Türkçe istenince çeviri istenmez", () => {
+  it("kullanılmayan used_facts alanını istemez (gereksiz çıktı)", () => {
+    const req = buildDraftFirstMessagePrompt(base);
+    expect(JSON.stringify(req.jsonSchema)).not.toContain("used_facts");
+    expect(req.system).not.toContain("used_facts");
+  });
+
+  it("Türkçe istenince Türkçe yazmasını söyler", () => {
     const req = buildDraftFirstMessagePrompt({ ...base, language: "tr" });
     expect(req.system).toMatch(/Türkçe/);
-    expect(req.system).not.toContain("translation_tr");
+  });
+
+  it("e-posta için ~90, DM kanalları için ~50 kelime sınırı koyar", () => {
+    expect(buildDraftFirstMessagePrompt({ ...base, channel: "EMAIL" }).system).toMatch(/90 kelime/);
+    for (const channel of ["INSTAGRAM", "WHATSAPP", "FACEBOOK"] as const) {
+      expect(buildDraftFirstMessagePrompt({ ...base, channel }).system, channel).toMatch(/50 kelime/);
+    }
+  });
+
+  it("çıktı token sınırı kısadır (çeviri artık aynı çağrıda değil)", () => {
+    expect(buildDraftFirstMessagePrompt(base).maxTokens).toBeLessThanOrEqual(500);
   });
 
   it("şirket bilgisini bağlama koyar ve tek kaynak olduğunu söyler", () => {
@@ -64,7 +81,7 @@ describe("buildDraftFirstMessagePrompt — dil ve şirket kimliği", () => {
     expect(req.system.toLowerCase()).not.toContain("sosyal medya");
   });
 
-  it("önbelleğin eski taslakları vermemesi için prompt sürümü 2'dir", () => {
-    expect(buildDraftFirstMessagePrompt(base).promptVersion).toBe(2);
+  it("önbelleğin eski taslakları vermemesi için prompt sürümü 3'tür", () => {
+    expect(buildDraftFirstMessagePrompt(base).promptVersion).toBe(3);
   });
 });

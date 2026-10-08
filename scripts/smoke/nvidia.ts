@@ -5,12 +5,13 @@
  * Çalıştırma:
  *   NVIDIA_API_KEY=nvapi-... pnpm exec tsx scripts/smoke/nvidia.ts
  *   NVIDIA_MODEL=başka/model ile varsayılan model değiştirilebilir.
- *   SMOKE_LANGUAGE=tr ile Türkçe taslak denenir (varsayılan: en, Türkçe çeviriyle).
+ *   SMOKE_LANGUAGE=tr ile Türkçe taslak denenir (varsayılan: en; çeviri ayrı çağrıyla ölçülür).
  */
 import {
   PROVIDER_DEFAULTS,
   buildChatCompletionBody,
   buildDraftFirstMessagePrompt,
+  buildTranslateDraftPrompt,
   normalizeAiConfig,
   extractJsonObject,
   stripSignOff,
@@ -88,8 +89,6 @@ async function main() {
   const parsed = extractJsonObject(rawContent) as {
     subject?: string;
     body?: string;
-    translation_tr?: string;
-    used_facts?: string[];
   } | null;
   if (!parsed || typeof parsed.body !== "string") {
     console.error("✗ Yanıttan `body` içeren bir JSON nesnesi ayıklanamadı.");
@@ -106,12 +105,31 @@ async function main() {
     stopRequest: false,
   };
   const validation = validateDraft({ ...shared, body: stripSignOff(parsed.body) });
-  console.log(`\nDil: ${language}${parsed.translation_tr ? " (Türkçe çeviri döndü)" : ""}`);
-  if (language !== "tr" && !parsed.translation_tr) console.warn("⚠ translation_tr alanı yok; arayüz bu taslağı reddeder.");
-  if (parsed.translation_tr) {
-    console.log("Türkçe çeviri doğrulaması:", validateDraft({ ...shared, body: stripSignOff(parsed.translation_tr) }));
-  }
+  console.log(`\nDil: ${language}`);
   console.log("validateDraft() sonucu:", validation);
+
+  // Çeviri arayüzde taslaktan SONRA, ayrı çağrıyla gelir; süresini ayrı ölçeriz.
+  if (language !== "tr") {
+    const translateStarted = Date.now();
+    const translateResponse = await fetch(`${NVIDIA_BASE_URL}/chat/completions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify(
+        buildChatCompletionBody(
+          { ...provider, model: MODEL },
+          buildTranslateDraftPrompt({ subject: parsed.subject, body: stripSignOff(parsed.body), channel: "EMAIL" }),
+        ),
+      ),
+    });
+    const translateMs = Date.now() - translateStarted;
+    if (!translateResponse.ok) {
+      console.error(`✗ Çeviri HTTP ${translateResponse.status} (${translateMs}ms):`, await translateResponse.text());
+    } else {
+      const translatePayload = (await translateResponse.json()) as { choices: { message: { content: string } }[] };
+      console.log(`✓ Türkçe çeviri (${translateMs}ms):`);
+      console.log(translatePayload.choices[0]?.message.content ?? "");
+    }
+  }
   if (!validation.ok) {
     console.warn(
       "⚠ Model çıktısı guardrail'lardan geçemedi (fiyat/indirim/referans/teslim süresi uydurmuş olabilir)." +

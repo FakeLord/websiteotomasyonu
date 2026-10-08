@@ -22,19 +22,23 @@ export interface DraftFirstMessageInput {
   salesRulesSummary: string;
 }
 
-function jsonSchema(translated: boolean, withSubject: boolean) {
+function jsonSchema(withSubject: boolean) {
   return {
     type: "object",
     properties: {
-      subject: { type: "string" },
-      ...(translated && withSubject ? { subject_tr: { type: "string" } } : {}),
+      ...(withSubject ? { subject: { type: "string" } } : {}),
       body: { type: "string" },
-      ...(translated ? { translation_tr: { type: "string" } } : {}),
-      used_facts: { type: "array", items: { type: "string" } },
     },
-    required: translated ? ["body", "translation_tr", "used_facts"] : ["body", "used_facts"],
+    required: ["body"],
     additionalProperties: false,
   };
+}
+
+/** Kısa mesaj daha iyi okunur ve daha hızlı üretilir: e-posta ~90, DM kanalları ~50 kelime. */
+function lengthInstruction(channel: OutreachChannel): string {
+  return channel === "EMAIL"
+    ? "Mesaj gövdesi en fazla 90 kelime olsun."
+    : "Mesaj en fazla 50 kelime olsun; kısa bir DM gibi yaz.";
 }
 
 const GUARDRAIL_INSTRUCTIONS =
@@ -61,18 +65,18 @@ export function buildDraftFirstMessagePrompt(input: DraftFirstMessageInput): AIP
     .map((p) => `- ${p.name}: ${p.summary}`)
     .join("\n");
 
-  const translated = input.language !== "tr";
   const withSubject = input.channel === "EMAIL";
 
-  const languageInstruction = translated
-    ? `Mesajı doğal, saygılı ve samimi bir İngilizceyle yaz. Ekip Türkçe okuduğu için translation_tr alanına mesajın tam Türkçe çevirisini yaz${
-        withSubject ? "; konunun Türkçesini subject_tr alanına yaz" : ""
-      }.`
-    : "Mesajı doğal, samimi ama profesyonel bir Türkçeyle yaz.";
+  // Çeviri bu çağrıda İSTENMEZ: çıktıyı ikiye katlıyordu; ayrı çağrıyla (translate-draft) arka planda gelir.
+  const languageInstruction =
+    input.language === "en"
+      ? "Mesajı doğal, saygılı ve samimi bir İngilizceyle yaz."
+      : "Mesajı doğal, samimi ama profesyonel bir Türkçeyle yaz.";
 
   const system = [
     "Bir yazılım şirketi adına işletmelere ilk mesajı yazıyorsun.",
     languageInstruction,
+    lengthInstruction(input.channel),
     COMPOSITION_INSTRUCTIONS,
     GUARDRAIL_INSTRUCTIONS,
     `Kanal: ${input.channel}. Yalnızca istenen JSON şemasında cevap ver.`,
@@ -103,11 +107,11 @@ export function buildDraftFirstMessagePrompt(input: DraftFirstMessageInput): AIP
 
   return {
     operation: "draft_first_message",
-    promptVersion: 2,
+    promptVersion: 3,
     system,
     messages: [{ role: "user", content: context }],
-    jsonSchema: jsonSchema(translated, withSubject),
-    maxTokens: translated ? 900 : 500,
+    jsonSchema: jsonSchema(withSubject),
+    maxTokens: 400,
     temperature: 0.6,
   };
 }

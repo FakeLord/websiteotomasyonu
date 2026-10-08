@@ -5,6 +5,7 @@ import {
   draftReplyOutputSchema,
   followupDraftOutputSchema,
   generateHandoffOutputSchema,
+  translateDraftOutputSchema,
   updateSummaryOutputSchema,
 } from "./operations";
 
@@ -21,21 +22,21 @@ describe("draftFirstMessageOutputSchema", () => {
     expect(() => draftFirstMessageOutputSchema.parse({ body: "", used_facts: [] })).toThrow();
   });
 
-  it("accepts an optional Turkish translation of body and subject", () => {
-    const result = draftFirstMessageOutputSchema.parse({
-      subject: "A fresh look for your website",
-      subject_tr: "Web siteniz için yeni bir görünüm",
-      body: "Hello team...",
-      translation_tr: "Merhaba ekip...",
-      used_facts: [],
-    });
-    expect(result.translation_tr).toBe("Merhaba ekip...");
-    expect(result.subject_tr).toBe("Web siteniz için yeni bir görünüm");
+  it("does not require used_facts (the model is no longer asked for it)", () => {
+    const result = draftFirstMessageOutputSchema.parse({ body: "Merhaba" });
+    expect(result.body).toBe("Merhaba");
+  });
+});
+
+describe("translateDraftOutputSchema", () => {
+  it("accepts a Turkish translation with an optional subject", () => {
+    const result = translateDraftOutputSchema.parse({ translation_tr: "Merhaba ekip...", subject_tr: "Yeni bir görünüm" });
+    expect(result.subject_tr).toBe("Yeni bir görünüm");
+    expect(translateDraftOutputSchema.parse({ translation_tr: "Merhaba" }).subject_tr).toBeUndefined();
   });
 
-  it("treats translation fields as optional (Turkish drafts have none)", () => {
-    const result = draftFirstMessageOutputSchema.parse({ body: "Merhaba", used_facts: [] });
-    expect(result.translation_tr).toBeUndefined();
+  it("rejects an empty translation", () => {
+    expect(() => translateDraftOutputSchema.parse({ translation_tr: "" })).toThrow();
   });
 });
 

@@ -7,7 +7,12 @@ import { tr } from "../../../i18n/tr";
 import { Button } from "../../../components/ui/button";
 import { Input, Label, Select, Textarea } from "../../../components/ui/input";
 import { Dialog, DialogContent } from "../../../components/ui/primitives";
-import { generateFirstMessageDraft, saveDraftToConversation, type FirstMessageDraft } from "../../outreach/outreach";
+import {
+  generateFirstMessageDraft,
+  saveDraftToConversation,
+  translateDraftToTurkish,
+  type FirstMessageDraft,
+} from "../../outreach/outreach";
 import { draftReasonLabel } from "./lead-data";
 import type { BusinessDetail } from "../types";
 
@@ -38,6 +43,11 @@ export function DraftMessageDialog({
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
 
+  const translate = useMutation({
+    mutationFn: (text: { subject?: string | undefined; body: string }) =>
+      translateDraftToTurkish(workspaceId, business.id, { ...text, channel }),
+  });
+
   const generate = useMutation({
     mutationFn: () => {
       if (!language) throw new Error(tr.draft.selectLanguageFirst);
@@ -47,6 +57,11 @@ export function DraftMessageDialog({
       setDraft(result);
       setSubject(result.subject ?? "");
       setBody(result.ok ? result.body : "");
+      translate.reset();
+      // Türkçe dışı taslakta çeviri, taslak ekrana geldikten SONRA arka planda gelir (bekleme yarıya iner).
+      if (result.ok && language && language !== "tr") {
+        translate.mutate({ subject: result.subject, body: result.body });
+      }
     },
   });
 
@@ -150,16 +165,41 @@ export function DraftMessageDialog({
                 <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={9} />
                 <p className="mt-1 text-xs text-subtle">{tr.draft.editHint}</p>
               </div>
-              {draft.translationTr && (
+              {language && language !== "tr" && (
                 <div className="rounded-lg border border-border bg-surface-2 p-3">
-                  <Label>{tr.draft.translationLabel}</Label>
-                  {channel === "EMAIL" && draft.subjectTr && (
-                    <p className="mb-2 text-sm text-muted">
-                      <span className="font-medium text-text">{tr.draft.subjectTranslationLabel}:</span> {draft.subjectTr}
+                  <div className="flex items-center justify-between gap-2">
+                    <Label>{tr.draft.translationLabel}</Label>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={translate.isPending || !body.trim()}
+                      onClick={() => translate.mutate({ subject: channel === "EMAIL" ? subject : undefined, body })}
+                    >
+                      {tr.draft.translationRefresh}
+                    </Button>
+                  </div>
+                  {translate.isPending && (
+                    <p className="flex items-center gap-2 text-sm text-muted">
+                      <Loader2 className="size-3.5 animate-spin" />
+                      {tr.draft.translating}
                     </p>
                   )}
-                  <p className="whitespace-pre-wrap text-sm text-muted">{draft.translationTr}</p>
-                  <p className="mt-2 text-xs text-subtle">{tr.draft.translationHint}</p>
+                  {translate.isError && (
+                    <p className="text-sm text-[#f87171]">
+                      {translate.error instanceof Error ? translate.error.message : tr.draft.translationFailed}
+                    </p>
+                  )}
+                  {translate.data && (
+                    <>
+                      {channel === "EMAIL" && translate.data.subjectTr && (
+                        <p className="mb-2 text-sm text-muted">
+                          <span className="font-medium text-text">{tr.draft.subjectTranslationLabel}:</span> {translate.data.subjectTr}
+                        </p>
+                      )}
+                      <p className="whitespace-pre-wrap text-sm text-muted">{translate.data.translationTr}</p>
+                      <p className="mt-2 text-xs text-subtle">{tr.draft.translationHint}</p>
+                    </>
+                  )}
                 </div>
               )}
               {save.isError && <p className="text-sm text-[#f87171]">{save.error instanceof Error ? save.error.message : tr.common.error}</p>}

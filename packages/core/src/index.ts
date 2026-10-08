@@ -96,6 +96,7 @@ export {
   type JarvisReply,
 } from "./ai/jarvis";
 export type { AIMessage, AIPromptRequest, ServicePackageInfo, SalesRules, OutreachChannel } from "./ai/types";
+export { buildTranslateDraftPrompt, type TranslateDraftInput } from "./ai/prompts/translate-draft";
 export {
   buildDraftFirstMessagePrompt,
   OUTREACH_LANGUAGES,

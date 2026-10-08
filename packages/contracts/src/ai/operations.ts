@@ -22,14 +22,18 @@ export type AiIntent = z.infer<typeof aiIntentSchema>;
 
 export const draftFirstMessageOutputSchema = z.object({
   subject: z.string().trim().max(200).optional(),
-  /** Mesaj Türkçe dışındaki bir dilde yazıldıysa konunun Türkçe çevirisi (yalnızca e-posta). */
-  subject_tr: z.string().trim().max(300).optional(),
   body: z.string().trim().min(1),
-  /** Mesaj Türkçe dışındaki bir dilde yazıldıysa Türkçe çevirisi; ekip anlasın diye gösterilir, gönderilmez. */
-  translation_tr: z.string().trim().optional(),
-  used_facts: z.array(z.string()),
+  /** Eski taslaklarda vardı; hiçbir yerde kullanılmadığı için artık istenmiyor (daha kısa çıktı = daha hızlı). */
+  used_facts: z.array(z.string()).optional(),
 });
 export type DraftFirstMessageOutput = z.infer<typeof draftFirstMessageOutputSchema>;
+
+/** Taslağın Türkçe çevirisi: ayrı, arka plan çağrısı; ekip anlasın diye gösterilir, gönderilmez. */
+export const translateDraftOutputSchema = z.object({
+  translation_tr: z.string().trim().min(1),
+  subject_tr: z.string().trim().max(300).optional(),
+});
+export type TranslateDraftOutput = z.infer<typeof translateDraftOutputSchema>;
 
 export const classifyReplyOutputSchema = z.object({
   intent: aiIntentSchema,

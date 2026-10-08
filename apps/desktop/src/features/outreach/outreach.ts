@@ -1,6 +1,7 @@
 import { platform } from "../../lib/platform";
 import {
   buildDraftFirstMessagePrompt,
+  buildTranslateDraftPrompt,
   computeFollowUpDueDate,
   stripSignOff,
   validateDraft,
@@ -8,7 +9,7 @@ import {
   type OutreachLanguage,
   type ServicePackageInfo,
 } from "@lbf/core";
-import { draftFirstMessageOutputSchema } from "@lbf/contracts";
+import { draftFirstMessageOutputSchema, translateDraftOutputSchema } from "@lbf/contracts";
 import { supabase } from "../../lib/supabase-client";
 import { callAiGateway } from "../../lib/ai-gateway-client";
 import { getEmailAccount } from "../../lib/email-account";
@@ -300,9 +301,6 @@ export interface FirstMessageDraft {
   ok: boolean;
   subject?: string | undefined;
   body: string;
-  /** Mesaj Türkçe dışında yazıldıysa Türkçe çevirisi; yalnızca ekibin anlaması için, gönderilmez. */
-  translationTr?: string | undefined;
-  subjectTr?: string | undefined;
   reasons: string[];
   channel: OutreachChannel;
 }
@@ -400,15 +398,11 @@ export async function generateFirstMessageDraft(
   if (!parsed.success) {
     return { ok: false, body: "", reasons: ["INVALID_SHAPE"], channel };
   }
-  // Türkçe dışı bir mesajın çevirisi olmadan ekip ne gönderdiğini okuyamaz.
-  if (language !== "tr" && !parsed.data.translation_tr) {
-    return { ok: false, body: "", reasons: ["INVALID_SHAPE"], channel };
-  }
-
   // Modelin uydurduğu imza (unvan/isim) atılır; hem referans kontrolünü tetikliyor hem yanlış rol bilgisi taşıyor.
+  // Yalnızca GÖNDERİLECEK metin doğrulanır; Türkçe çeviri ayrı çağrıyla gelir ve gönderilmediği için kontrol edilmez.
   const body = stripSignOff(parsed.data.body);
-  const translationTr = parsed.data.translation_tr ? stripSignOff(parsed.data.translation_tr) : undefined;
-  const shared = {
+  const validation = validateDraft({
+    body,
     channel,
     packages: context.packages,
     salesRules: { allowDiscountMention: context.allowDiscountMention, forbiddenWords: FORBIDDEN_WORDS },
@@ -417,24 +411,36 @@ export async function generateFirstMessageDraft(
     // Şirketin kendi adı (Şirket kaydının başlığı) müşteri referansı sayılmaz.
     contextNames: [...businessContextNames(business), ...context.companyNames],
     stopRequest: business.do_not_contact,
-  };
-  // Gönderilecek metin ve ekibin okuyacağı Türkçe çeviri aynı kurallardan geçer.
-  const reasons = [
-    ...new Set([
-      ...validateDraft({ ...shared, body }).reasons,
-      ...(translationTr ? validateDraft({ ...shared, body: translationTr }).reasons : []),
-    ]),
-  ];
+  });
 
   return {
-    ok: reasons.length === 0,
+    ok: validation.ok,
     subject: parsed.data.subject,
     body,
-    translationTr,
-    subjectTr: parsed.data.subject_tr,
-    reasons,
+    reasons: validation.reasons,
     channel,
   };
+}
+
+export interface DraftTranslation {
+  translationTr: string;
+  subjectTr?: string | undefined;
+}
+
+/**
+ * Türkçe dışı taslağın Türkçe çevirisi (ekibin okuması için). Ana taslaktan ayrı ve arka planda çalışır;
+ * gönderilmez ve kaydedilmez, bu yüzden satış guardrail'larından geçirilmez.
+ */
+export async function translateDraftToTurkish(
+  workspaceId: string,
+  businessId: string,
+  draft: { subject?: string | undefined; body: string; channel: OutreachChannel },
+): Promise<DraftTranslation> {
+  const request = buildTranslateDraftPrompt(draft);
+  const result = await callAiGateway(workspaceId, request, { entityType: "business", entityId: businessId });
+  const parsed = translateDraftOutputSchema.safeParse(result.json);
+  if (!parsed.success) throw new Error(tr.draft.translationFailed);
+  return { translationTr: parsed.data.translation_tr, subjectTr: parsed.data.subject_tr };
 }
 
 /** İşletme+kanal için konuşmayı bulur, yoksa oluşturur (unique: business_id, channel). */
