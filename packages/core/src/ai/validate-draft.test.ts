@@ -118,6 +118,17 @@ describe("validateDraft", () => {
     expect(result.reasons).toEqual([]);
   });
 
+  it("does not treat a generic role title in the sign-off as a customer reference", () => {
+    for (const title of ["Satış Asistanı", "Müşteri Temsilcisi", "Satış Ekibi", "SATIŞ ASİSTANI"]) {
+      const result = validateDraft({
+        ...baseInput,
+        body: `Merhaba DTLA Smile ekibi, web sitenizle ilgili bir fikrimiz var.\n\nSaygılarımla,\n${title}`,
+        recipientBusinessName: "DTLA Smile",
+      });
+      expect(result.reasons, title).toEqual([]);
+    }
+  });
+
   it("still flags a genuinely different name", () => {
     const result = validateDraft({
       ...baseInput,

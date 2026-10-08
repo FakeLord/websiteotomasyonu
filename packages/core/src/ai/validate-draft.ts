@@ -56,6 +56,11 @@ function foldName(value: string): string {
     .replace(/ı/g, "i");
 }
 
+/** İmzada sık görülen genel unvanlar müşteri/marka adı değildir; referans kontrolünden muaftır. */
+const GENERIC_ROLE_TITLES = new Set(
+  ["satış asistanı", "müşteri temsilcisi", "satış ekibi", "müşteri hizmetleri", "satış temsilcisi", "dijital asistan"].map(foldName),
+);
+
 const GREETING_WORDS = new Set(
   ["merhaba", "merhabalar", "selam", "sayın", "değerli", "günaydın", "iyi", "kolay", "saygılarımla"].map(foldName),
 );
@@ -125,6 +130,7 @@ export function validateDraft(input: ValidateDraftInput): ValidateDraftResult {
       .filter((word) => !GREETING_WORDS.has(word));
     if (words.length < 2 || words.every((word) => ownWords.has(word))) continue;
     const candidateLower = words.join(" ");
+    if (GENERIC_ROLE_TITLES.has(candidateLower)) continue;
     if (!verifiedLower.has(candidateLower)) {
       reasons.push(`UNVERIFIED_REFERENCE:${candidate}`);
     }

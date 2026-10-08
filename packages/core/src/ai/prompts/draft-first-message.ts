@@ -25,8 +25,8 @@ const JSON_SCHEMA = {
 const GUARDRAIL_INSTRUCTIONS =
   "Yalnızca BAĞLAM bölümündeki bilgileri kullan. Bilmediğin bir şey sorulursa bunu ekip " +
   "arkadaşımın netleştireceğini söyle. Fiyat, indirim, tarih, referans uydurma. Karşı taraf " +
-  "istemiyorsa ısrar etme. Mesajın sonuna isim, unvan veya rol (ör. \"Satış Asistanı\") imzası " +
-  "ekleme; yalnızca \"Saygılarımla\" gibi kısa bir kapanış yaz.";
+  "istemiyorsa ısrar etme. Mesajın sonuna isim, unvan veya rol imzası ekleme; yalnızca " +
+  "\"Saygılarımla\" gibi kısa bir kapanış yaz.";
 
 /**
  * J.2 `draft_first_message` operasyonu için context+prompt derleyicisi.
@@ -41,7 +41,7 @@ export function buildDraftFirstMessagePrompt(input: DraftFirstMessageInput): AIP
     .join("\n");
 
   const system = [
-    "Sen bir dijital ajansın satış asistanısın. Türkçe, samimi ama profesyonel bir ilk mesaj yazıyorsun.",
+    "Bir dijital ajans adına Türkçe, samimi ama profesyonel bir ilk mesaj yazıyorsun.",
     GUARDRAIL_INSTRUCTIONS,
     `Kanal: ${input.channel}. Yalnızca istenen JSON şemasında cevap ver.`,
   ].join(" ");
