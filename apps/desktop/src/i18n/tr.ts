@@ -630,6 +630,7 @@ export const tr = {
       UNVERIFIED_REFERENCE: "Doğrulanmamış referans",
       DELIVERY_MISMATCH: "Paket aralığı dışında teslim süresi",
       INVALID_SHAPE: "AI çıktısı beklenen biçimde değil",
+      WRONG_LANGUAGE: "Model seçtiğiniz dilde yazmadı; yeniden oluşturun",
     },
   },
   contactChannels: {

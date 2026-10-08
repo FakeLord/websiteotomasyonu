@@ -27,8 +27,16 @@ export async function callAiGateway(
   workspaceId: string,
   request: AIPromptRequest,
   entity?: { entityType: string; entityId: string },
+  /** `fresh`: "Yeniden Oluştur" — önbellekteki (belki reddedilmiş/yanlış dildeki) yanıt yerine yeni bir yanıt ister. */
+  options?: { fresh?: boolean },
 ): Promise<CallAiGatewayResult> {
-  const inputHash = await sha256Hex(JSON.stringify({ system: request.system, messages: request.messages }));
+  const inputHash = await sha256Hex(
+    JSON.stringify({
+      system: request.system,
+      messages: request.messages,
+      ...(options?.fresh ? { nonce: crypto.randomUUID() } : {}),
+    }),
+  );
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);

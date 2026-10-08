@@ -3,6 +3,7 @@ import {
   buildDraftFirstMessagePrompt,
   buildTranslateDraftPrompt,
   computeFollowUpDueDate,
+  detectDraftLanguage,
   stripSignOff,
   validateDraft,
   type OutreachChannel,
@@ -361,6 +362,8 @@ export async function generateFirstMessageDraft(
   business: DraftBusiness,
   channel: OutreachChannel,
   language: OutreachLanguage,
+  /** `fresh`: yeniden oluşturma; önbellekteki aynı (belki reddedilmiş) taslak yerine yenisi istenir. */
+  options?: { fresh?: boolean },
 ): Promise<FirstMessageDraft> {
   const [{ data: analysis, error: analysisError }, { data: reputation, error: reputationError }, context] = await Promise.all([
     supabase
@@ -393,7 +396,7 @@ export async function generateFirstMessageDraft(
     salesRulesSummary: context.salesRulesSummary,
   });
 
-  const result = await callAiGateway(workspaceId, request, { entityType: "business", entityId: business.id });
+  const result = await callAiGateway(workspaceId, request, { entityType: "business", entityId: business.id }, options);
   const parsed = draftFirstMessageOutputSchema.safeParse(result.json);
   if (!parsed.success) {
     return { ok: false, body: "", reasons: ["INVALID_SHAPE"], channel };
@@ -401,6 +404,11 @@ export async function generateFirstMessageDraft(
   // Modelin uydurduğu imza (unvan/isim) atılır; hem referans kontrolünü tetikliyor hem yanlış rol bilgisi taşıyor.
   // Yalnızca GÖNDERİLECEK metin doğrulanır; Türkçe çeviri ayrı çağrıyla gelir ve gönderilmediği için kontrol edilmez.
   const body = stripSignOff(parsed.data.body);
+  // Model seçilen dili yok sayabiliyor (İngilizce istenip Türkçe yazıldı); yanlış dildeki taslak gösterilmez.
+  const written = detectDraftLanguage(body);
+  if (written !== "unknown" && written !== language) {
+    return { ok: false, body: "", reasons: ["WRONG_LANGUAGE"], channel };
+  }
   const validation = validateDraft({
     body,
     channel,

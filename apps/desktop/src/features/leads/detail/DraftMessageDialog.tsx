@@ -51,7 +51,8 @@ export function DraftMessageDialog({
   const generate = useMutation({
     mutationFn: () => {
       if (!language) throw new Error(tr.draft.selectLanguageFirst);
-      return generateFirstMessageDraft(workspaceId, business, channel, language);
+      // Ekranda zaten bir taslak (veya ret) varsa bu "Yeniden Oluştur"dur: önbellekteki aynı yanıt istenmez.
+      return generateFirstMessageDraft(workspaceId, business, channel, language, { fresh: draft !== null });
     },
     onSuccess: (result) => {
       setDraft(result);

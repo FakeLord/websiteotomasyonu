@@ -36,6 +36,18 @@ describe("callAiGateway — hata mesajı", () => {
     await expect(callAiGateway("ws", request)).rejects.toThrow(/AI isteği başarısız/);
   });
 
+  it("aynı girdide aynı önbellek anahtarını, 'yeniden oluştur'da (fresh) farklı anahtarı gönderir", async () => {
+    invoke.mockResolvedValue({ data: { json: {}, cached: false }, error: null });
+    await callAiGateway("ws", request);
+    await callAiGateway("ws", request);
+    await callAiGateway("ws", request, undefined, { fresh: true });
+    await callAiGateway("ws", request, undefined, { fresh: true });
+    const hashes = invoke.mock.calls.map((call) => (call[1] as { body: { inputHash: string } }).body.inputHash);
+    expect(hashes[0]).toBe(hashes[1]);
+    expect(hashes[2]).not.toBe(hashes[0]);
+    expect(hashes[3]).not.toBe(hashes[2]);
+  });
+
   it("başarılı yanıtta JSON'u ve önbellek bilgisini döner", async () => {
     invoke.mockResolvedValue({ data: { json: { body: "x" }, cached: true }, error: null });
     await expect(callAiGateway("ws", request)).resolves.toEqual({ json: { body: "x" }, cached: true });

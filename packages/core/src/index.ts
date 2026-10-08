@@ -67,6 +67,7 @@ export {
 } from "./email/resolve-inbound";
 export { validateDraft, type ValidateDraftInput, type ValidateDraftResult } from "./ai/validate-draft";
 export { stripSignOff } from "./ai/strip-sign-off";
+export { detectDraftLanguage, type DetectedLanguage } from "./ai/detect-language";
 export {
   normalizeAiConfig,
   activeProviders,

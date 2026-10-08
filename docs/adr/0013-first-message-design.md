@@ -14,8 +14,15 @@ Durum: kabul edildi (2026-10-09). Kapsam: G4'ün ilk dilimi (çok dilli tam dest
   isteniyordu; çıktıyı ikiye katlayıp taslağı geciktirdi. Şimdi taslak önce gelir, çeviri ekranda "hazırlanıyor" iken ikinci çağrıyla
   dolar ("Çeviriyi yenile" düzenlenen metni yeniden çevirir). Çeviri gönderilmediği ve kaydedilmediği için satış guardrail'larından
   GEÇİRİLMEZ (önceden "Sayın … Ekibi" gibi selamlamalar yüzünden taslak reddediliyordu). Türkçe taslakta çeviri yoktur.
-- **Hız:** kullanılmayan `used_facts` çıktısı kaldırıldı; mesaj uzunluğu e-postada ~90, DM'de ~50 kelimeyle sınırlandı;
-  `maxTokens` 400. Prompt sürümü 3. Hızlı sağlayıcı (OpenAI anahtarı) zincirde NVIDIA'dan önce denenir.
+- **Hız ve uzunluk:** kullanılmayan `used_facts` çıktısı kaldırıldı. Uzunluk kullanıcı geri bildirimiyle üç kez ayarlandı
+  (90/50 → 160/80 → **60–80 / 35–45 kelime**, e-posta en çok 600, DM en çok 350 karakter): "ne uzun ne kısa, temel bilgiler".
+  `maxTokens` 350. Hızlı sağlayıcı (OpenAI anahtarı) zincirde NVIDIA'dan önce denenir.
+- **Komut hedef dilde yazılır (prompt v6).** Türkçe komutun içindeki tek "İngilizce yaz" cümlesini model yok sayıp Türkçe
+  yazdı. İngilizce taslakta komut ve bağlam etiketleri İngilizcedir; bağlamın sonunda dil tekrar edilir.
+- **Dil kontrolü kodda da var.** `detectDraftLanguage` (işlev kelimesi sayımı) yazılan dil seçilenden farklıysa taslağı
+  `WRONG_LANGUAGE` ile reddeder. Belirsiz/kısa metinde engellemez.
+- **"Yeniden Oluştur" önbelleği atlar** (`fresh`): aksi halde 24 saatlik önbellek aynı (reddedilmiş veya yanlış dildeki)
+  yanıtı geri veriyordu.
 - **Guardrail'lar çok dilli.** Para (₺ TL $ € £ USD EUR GBP…), teslim süresi (gün/hafta/days/weeks) ve yasak kelimeler (TR + EN)
   kontrol edilir; yalnızca gönderilecek metin bu kurallardan geçer. Selamlama/kapanış/"Team" gibi İngilizce
   kelimeler ve Şirket kaydının başlığı (şirket adı) müşteri referansı sayılmaz.
