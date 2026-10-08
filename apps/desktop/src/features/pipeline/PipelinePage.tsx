@@ -151,7 +151,7 @@ export function PipelinePage() {
               </header>
               <div className="flex-1 space-y-2 overflow-y-auto px-2 pb-2">
                 {columnCards.map((card) => {
-                  const handoff = card.human_handoffs.find((h) => h.status === "OPEN");
+                  const handoff = card.human_handoffs.find((h) => h.status === "OPEN" || h.status === "ACCEPTED");
                   const assignee = card.assigned_to ? byId.get(card.assigned_to)?.name : null;
                   return (
                     <article

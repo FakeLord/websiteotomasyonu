@@ -41,7 +41,7 @@ export function ConversationSidebar({ conversation, workspaceId }: { conversatio
         .from("human_handoffs")
         .select("id, status, summary")
         .eq("business_id", conversation.business_id)
-        .eq("status", "OPEN")
+        .in("status", ["OPEN", "ACCEPTED"])
         .maybeSingle();
       if (qError) throw qError;
       return data as { id: string; status: string; summary: string } | null;

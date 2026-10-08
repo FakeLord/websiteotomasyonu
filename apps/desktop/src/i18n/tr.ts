@@ -464,6 +464,16 @@ export const tr = {
     revoke: "Daveti iptal et",
     adminOnlyInvites: "Yeni üye davet etmek için yönetici olmanız gerekir.",
   },
+  handoff: {
+    title: "Devir kartı",
+    status: { OPEN: "Açık", ACCEPTED: "Üstlenildi" },
+    assignedTo: (name: string) => `Sorumlu: ${name}`,
+    unassigned: "Henüz kimse devralmadı",
+    accept: "Devral",
+    assign: "Ata",
+    close: "Kapat",
+    closePrompt: "Kapatma notu (isteğe bağlı; iptal ederseniz kart kapanmaz):",
+  },
   pipeline: {
     title: "Teklif Aşaması",
     description: "Cevap veren ve ilgilenen işletmeleri kartları sürükleyerek aşamalar arasında taşıyın.",

@@ -44,6 +44,7 @@ import { CustomerDealDialog } from "../customers/CustomerDealDialog";
 import { useBusiness, useContactChannels, useWorkspaceSettings, type ContactChannelRow, type WorkspaceSettingsRow } from "./detail/lead-data";
 import { DraftMessageDialog } from "./detail/DraftMessageDialog";
 import { EditLeadDialog } from "./EditLeadDialog";
+import { HandoffCard } from "./detail/HandoffCard";
 import { ContactOutcomePanel, type PendingContact } from "./detail/ContactOutcomePanel";
 import { logContactAttempt } from "./detail/contact-attempts";
 import { OverviewTab } from "./detail/OverviewTab";
@@ -151,6 +152,7 @@ function SalesPanel({
 
   return (
     <div className="space-y-4">
+      <HandoffCard businessId={business.id} workspaceId={business.workspace_id} />
       <Card>
         <CardHeader title={tr.leadDetail.salesProcess} />
         <CardBody className="space-y-4">

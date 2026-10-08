@@ -30,6 +30,7 @@ export interface BusinessListRow {
 }
 
 export interface BusinessDetail extends BusinessListRow {
+  workspace_id: string;
   address: string | null;
   region: string | null;
   postal_code: string | null;
