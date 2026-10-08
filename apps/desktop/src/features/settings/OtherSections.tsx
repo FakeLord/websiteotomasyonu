@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ExternalLink, Minus, Plus, UserRound } from "lucide-react";
+import { ExternalLink, KeyRound, Minus, Plus, UserRound } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { setPasswordInputSchema, type SetPasswordInput } from "@lbf/contracts";
 import { ChannelIcon } from "../../components/domain/channel-icon";
 import { supabase } from "../../lib/supabase-client";
 import { useMyProfile } from "../../lib/use-shell-data";
@@ -14,6 +17,101 @@ import { KeyValue } from "../../components/ui/data-display";
 import { Switch } from "../../components/ui/primitives";
 
 /* ---------- Genel ---------- */
+
+/** Oturum açık kullanıcının şifresini değiştirir (en az 12 karakter; kural davet/sıfırlama ekranıyla aynıdır). */
+function ChangePasswordCard() {
+  const [done, setDone] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<SetPasswordInput>({ resolver: zodResolver(setPasswordInputSchema) });
+
+  const onSubmit = async (values: SetPasswordInput) => {
+    setDone(false);
+    setServerError(null);
+    const { error } = await supabase.auth.updateUser({ password: values.password });
+    if (error) {
+      setServerError(error.message || tr.settings.password.error);
+      return;
+    }
+    reset({ password: "", confirm: "" });
+    setDone(true);
+  };
+
+  return (
+    <Card>
+      <CardHeader title={tr.settings.password.title} icon={<KeyRound className="size-4 text-primary" />} />
+      <CardBody>
+        <form className="space-y-3" onSubmit={handleSubmit(onSubmit)}>
+          <div>
+            <Label htmlFor="new-password">{tr.auth.newPassword}</Label>
+            <Input id="new-password" type="password" autoComplete="new-password" {...register("password")} />
+            {errors.password && <p className="mt-1 text-xs text-[#f87171]">{tr.auth.passwordTooShort}</p>}
+          </div>
+          <div>
+            <Label htmlFor="confirm-password">{tr.auth.confirmPassword}</Label>
+            <Input id="confirm-password" type="password" autoComplete="new-password" {...register("confirm")} />
+            {errors.confirm && <p className="mt-1 text-xs text-[#f87171]">{tr.auth.passwordMismatch}</p>}
+          </div>
+          <div className="flex items-center gap-3">
+            <Button type="submit" disabled={isSubmitting}>
+              {tr.settings.password.submit}
+            </Button>
+            {done && <span className="text-xs text-[#4ade80]">{tr.settings.password.success}</span>}
+          </div>
+          {serverError && <p className="text-xs text-[#f87171]">{serverError}</p>}
+        </form>
+      </CardBody>
+    </Card>
+  );
+}
+
+/** Yönetici çalışma alanı adını değiştirir (RPC; aktivite günlüğüne düşer). Diğer üyeler adı salt okunur görür. */
+function WorkspaceNameRow({ workspaceId, name, canEdit }: { workspaceId: string; name: string; canEdit: boolean }) {
+  const queryClient = useQueryClient();
+  const [draft, setDraft] = useState(name);
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  useEffect(() => setDraft(name), [name]);
+
+  const rename = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.rpc("rename_workspace", { p_workspace_id: workspaceId, p_name: draft });
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      setMessage({ ok: true, text: tr.settings.saveSuccess });
+      void queryClient.invalidateQueries({ queryKey: ["workspace", workspaceId] });
+    },
+    onError: (error: Error) => setMessage({ ok: false, text: error.message }),
+  });
+
+  if (!canEdit) return <KeyValue label={tr.settings.workspaceName}>{name || "—"}</KeyValue>;
+  const unchanged = draft.trim() === name;
+
+  return (
+    <div className="space-y-2 py-2">
+      <Label>{tr.settings.workspaceRename}</Label>
+      <div className="flex items-center gap-2">
+        <Input
+          value={draft}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            setMessage(null);
+          }}
+          maxLength={80}
+        />
+        <Button disabled={unchanged || draft.trim().length < 2 || rename.isPending} onClick={() => rename.mutate()}>
+          {tr.settings.saveButton}
+        </Button>
+      </div>
+      <p className="text-xs text-subtle">{tr.settings.workspaceRenameHint}</p>
+      {message && <p className={"text-xs " + (message.ok ? "text-[#4ade80]" : "text-[#f87171]")}>{message.text}</p>}
+    </div>
+  );
+}
 
 export function GeneralSection() {
   const queryClient = useQueryClient();
@@ -85,10 +183,11 @@ export function GeneralSection() {
           </div>
         </CardBody>
       </Card>
+      <ChangePasswordCard />
       <Card>
         <CardHeader title={tr.settings.workspace} />
         <CardBody className="divide-y divide-border/60">
-          <KeyValue label={tr.settings.workspaceName}>{workspace.data?.name ?? "—"}</KeyValue>
+          {membership && <WorkspaceNameRow workspaceId={membership.workspaceId} name={workspace.data?.name ?? ""} canEdit={membership.role === "ADMIN"} />}
           <KeyValue label={tr.team.role}>{membership ? tr.team.roles[membership.role] : "—"}</KeyValue>
           <KeyValue label={tr.settings.version}>v{__APP_VERSION__}</KeyValue>
         </CardBody>
