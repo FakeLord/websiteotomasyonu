@@ -526,6 +526,16 @@ export const tr = {
       IMPORT: "CSV içe aktarım",
     },
     byChannel: "Kanal performansı",
+    manualContacts: {
+      title: "Elle yapılan temaslar",
+      hint: "\"İletişime geç\" menüsünden açılan ve sonucu girilen temaslar. Vazgeçilenler sayılmaz. Cevap oranı, yazılan işletmelerin cevap verenlere oranıdır.",
+      attempts: "Temas",
+      written: "Yazılan",
+      replied: "Cevap",
+      notInterested: "İlgilenmedi",
+      unreachable: "Ulaşılamadı",
+      empty: "Bu aralıkta elle yapılan temas yok.",
+    },
     replies: "Cevap",
     segments: {
       title: "Hangi sektör ve şehir daha çok cevap veriyor?",

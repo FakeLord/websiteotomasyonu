@@ -32,3 +32,17 @@ Bulutta elle:
 - [ ] Zincir sayılan bir işletme gerçekten zincir mi? Yanlış pozitif görürsen ADR 0015'teki kuralı daralt.
 - [ ] Filtrele → "Min. yorum" ve "Yorum sayısına göre" sıralama Google'daki yorum sayısıyla uyuşuyor.
 - [ ] İlk ~60 mesaj gönderildikten sonra Raporlar → "Sektör ve şehir": sektör başına 20+ yazı olunca "en iyi sonuç" satırı çıkıyor.
+
+## ADR 0016 — temas kaydı ve ilerleme takibi (2026-10-08)
+Otomatik: `contact_attempts.test.sql` (36), `contact-outcome.test.ts` (her adım geçerli geçiş), `progress-timeline.test.ts`,
+`contact-filters.test.ts`, `contact-attempts.test.ts`. Yerelde tarayıcıda gerçek RPC'lerle doğrulandı: menüden Instagram →
+"Ne oldu?" kutusu → Yazdım → aşama NEW → CONTACTED (3 adım), takip +3 gün, İlerleme sekmesi, Takip görünümü, tüm süzgeçler
+(veritabanı sorgusuyla aynı sayılar), Raporlar → İletişim → "Elle yapılan temaslar".
+
+Bulutta elle:
+- [ ] `db push` sonrası bir işletmede İletişime geç → bir adres seç: bağlantı açılır VE köşede "Ne oldu?" kutusu çıkar.
+- [ ] "Yazdım" → İlerleme sekmesinde 3 aşama adımı ve temas kaydı görünür; Leadler'de aşama "İletişime Geçildi".
+- [ ] "Sonra" + tarih → Takip sekmesinde o gün görünür.
+- [ ] "İlgilenmedi" → Kapanan aşamasına geçer; Fırsatlar listesinden çıkar.
+- [ ] Kutuyu kapatınca temas "Denendi" olarak kalır (İlerleme sekmesinde).
+- [ ] İki ekip üyesi: biri yazınca diğerinin listesinde "Son temas" ve "Yazan" süzgeci güncellenir.

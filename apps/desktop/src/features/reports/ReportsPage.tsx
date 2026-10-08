@@ -53,6 +53,92 @@ interface MarketPerformance {
   byCity: SegmentRow[];
 }
 
+interface ContactAttemptStat {
+  channel: string;
+  attempts: number;
+  written: number;
+  replied: number;
+  not_interested: number;
+  unreachable: number;
+}
+
+function ManualContactsCard({ workspaceId, range }: { workspaceId: string | undefined; range: { from: string; to: string } }) {
+  const { market, rpcParams } = useMarket();
+  const query = useQuery({
+    queryKey: ["contact-attempt-stats", workspaceId, range.from, range.to, market.country, market.city],
+    enabled: !!workspaceId && !!range.from && !!range.to,
+    queryFn: async (): Promise<ContactAttemptStat[]> => {
+      const { data, error } = await supabase.rpc("contact_attempt_stats", {
+        ws: workspaceId as string,
+        p_from: range.from,
+        p_to: range.to,
+        ...rpcParams,
+      });
+      if (error) throw error;
+      return (data ?? []) as ContactAttemptStat[];
+    },
+  });
+  const rows = query.data ?? [];
+
+  return (
+    <Card>
+      <CardHeader title={tr.reports.manualContacts.title} />
+      <CardBody className="space-y-3">
+        <p className="text-xs text-muted">{tr.reports.manualContacts.hint}</p>
+        {query.isError && <p className="text-sm text-[#f87171]">{query.error instanceof Error ? query.error.message : tr.common.error}</p>}
+        {rows.length === 0 && !query.isError ? (
+          <p className="py-4 text-center text-sm text-muted">{tr.reports.manualContacts.empty}</p>
+        ) : (
+          <Table>
+            <thead>
+              <tr>
+                <Th>{tr.draft.channelLabel}</Th>
+                <Th>{tr.reports.manualContacts.attempts}</Th>
+                <Th>{tr.reports.manualContacts.written}</Th>
+                <Th>{tr.reports.manualContacts.replied}</Th>
+                <Th>{tr.reports.kpi.replyRate}</Th>
+                <Th>{tr.reports.manualContacts.notInterested}</Th>
+                <Th>{tr.reports.manualContacts.unreachable}</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => {
+                const rate = segmentRate(row.written, row.replied);
+                return (
+                  <Tr key={row.channel}>
+                    <Td>
+                      <span className="flex items-center gap-2">
+                        <ChannelIcon channel={row.channel} />
+                        {tr.channels[row.channel as keyof typeof tr.channels] ?? row.channel}
+                      </span>
+                    </Td>
+                    <Td className="tabular-nums">{row.attempts}</Td>
+                    <Td className="tabular-nums">{row.written}</Td>
+                    <Td className="tabular-nums">{row.replied}</Td>
+                    <Td className="tabular-nums">
+                      {rate.percent === null ? (
+                        "—"
+                      ) : rate.enough ? (
+                        `%${rate.percent}`
+                      ) : (
+                        <span className="text-muted" title={tr.reports.segments.fewData(MIN_SEGMENT_SAMPLE)}>
+                          %{rate.percent} · {tr.reports.segments.fewData(MIN_SEGMENT_SAMPLE)}
+                        </span>
+                      )}
+                    </Td>
+                    <Td className="tabular-nums">{row.not_interested}</Td>
+                    <Td className="tabular-nums">{row.unreachable}</Td>
+                  </Tr>
+                );
+              })}
+            </tbody>
+          </Table>
+        )}
+      </CardBody>
+    </Card>
+  );
+}
+
 function SegmentsTab({ workspaceId }: { workspaceId: string | undefined }) {
   const { market, rpcParams } = useMarket();
   const [by, setBy] = useState<"category" | "city">("category");
@@ -315,6 +401,9 @@ export function ReportsPage() {
               </Table>
             )}
           </Card>
+          <div className="mt-5">
+            <ManualContactsCard workspaceId={workspaceId} range={range} />
+          </div>
         </TabsContent>
 
         <TabsContent value="conversion">
