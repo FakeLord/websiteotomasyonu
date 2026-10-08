@@ -61,6 +61,23 @@ function foldName(value: string): string {
     .replace(/ı/g, "i");
 }
 
+const MIN_STEM_LENGTH = 4;
+const MAX_SUFFIX_LENGTH = 2;
+
+/**
+ * Model işletmenin adını küçük çekim farklarıyla yazabilir ("DTLA Smile" → "DTLA Smiles"). Kelime, alıcının
+ * kendi kelimelerinden biriyle aynıysa veya ona en çok 2 harflik ek almış haliyse aynı ad sayılır. Kısa
+ * kelimelerde (4 harften az) yalnızca tam eşleşme geçerlidir; yoksa alakasız adlar da kaçardı.
+ */
+function isOwnWord(word: string, ownWords: Set<string>): boolean {
+  if (ownWords.has(word)) return true;
+  for (const own of ownWords) {
+    if (own.length < MIN_STEM_LENGTH) continue;
+    if (word.startsWith(own) && word.length - own.length <= MAX_SUFFIX_LENGTH) return true;
+  }
+  return false;
+}
+
 /** İmzada sık görülen genel unvanlar müşteri/marka adı değildir; referans kontrolünden muaftır. */
 const GENERIC_ROLE_TITLES = new Set(
   ["satış asistanı", "müşteri temsilcisi", "satış ekibi", "müşteri hizmetleri", "satış temsilcisi", "dijital asistan"].map(foldName),
@@ -139,7 +156,7 @@ export function validateDraft(input: ValidateDraftInput): ValidateDraftResult {
     const words = lower(candidate)
       .split(/\s+/)
       .filter((word) => !GREETING_WORDS.has(word));
-    if (words.length < 2 || words.every((word) => ownWords.has(word))) continue;
+    if (words.length < 2 || words.every((word) => isOwnWord(word, ownWords))) continue;
     const candidateLower = words.join(" ");
     if (GENERIC_ROLE_TITLES.has(candidateLower)) continue;
     if (!verifiedLower.has(candidateLower)) {

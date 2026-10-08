@@ -140,6 +140,26 @@ describe("validateDraft", () => {
     }
   });
 
+  it("treats a slightly inflected form of the recipient's own name as the same name (Smiles, Smile's)", () => {
+    for (const written of ["DTLA Smiles", "DTLA Smile's"]) {
+      const result = validateDraft({
+        ...baseInput,
+        body: `Merhaba ${written} ekibi, web siteniz için bir fikrimiz var.`,
+        recipientBusinessName: "DTLA Smile",
+      });
+      expect(result.reasons, written).toEqual([]);
+    }
+  });
+
+  it("does not let the prefix tolerance excuse a different brand that merely starts like the own name", () => {
+    const result = validateDraft({
+      ...baseInput,
+      body: "Daha önce Smile Studio Plus ile çalıştık.",
+      recipientBusinessName: "DTLA Smile",
+    });
+    expect(result.reasons).toEqual(["UNVERIFIED_REFERENCE:Smile Studio Plus"]);
+  });
+
   it("flags a price quoted in euros, pounds or dollars that no package covers", () => {
     for (const text of ["only €500", "just £400 per month", "from $300", "for 500 USD", "for 250 euros"]) {
       const result = validateDraft({ ...baseInput, body: `Hello team, we can build it ${text}.` });
