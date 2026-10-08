@@ -41,6 +41,7 @@ export {
   type TileBounds,
   type TilePoint,
 } from "./discovery/tiling";
+export { PlacesQuotaError, scanTile, type ScanTileOutcome, type ScanTileResult } from "./discovery/scan-tile";
 export { normalizeWebsiteInput } from "./website-analyzer/normalize-url";
 export { detectParkedOrEmpty } from "./website-analyzer/parked-page";
 export { extractContacts } from "./website-analyzer/extract-contacts";
