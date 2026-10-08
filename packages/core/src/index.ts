@@ -86,6 +86,7 @@ export {
 } from "./email/resolve-inbound";
 export { validateDraft, type ValidateDraftInput, type ValidateDraftResult } from "./ai/validate-draft";
 export { stripSignOff } from "./ai/strip-sign-off";
+export { findForeignWords } from "./ai/foreign-words";
 export { retryRejected, type CheckedDraft } from "./ai/retry-rejected";
 export { detectDraftLanguage, type DetectedLanguage } from "./ai/detect-language";
 export {

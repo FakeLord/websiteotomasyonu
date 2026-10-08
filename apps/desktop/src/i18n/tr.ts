@@ -727,6 +727,7 @@ export const tr = {
       DELIVERY_MISMATCH: "Paket aralığı dışında teslim süresi",
       INVALID_SHAPE: "AI çıktısı beklenen biçimde değil",
       WRONG_LANGUAGE: "Model seçtiğiniz dilde yazmadı; yeniden oluşturun",
+      FOREIGN_WORD: "Metne başka dilden kelime karışmış",
     },
   },
   contactChannels: {

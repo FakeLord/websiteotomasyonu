@@ -4,6 +4,7 @@ import {
   buildTranslateDraftPrompt,
   computeFollowUpDueDate,
   detectDraftLanguage,
+  findForeignWords,
   retryRejected,
   stripSignOff,
   validateDraft,
@@ -413,6 +414,11 @@ export async function generateFirstMessageDraft(
   const written = detectDraftLanguage(body);
   if (written !== "unknown" && written !== language) {
     return { ok: false, body: "", reasons: ["WRONG_LANGUAGE"], channel };
+  }
+  // Doğru dilde yazılmış metne bile tek bir yabancı kelime karışabiliyor ("dijital varlığınızı strengthen etmek").
+  const leaked = findForeignWords(body, language, [business.name, ...businessContextNames(business), ...context.companyNames]);
+  if (leaked.length > 0) {
+    return { ok: false, body: "", reasons: [`FOREIGN_WORD:${leaked[0]}`], channel };
   }
   const validation = validateDraft({
     body,
