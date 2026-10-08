@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Ban, CheckCircle2, ChevronDown, GitMerge, MapPin, MapPinned, MessageSquarePlus, Send, Sparkles, Star, Tag } from "lucide-react";
+import { ArrowLeft, Ban, CheckCircle2, ChevronDown, GitMerge, MapPin, MapPinned, MessageSquarePlus, Pencil, Send, Sparkles, Star, Tag } from "lucide-react";
 import {
   allowedNextStages,
   chooseChannel,
@@ -43,6 +43,7 @@ import { ChannelIcon } from "../../components/domain/channel-icon";
 import { CustomerDealDialog } from "../customers/CustomerDealDialog";
 import { useBusiness, useContactChannels, useWorkspaceSettings, type ContactChannelRow, type WorkspaceSettingsRow } from "./detail/lead-data";
 import { DraftMessageDialog } from "./detail/DraftMessageDialog";
+import { EditLeadDialog } from "./EditLeadDialog";
 import { ContactOutcomePanel, type PendingContact } from "./detail/ContactOutcomePanel";
 import { logContactAttempt } from "./detail/contact-attempts";
 import { OverviewTab } from "./detail/OverviewTab";
@@ -251,6 +252,7 @@ export function LeadDetailPage() {
   const settings = useWorkspaceSettings().data;
   const [draftOpen, setDraftOpen] = useState(false);
   const [dealOpen, setDealOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [pending, setPending] = useState<PendingContact | null>(null);
   const queryClient = useQueryClient();
   useRealtimeTable("businesses", workspaceId, ["business", businessId]);
@@ -304,7 +306,18 @@ export function LeadDetailPage() {
         <div className="flex flex-wrap items-center gap-5 p-5">
           <Avatar name={business.name} size="xl" square />
           <div className="min-w-0 flex-1 space-y-2">
-            <h1 className="text-xl font-semibold tracking-tight text-text">{business.name}</h1>
+            <h1 className="flex items-start gap-2 text-xl font-semibold tracking-tight text-text">
+              {business.name}
+              <button
+                type="button"
+                onClick={() => setEditOpen(true)}
+                aria-label={tr.leadEdit.open}
+                title={tr.leadEdit.open}
+                className="mt-1 shrink-0 rounded-md p-1 text-muted hover:bg-surface-2 hover:text-text"
+              >
+                <Pencil className="size-4" />
+              </button>
+            </h1>
             <div className="flex flex-wrap items-center gap-2">
               <WebsiteStatusBadge status={business.website_status} />
               {business.business_status === "OPERATIONAL" && <Badge tone="green">{tr.businessStatus.OPERATIONAL}</Badge>}
@@ -439,6 +452,7 @@ export function LeadDetailPage() {
         />
       )}
       {pending && <ContactOutcomePanel key={`${pending.channel}:${pending.address}`} businessId={business.id} pending={pending} onClose={() => setPending(null)} />}
+      {editOpen && <EditLeadDialog business={business} workspaceId={workspaceId} onClose={() => setEditOpen(false)} />}
       {dealOpen && <CustomerDealDialog open={dealOpen} onOpenChange={setDealOpen} businessId={business.id} businessName={business.name} countryCode={business.country_code} />}
     </div>
   );

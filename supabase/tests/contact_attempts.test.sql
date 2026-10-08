@@ -111,18 +111,18 @@ select throws_like(
 
 -- 11) Rapor
 select is(
-  (select (e ->> 'attempts')::int from jsonb_array_elements(public.contact_attempt_stats(:'ws', current_date - 1, current_date)) e where e ->> 'channel' = 'INSTAGRAM'),
+  (select (e ->> 'attempts')::int from jsonb_array_elements(public.contact_attempt_stats(:'ws', current_date - 2, current_date + 1)) e where e ->> 'channel' = 'INSTAGRAM'),
   2, 'Rapor: Instagram 2 temas (vazgeçilen sayılmaz)'
 );
 select is(
-  (select (e ->> 'replied')::int from jsonb_array_elements(public.contact_attempt_stats(:'ws', current_date - 1, current_date)) e where e ->> 'channel' = 'EMAIL'),
+  (select (e ->> 'replied')::int from jsonb_array_elements(public.contact_attempt_stats(:'ws', current_date - 2, current_date + 1)) e where e ->> 'channel' = 'EMAIL'),
   1, 'Rapor: e-postada 1 cevap'
 );
 select is(
-  (select (e ->> 'attempts')::int from jsonb_array_elements(public.contact_attempt_stats(:'ws', current_date - 1, current_date, 'TR', 'Ankara')) e where e ->> 'channel' = 'INSTAGRAM'),
+  (select (e ->> 'attempts')::int from jsonb_array_elements(public.contact_attempt_stats(:'ws', current_date - 2, current_date + 1, 'TR', 'Ankara')) e where e ->> 'channel' = 'INSTAGRAM'),
   1, 'Rapor pazar filtresine uyar'
 );
-select is(jsonb_array_length(public.contact_attempt_stats(:'ws', current_date - 1, current_date, 'US', null)), 0, 'Kaydı olmayan pazarda rapor boş');
+select is(jsonb_array_length(public.contact_attempt_stats(:'ws', current_date - 2, current_date + 1, 'US', null)), 0, 'Kaydı olmayan pazarda rapor boş');
 
 -- 12) Yalıtım
 reset role;

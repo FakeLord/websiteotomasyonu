@@ -49,6 +49,14 @@ export {
 } from "./discovery/tiling";
 export { PlacesQuotaError, scanTile, type ScanTileOutcome, type ScanTileResult } from "./discovery/scan-tile";
 export { CONTACT_OUTCOMES, stagePathForOutcome, type ContactOutcome } from "./pipeline/contact-outcome";
+export {
+  buildBusinessPatch,
+  type BusinessEditError,
+  type BusinessEditField,
+  type BusinessEditForm,
+  type BusinessEditSource,
+  type BusinessPatchResult,
+} from "./business/edit-patch";
 export { normalizeWebsiteInput } from "./website-analyzer/normalize-url";
 export { detectParkedOrEmpty } from "./website-analyzer/parked-page";
 export { extractContacts } from "./website-analyzer/extract-contacts";
