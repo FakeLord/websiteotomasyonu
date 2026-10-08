@@ -91,6 +91,42 @@ describe("validateDraft", () => {
     expect(result.ok).toBe(true);
   });
 
+  it("recognizes an ALL-CAPS English business name written in title case (Turkish locale must not turn I into ı)", () => {
+    const result = validateDraft({
+      ...baseInput,
+      body: "Merhaba Windy Hair Salon Original ekibi, Instagram sayfanızı beğendik.",
+      recipientBusinessName: "WINDY HAIR SALON ORIGINAL",
+    });
+    expect(result.reasons).toEqual([]);
+  });
+
+  it("recognizes an ALL-CAPS Turkish business name written in title case", () => {
+    const result = validateDraft({
+      ...baseInput,
+      body: "Merhaba Kırmızı Gül Kuaför ekibi, harika bir yer.",
+      recipientBusinessName: "KIRMIZI GÜL KUAFÖR",
+    });
+    expect(result.reasons).toEqual([]);
+  });
+
+  it("matches verified references regardless of dotted/dotless i and diacritics", () => {
+    const result = validateDraft({
+      ...baseInput,
+      body: "Daha önce Işık Dental Kliniği ile çalıştık.",
+      verifiedReferenceNames: ["ISIK DENTAL KLINIGI"],
+    });
+    expect(result.reasons).toEqual([]);
+  });
+
+  it("still flags a genuinely different name", () => {
+    const result = validateDraft({
+      ...baseInput,
+      body: "Merhaba Windy Hair Salon Original ekibi, Sunny Beauty Studio ile çalıştık.",
+      recipientBusinessName: "WINDY HAIR SALON ORIGINAL",
+    });
+    expect(result.reasons).toEqual(["UNVERIFIED_REFERENCE:Sunny Beauty Studio"]);
+  });
+
   it("accepts a delivery time within an active package's range", () => {
     const result = validateDraft({ ...baseInput, body: "Projeyi 14 gün içinde teslim ediyoruz." });
     expect(result.ok).toBe(true);

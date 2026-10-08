@@ -43,7 +43,22 @@ function parseMoneyAmount(match: string): number | null {
   return isBin ? value * 1000 : value;
 }
 
-const GREETING_WORDS = new Set(["merhaba", "merhabalar", "selam", "sayın", "değerli", "günaydın", "iyi", "kolay", "saygılarımla"]);
+/**
+ * Ad karşılaştırması için büyük/küçük harf, noktalı/noktasız i ve aksan farkını siler.
+ * `tr-TR` küçültmesi İngilizce "HAIR"ı "haır"a çevirip "Hair" ile eşleşmesini bozuyordu; ayrıca
+ * işletme adı çoğunlukla BÜYÜK HARFLE kayıtlı, model ise Başlık Biçiminde yazar.
+ */
+function foldName(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLocaleLowerCase("en-US")
+    .replace(/ı/g, "i");
+}
+
+const GREETING_WORDS = new Set(
+  ["merhaba", "merhabalar", "selam", "sayın", "değerli", "günaydın", "iyi", "kolay", "saygılarımla"].map(foldName),
+);
 
 function findReferenceCandidates(body: string): string[] {
   // İki veya daha fazla ardışık Büyük-Harf-Başlangıçlı kelimeyi olası
@@ -96,7 +111,7 @@ export function validateDraft(input: ValidateDraftInput): ValidateDraftResult {
   }
 
   const referenceCandidates = findReferenceCandidates(input.body);
-  const lower = (value: string) => value.toLocaleLowerCase("tr-TR");
+  const lower = foldName;
   const verifiedLower = new Set(input.verifiedReferenceNames.map(lower));
   // Alıcının kendi adı (kısaltılmış hali dahil) ve bağlamındaki yer/kategori
   // adları referans değildir: adayın tüm kelimeleri bu kümedeyse atlanır.
