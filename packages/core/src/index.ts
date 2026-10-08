@@ -48,6 +48,7 @@ export {
   type TilePoint,
 } from "./discovery/tiling";
 export { PlacesQuotaError, scanTile, type ScanTileOutcome, type ScanTileResult } from "./discovery/scan-tile";
+export { CONTACT_OUTCOMES, stagePathForOutcome, type ContactOutcome } from "./pipeline/contact-outcome";
 export { normalizeWebsiteInput } from "./website-analyzer/normalize-url";
 export { detectParkedOrEmpty } from "./website-analyzer/parked-page";
 export { extractContacts } from "./website-analyzer/extract-contacts";
