@@ -7,6 +7,7 @@ import { useScanStore } from "../lib/scan-store";
 import { supabase } from "../lib/supabase-client";
 import { usePlacesUsage, useScanPlans, type ScanPlanProgress, type ScanPlanStatus } from "../lib/use-jobs";
 import { useWorkspaceMembership } from "../lib/use-workspace-membership";
+import { backfillWhatsappChannels } from "../lib/whatsapp-channels";
 import { kickBackgroundAnalysis, retryFailedAndKick } from "../workers/background-analysis";
 import { kickScan } from "../workers/scan-runner";
 import { Badge, type BadgeTone } from "../components/ui/badge";
@@ -55,6 +56,18 @@ function useJobRunners(workspaceId: string | undefined) {
       window.removeEventListener("focus", kick);
     };
   }, [workspaceId]);
+
+  // Eski kayıtlar için tek seferlik: cep numarası olan işletmelere WhatsApp kanalı eklenir.
+  useEffect(() => {
+    if (!workspaceId) return;
+    void backfillWhatsappChannels(workspaceId)
+      .then((added) => {
+        if (added) void queryClient.invalidateQueries({ queryKey: ["businesses"] });
+      })
+      .catch(() => {
+        // İşaret yazılmadığı için bir sonraki açılışta yeniden denenir.
+      });
+  }, [workspaceId, queryClient]);
 
   // Analiz ilerledikçe (birkaç işletmede bir) ve bitince listeler/puanlar tazelenir.
   useEffect(() => {

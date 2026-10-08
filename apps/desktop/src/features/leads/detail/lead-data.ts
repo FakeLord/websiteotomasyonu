@@ -70,7 +70,8 @@ export function useWorkspaceSettings() {
 
 /** Sosyal kanallar `platform:handle` olarak normalize edilir; açılabilir URL'e çevirir. */
 export function channelHref(row: Pick<ContactChannelRow, "channel" | "value" | "normalized_value">): string | null {
-  const handle = row.normalized_value.includes(":") ? row.normalized_value.split(":").pop() : row.normalized_value;
+  // Eski kayıtlarda TikTok kullanıcı adı "@" ile saklanmış olabilir.
+  const handle = (row.normalized_value.includes(":") ? row.normalized_value.split(":").pop() : row.normalized_value)?.replace(/^@/, "");
   switch (row.channel) {
     case "EMAIL":
       return `mailto:${row.value}`;

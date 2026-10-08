@@ -1,6 +1,6 @@
 import { parse } from "node-html-parser";
 import { normalizePhone } from "../dedupe/normalize-phone";
-import { normalizeSocial, type SocialPlatform } from "../dedupe/normalize-social";
+import { normalizeSocialUrl, type SocialPlatform } from "../dedupe/normalize-social";
 import { getVisibleText } from "./visible-text";
 import type { ContactChannel, ExtractedContact } from "./types";
 
@@ -150,7 +150,7 @@ function extractFromJsonLd(html: string): ExtractedContact[] {
       const sameAs = Array.isArray(entity.sameAs) ? entity.sameAs : entity.sameAs ? [entity.sameAs] : [];
       for (const link of sameAs) {
         for (const platform of SOCIAL_PLATFORMS) {
-          const handle = normalizeSocial(link, platform);
+          const handle = typeof link === "string" ? normalizeSocialUrl(link, platform) : null;
           if (handle) {
             contacts.push({
               channel: platform,
@@ -233,7 +233,7 @@ export function extractContacts(html: string): ExtractedContact[] {
     if (isAgencySignature(anchor)) continue;
 
     for (const platform of SOCIAL_PLATFORMS) {
-      const handle = normalizeSocial(href, platform);
+      const handle = normalizeSocialUrl(href, platform);
       if (handle) {
         contacts.push({
           channel: platform as ContactChannel,

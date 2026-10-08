@@ -15,7 +15,7 @@ import {
   discoverMarket,
   discoverTextQuery,
 } from "../../lib/discover-markets";
-import { SUPPORTED_COUNTRY_CODES, getCountryProfile } from "@lbf/core";
+import { SUPPORTED_COUNTRY_CODES, getCountryProfile, hasWritableChannel } from "@lbf/core";
 import { processSearchQueue, type SearchJobParams } from "../../workers/search-queue-runner";
 import { kickBackgroundAnalysis } from "../../workers/background-analysis";
 import { useAnalysisStore } from "../../lib/analysis-store";
@@ -74,6 +74,7 @@ export function DiscoverPage() {
   const [radiusKm, setRadiusKm] = useState(0);
   const [onlyNoWebsite, setOnlyNoWebsite] = useState(false);
   const [onlyWeakWebsite, setOnlyWeakWebsite] = useState(false);
+  const [onlyWritable, setOnlyWritable] = useState(true);
   const [minRating, setMinRating] = useState(0);
   const [minReviews, setMinReviews] = useState(0);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
@@ -147,12 +148,14 @@ export function DiscoverPage() {
       (resultsQuery.data ?? []).filter((b) => {
         if (onlyNoWebsite && b.website_status !== "NO_WEBSITE") return false;
         if (onlyWeakWebsite && b.website_status !== "LOW_QUALITY_WEBSITE" && b.website_status !== "BROKEN_WEBSITE") return false;
+        if (onlyWritable && !hasWritableChannel(b.contact_channels)) return false;
         if (minRating > 0 && (b.rating ?? 0) < minRating) return false;
         if (minReviews > 0 && (b.review_count ?? 0) < minReviews) return false;
         return true;
       }),
-    [resultsQuery.data, onlyNoWebsite, onlyWeakWebsite, minRating, minReviews],
+    [resultsQuery.data, onlyNoWebsite, onlyWeakWebsite, onlyWritable, minRating, minReviews],
   );
+  const hiddenUnwritable = onlyWritable ? (resultsQuery.data ?? []).filter((b) => !hasWritableChannel(b.contact_channels)).length : 0;
   const mappable = results.filter((b): b is MapBusiness => b.lat !== null && b.lng !== null);
 
   const runQueue = useMutation({
@@ -312,6 +315,10 @@ export function DiscoverPage() {
                   <Switch checked={onlyWeakWebsite} onCheckedChange={setOnlyWeakWebsite} />
                 </label>
                 <label className="flex items-center justify-between gap-2 text-sm text-text">
+                  {tr.discover.onlyWritable}
+                  <Switch checked={onlyWritable} onCheckedChange={setOnlyWritable} />
+                </label>
+                <label className="flex items-center justify-between gap-2 text-sm text-text">
                   {tr.discover.minRating}
                   <Select value={minRating} onChange={(e) => setMinRating(Number(e.target.value))} className="h-8 w-20 text-xs">
                     {[0, 3.5, 4, 4.5].map((r) => (
@@ -433,6 +440,14 @@ export function DiscoverPage() {
 
         <Card className="flex h-[620px] min-h-0 flex-col lg:col-span-2 xl:col-span-1">
           <CardHeader title={tr.discover.foundBusinesses(results.length)} />
+          {hiddenUnwritable > 0 && (
+            <p className="px-4 pb-2 text-xs text-muted">
+              {tr.discover.hiddenUnwritable(hiddenUnwritable)}{" "}
+              <button type="button" className="text-primary hover:underline" onClick={() => setOnlyWritable(false)}>
+                {tr.discover.showAll}
+              </button>
+            </p>
+          )}
           {analysisProgress && (
             <p role="status" className="px-4 pb-2 text-xs text-muted-foreground">
               {tr.websiteAnalysis.autoAnalyzing(analysisProgress.done, analysisProgress.total)}

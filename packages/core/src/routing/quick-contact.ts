@@ -1,3 +1,5 @@
+import { phoneLineType } from "./reachability";
+
 export interface QuickContactChannel {
   channel: string;
   value: string;
@@ -6,7 +8,7 @@ export interface QuickContactChannel {
   status?: string | null;
 }
 
-export type QuickContactKind = "INSTAGRAM" | "FACEBOOK" | "LINKEDIN" | "TIKTOK" | "EMAIL" | "WHATSAPP";
+export type QuickContactKind = "INSTAGRAM" | "FACEBOOK" | "LINKEDIN" | "TIKTOK" | "EMAIL" | "WHATSAPP" | "PHONE";
 
 export interface QuickContactTarget {
   channel: QuickContactKind;
@@ -16,7 +18,7 @@ export interface QuickContactTarget {
 const SOCIAL_ORDER = ["INSTAGRAM", "FACEBOOK", "LINKEDIN", "TIKTOK"] as const;
 
 const handleOf = (row: QuickContactChannel) =>
-  (row.normalizedValue.includes(":") ? (row.normalizedValue.split(":").pop() ?? "") : row.normalizedValue).trim();
+  (row.normalizedValue.includes(":") ? (row.normalizedValue.split(":").pop() ?? "") : row.normalizedValue).trim().replace(/^@/, "");
 
 function socialUrl(channel: (typeof SOCIAL_ORDER)[number], row: QuickContactChannel): string | null {
   if (/^https?:\/\//i.test(row.value)) return row.value;
@@ -40,7 +42,9 @@ function whatsappUrl(phone: string | null | undefined): string | null {
 }
 
 /**
- * "Tek tıkla iletişim" hedefi: sosyal medya varsa o, yoksa e-posta, o da yoksa kayıtlı telefona WhatsApp.
+ * "Tek tıkla iletişim" hedefi: sosyal medya varsa o, yoksa e-posta, o da yoksa WhatsApp; WhatsApp yalnızca
+ * kayıtlı bir WhatsApp kanalı varsa veya telefon cep numarasıysa önerilir. Sabit hatta (veya türü bilinmeyen
+ * numarada) WhatsApp açılmaz, arama bağlantısı verilir.
  * Yalnızca bağlantıyı üretir; mesajı kullanıcı kendi yazar ve gönderir (CLAUDE.md #9: otomatik DM yok).
  * Geçersiz/sektirmiş kanallar atlanır. Hiçbir kanal yoksa `null`.
  */
@@ -60,9 +64,13 @@ export function quickContactTarget(
   const email = first("EMAIL")?.value.trim();
   if (email) return { channel: "EMAIL", url: `mailto:${email}` };
 
-  const url =
-    whatsappUrl(first("WHATSAPP")?.normalizedValue) ?? whatsappUrl(first("PHONE")?.normalizedValue) ?? whatsappUrl(primaryPhoneE164);
-  return url ? { channel: "WHATSAPP", url } : null;
+  const whatsapp = whatsappUrl(first("WHATSAPP")?.normalizedValue);
+  if (whatsapp) return { channel: "WHATSAPP", url: whatsapp };
+
+  const phone = (first("PHONE")?.normalizedValue ?? primaryPhoneE164 ?? "").replace(/[^\d+]/g, "");
+  if (phone.replace(/\D/g, "").length < 7) return null;
+  const mobile = phoneLineType(phone) === "MOBILE" ? whatsappUrl(phone) : null;
+  return mobile ? { channel: "WHATSAPP", url: mobile } : { channel: "PHONE", url: `tel:${phone}` };
 }
 
 /** Google Haritalar bağlantısı (resmi Maps URLs biçimi); `place_id` varsa işletmenin kendi sayfası açılır. */

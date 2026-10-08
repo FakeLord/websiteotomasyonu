@@ -24,7 +24,7 @@ describe("quickContactTarget", () => {
     });
   });
 
-  it("e-posta da yoksa kayıtlı telefona WhatsApp'tan yazar", () => {
+  it("e-posta da yoksa ve telefon cep numarasıysa WhatsApp'tan yazar", () => {
     expect(quickContactTarget([ch("PHONE", "+90 532 111 22 33")], null)).toEqual({
       channel: "WHATSAPP",
       url: "https://wa.me/905321112233",
@@ -32,7 +32,15 @@ describe("quickContactTarget", () => {
   });
 
   it("kanal kaydı yoksa işletmenin ana telefonunu kullanır", () => {
-    expect(quickContactTarget([], "+15125550100")).toEqual({ channel: "WHATSAPP", url: "https://wa.me/15125550100" });
+    expect(quickContactTarget([], "+905321112233")).toEqual({ channel: "WHATSAPP", url: "https://wa.me/905321112233" });
+  });
+
+  it("sabit hatta WhatsApp açmaz; arama bağlantısı verir", () => {
+    expect(quickContactTarget([ch("PHONE", "+493601856553")], "+493601856553")).toEqual({ channel: "PHONE", url: "tel:+493601856553" });
+  });
+
+  it("türü bilinmeyen numarada (ABD) WhatsApp önermez", () => {
+    expect(quickContactTarget([], "+15125550132")).toEqual({ channel: "PHONE", url: "tel:+15125550132" });
   });
 
   it("kayıtlı WhatsApp numarası telefondan önce gelir", () => {

@@ -1,6 +1,6 @@
 export { normalizeDomain } from "./normalize-domain";
 export { normalizePhone, formatPhoneInternational, type NormalizedPhone } from "./dedupe/normalize-phone";
-export { normalizeSocial, type SocialPlatform } from "./dedupe/normalize-social";
+export { normalizeSocial, normalizeSocialUrl, type SocialPlatform } from "./dedupe/normalize-social";
 export { trigramSimilarity } from "./dedupe/string-similarity";
 export {
   classifyMatch,
@@ -141,6 +141,16 @@ export type {
   ScoreResult,
 } from "./scoring/types";
 export { chooseChannel } from "./routing/choose-channel";
+export {
+  SOCIAL_WRITABLE_CHANNELS,
+  WRITABLE_CHANNELS,
+  hasWritableChannel,
+  phoneLineType,
+  whatsappCandidates,
+  type PhoneLineType,
+  type ReachabilityChannel,
+  type WhatsappCandidateInput,
+} from "./routing/reachability";
 export {
   googleMapsUrl,
   quickContactTarget,

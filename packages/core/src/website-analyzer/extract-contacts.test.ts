@@ -125,7 +125,7 @@ describe("extractContacts", () => {
 
   it("extracts a LinkedIn company link", () => {
     const html = `<a href="https://www.linkedin.com/company/abc-dental">LinkedIn</a>`;
-    expect(findAll(extractContacts(html), "LINKEDIN")).toHaveLength(0);
+    expect(findAll(extractContacts(html), "LINKEDIN")[0]?.normalizedValue).toBe("linkedin:abc-dental");
   });
 
   it("does not extract an email from inline <script> JS code", () => {
@@ -137,7 +137,7 @@ describe("extractContacts", () => {
 
   it("extracts a TikTok profile link", () => {
     const html = `<a href="https://www.tiktok.com/@abcdental">TikTok</a>`;
-    expect(findAll(extractContacts(html), "TIKTOK")[0]?.normalizedValue).toBe("tiktok:@abcdental");
+    expect(findAll(extractContacts(html), "TIKTOK")[0]?.normalizedValue).toBe("tiktok:abcdental");
   });
 });
 
@@ -173,5 +173,47 @@ describe("extractContacts — performans ve gizlenmiş e-posta doğruluğu", () 
     expect(emails(`<p>info [at] abcdis.com</p>`)).toContain("info@abcdis.com");
     expect(emails(`<p>Mail: info at abcdis dot com.tr</p>`)).toContain("info@abcdis.com.tr");
     expect(emails(`<p>destek (at) klinik (dot) com (dot) tr</p>`)).toContain("destek@klinik.com.tr");
+  });
+});
+
+describe("extractContacts — sosyal medya yalnızca gerçek platform bağlantılarından çıkar", () => {
+  const socials = (html: string) =>
+    extractContacts(html).filter((c) => ["INSTAGRAM", "FACEBOOK", "LINKEDIN", "TIKTOK"].includes(c.channel));
+
+  it("sayfa içi çapa, mailto ve göreli bağlantıları sosyal hesap saymaz", () => {
+    const html = `
+      <a href="#tgl_5351">Aç</a>
+      <a href="#collapse2210">Detay</a>
+      <a href="mailto:">Yaz</a>
+      <a href="kuretaj-tedavisi">Küretaj</a>
+      <a href="emdr-terapisi">EMDR</a>
+      <a href="javascript:void(0)">Menü</a>`;
+
+    expect(socials(html)).toEqual([]);
+  });
+
+  it("gerçek Instagram bağlantısını yalnızca Instagram olarak kaydeder", () => {
+    const found = socials(`<a href="https://www.instagram.com/ecesubeautystudio/">Instagram</a>`);
+
+    expect(found.map((c) => [c.channel, c.normalizedValue])).toEqual([["INSTAGRAM", "instagram:ecesubeautystudio"]]);
+  });
+
+  it("LinkedIn şirket sayfasını ve TikTok hesabını tanır", () => {
+    const found = socials(`
+      <a href="https://www.linkedin.com/company/acme-dental/">LinkedIn</a>
+      <a href="https://www.tiktok.com/@acmedental">TikTok</a>`);
+
+    expect(found.map((c) => c.normalizedValue).sort()).toEqual(["linkedin:acme-dental", "tiktok:acmedental"]);
+  });
+
+  it("paylaş düğmelerini ve platformun kendi sayfalarını hesap saymaz", () => {
+    const html = `
+      <a href="https://www.facebook.com/sharer.php?u=https://a.com">Paylaş</a>
+      <a href="https://www.facebook.com/profile.php?id=1">Profil</a>
+      <a href="https://www.instagram.com/accounts/login/">Giriş</a>
+      <a href="https://www.linkedin.com/shareArticle?url=https://a.com">Paylaş</a>
+      <a href="https://www.tiktok.com/share?url=https://a.com">Paylaş</a>`;
+
+    expect(socials(html)).toEqual([]);
   });
 });

@@ -3,6 +3,7 @@ import { createAnalysisClient, type AnalysisWorkerLike } from "../lib/analysis-c
 import { platform } from "../lib/platform";
 import { supabase } from "../lib/supabase-client";
 import { platformWebsiteFetcher } from "../lib/website-fetcher";
+import { addWhatsappChannelFor } from "../lib/whatsapp-channels";
 import { recomputeScore } from "./score-runner";
 
 export interface AnalyzeTarget {
@@ -40,6 +41,13 @@ export async function analyzeBusiness(workspaceId: string, target: AnalyzeTarget
     p_result: result,
   });
   if (error) throw new Error(error.message);
+
+  // Telefonu cep numarasıysa WhatsApp kanalı eklenir; "yazılabilir" süzgeçleri buna bakar. Eklenemezse analiz bozulmaz.
+  try {
+    await addWhatsappChannelFor(workspaceId, target.id);
+  } catch {
+    // Bir sonraki analizde yeniden denenir.
+  }
 
   await recomputeScore(workspaceId, target.id);
 

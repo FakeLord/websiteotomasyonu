@@ -16,7 +16,7 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { OPPORTUNITY_STAGES, OPPORTUNITY_WEBSITE_STATUSES, getCountryProfile } from "@lbf/core";
+import { OPPORTUNITY_STAGES, OPPORTUNITY_WEBSITE_STATUSES, SOCIAL_WRITABLE_CHANNELS, WRITABLE_CHANNELS, getCountryProfile } from "@lbf/core";
 import { useMarket } from "../../lib/use-market";
 import { supabase } from "../../lib/supabase-client";
 import { useWorkspaceMembership } from "../../lib/use-workspace-membership";
@@ -76,8 +76,16 @@ function saveColumns(columns: ColumnKey[]) {
 }
 
 const OPPORTUNITY_TAB = "opportunities";
-const OPPORTUNITY_CHANNELS = { email: ["EMAIL"], phone: ["PHONE", "WHATSAPP"] } as const;
+// `writable`: mesaj yazılabilen herhangi bir kanal (varsayılan). `all`: süzgeç yok (yalnızca telefonu olanlar dahil).
+const OPPORTUNITY_CHANNELS = {
+  writable: WRITABLE_CHANNELS,
+  email: ["EMAIL"],
+  whatsapp: ["WHATSAPP"],
+  social: SOCIAL_WRITABLE_CHANNELS,
+} as const;
 type OpportunityChannel = keyof typeof OPPORTUNITY_CHANNELS;
+const OPPORTUNITY_FILTERS = ["writable", "email", "whatsapp", "social", "all"] as const;
+type OpportunityFilter = (typeof OPPORTUNITY_FILTERS)[number];
 
 interface OpportunityFilterable<Q> {
   in(column: string, values: readonly string[]): Q;
@@ -122,7 +130,8 @@ export function LeadsPage() {
   const tab = params.get("tab") ?? "all";
   const isOpportunityTab = tab === OPPORTUNITY_TAB;
   const channelParam = params.get("ch");
-  const opportunityChannel: OpportunityChannel | null = channelParam === "email" || channelParam === "phone" ? channelParam : null;
+  const opportunityFilter: OpportunityFilter = OPPORTUNITY_FILTERS.find((f) => f === channelParam) ?? "writable";
+  const opportunityChannel: OpportunityChannel | null = opportunityFilter === "all" ? null : opportunityFilter;
   const page = Math.max(1, Number(params.get("page") ?? "1"));
   const pageSize = [20, 50, 100].includes(Number(params.get("size"))) ? Number(params.get("size")) : 20;
   const filters = Object.fromEntries(FILTER_PARAMS.map((key) => [key, params.get(key) ?? ""])) as Record<
@@ -195,15 +204,16 @@ export function LeadsPage() {
   const opportunityCount = useQuery({
     queryKey: ["businesses", workspaceId, "opportunity-count", market.country, market.city],
     enabled: !!workspaceId,
+    // Sekmedeki sayı varsayılan görünümle aynıdır: yazılabilir kanalı olan fırsatlar.
     queryFn: async (): Promise<number> => {
       let q = supabase
         .from("businesses")
-        .select("id", { count: "exact", head: true })
+        .select("id, reachable:contact_channels!inner(channel)", { count: "exact", head: true })
         .eq("workspace_id", workspaceId as string)
         .is("merged_into", null);
       if (market.country) q = q.eq("country_code", market.country);
       if (market.country && market.city) q = q.eq("city", market.city);
-      const { count, error } = await applyOpportunity(q, null);
+      const { count, error } = await applyOpportunity(q, "writable");
       if (error) throw error;
       return count ?? 0;
     },
@@ -372,21 +382,17 @@ export function LeadsPage() {
 
         {isOpportunityTab && (
           <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2">
-            {([null, "email", "phone"] as const).map((channel) => (
+            {OPPORTUNITY_FILTERS.map((filter) => (
               <button
-                key={channel ?? "all"}
+                key={filter}
                 type="button"
-                onClick={() => updateParams({ ch: channel })}
+                onClick={() => updateParams({ ch: filter === "writable" ? null : filter })}
                 className={
                   "rounded-full px-3 py-1 text-xs font-medium transition-colors " +
-                  (opportunityChannel === channel ? "bg-primary text-white" : "bg-surface-2 text-muted hover:text-text")
+                  (opportunityFilter === filter ? "bg-primary text-white" : "bg-surface-2 text-muted hover:text-text")
                 }
               >
-                {channel === null
-                  ? tr.leads.opportunities.channelAll
-                  : channel === "email"
-                    ? tr.leads.opportunities.channelEmail
-                    : tr.leads.opportunities.channelPhone}
+                {tr.leads.opportunities.filters[filter]}
               </button>
             ))}
             <p className="text-xs text-muted">{tr.leads.opportunities.hint}</p>
