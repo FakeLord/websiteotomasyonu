@@ -34,11 +34,11 @@ function jsonSchema(withSubject: boolean) {
   };
 }
 
-/** Kısa mesaj daha iyi okunur ve daha hızlı üretilir: e-posta ~90, DM kanalları ~50 kelime. */
+/** Detaylı ama okunur: e-posta ~160, DM kanalları ~90 kelime (çok uzun mesaj hem okunmaz hem geç üretilir). */
 function lengthInstruction(channel: OutreachChannel): string {
   return channel === "EMAIL"
-    ? "Mesaj gövdesi en fazla 90 kelime olsun."
-    : "Mesaj en fazla 50 kelime olsun; kısa bir DM gibi yaz.";
+    ? "Mesaj gövdesi en fazla 160 kelime (en çok 1100 karakter) olsun; kısa paragraflara böl."
+    : "Mesaj en fazla 80 kelime (en çok 550 karakter) olsun; DM gibi akıcı ve kısa cümlelerle yaz.";
 }
 
 const GUARDRAIL_INSTRUCTIONS =
@@ -49,9 +49,13 @@ const GUARDRAIL_INSTRUCTIONS =
 
 const COMPOSITION_INSTRUCTIONS =
   "Şirketin kim olduğunu ve teklifini yalnızca ŞİRKET BİLGİSİ bölümünden al; orada olmayan hizmet, " +
-  "fiyat, süre, referans veya teklif uydurma. Teklifi bu işletmeye özel kur: sektörüne, sitesinin " +
-  "durumuna ve Google puanına bağlan; her işletmeye aynı kalıp cümleyi yazma. Yapı: işletmeye özgü kısa " +
-  "bir açılış, şirketin tek cümlelik tanıtımı, işletmeye uyarlanmış teklif ve tek net bir çağrı. Kısa tut.";
+  "fiyat, süre, referans veya teklif uydurma. Teklifi bu işletmeye özel kur; her işletmeye aynı kalıp " +
+  "cümleyi yazma. İşletme verisinden (sektörü, sitesinin durumu ve sorunları, Google puanı ve yorum sayısı, " +
+  "konumu) en az iki somut gözlem kullan ve bunlara bağla. Şirket bilgisindeki hizmetlerden bu işletmeye " +
+  "en uygun olanı seç; bunun işletmeye somut faydasını (ör. daha çok randevu, daha hızlı yanıt, daha " +
+  "güvenilir ve modern görünüm) bağlamdaki verilerle ilişkilendirerek anlat, sayı veya sonuç vaat etme. " +
+  "Yapı: işletmeye özgü gözlemlerle açılış, şirketin tek cümlelik tanıtımı, işletmeye uyarlanmış somut " +
+  "fayda ve teklif, tek net bir çağrı.";
 
 /**
  * J.2 `draft_first_message` operasyonu için context+prompt derleyicisi.
@@ -107,11 +111,11 @@ export function buildDraftFirstMessagePrompt(input: DraftFirstMessageInput): AIP
 
   return {
     operation: "draft_first_message",
-    promptVersion: 3,
+    promptVersion: 4,
     system,
     messages: [{ role: "user", content: context }],
     jsonSchema: jsonSchema(withSubject),
-    maxTokens: 400,
+    maxTokens: 500,
     temperature: 0.6,
   };
 }

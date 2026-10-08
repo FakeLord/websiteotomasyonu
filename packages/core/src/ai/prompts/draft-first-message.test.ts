@@ -43,15 +43,22 @@ describe("buildDraftFirstMessagePrompt — dil ve şirket kimliği", () => {
     expect(req.system).toMatch(/Türkçe/);
   });
 
-  it("e-posta için ~90, DM kanalları için ~50 kelime sınırı koyar", () => {
-    expect(buildDraftFirstMessagePrompt({ ...base, channel: "EMAIL" }).system).toMatch(/90 kelime/);
+  it("e-posta için 160 kelime/1100 karakter, DM kanalları için 80 kelime/550 karakter sınırı koyar (kanal karakter sınırlarının altında)", () => {
+    expect(buildDraftFirstMessagePrompt({ ...base, channel: "EMAIL" }).system).toMatch(/160 kelime \(en çok 1100 karakter\)/);
     for (const channel of ["INSTAGRAM", "WHATSAPP", "FACEBOOK"] as const) {
-      expect(buildDraftFirstMessagePrompt({ ...base, channel }).system, channel).toMatch(/50 kelime/);
+      expect(buildDraftFirstMessagePrompt({ ...base, channel }).system, channel).toMatch(/80 kelime \(en çok 550 karakter\)/);
     }
   });
 
-  it("çıktı token sınırı kısadır (çeviri artık aynı çağrıda değil)", () => {
-    expect(buildDraftFirstMessagePrompt(base).maxTokens).toBeLessThanOrEqual(500);
+  it("işletme verisinden somut gözlemler ve şirketin hizmetlerinden somut fayda ister, uydurmayı yasaklar", () => {
+    const system = buildDraftFirstMessagePrompt(base).system;
+    expect(system).toMatch(/en az iki somut gözlem/);
+    expect(system).toMatch(/somut fayda|somut olarak/);
+    expect(system).toMatch(/uydurma/);
+  });
+
+  it("çıktı token sınırı makuldür (çeviri artık aynı çağrıda değil)", () => {
+    expect(buildDraftFirstMessagePrompt(base).maxTokens).toBeLessThanOrEqual(600);
   });
 
   it("şirket bilgisini bağlama koyar ve tek kaynak olduğunu söyler", () => {
@@ -81,7 +88,7 @@ describe("buildDraftFirstMessagePrompt — dil ve şirket kimliği", () => {
     expect(req.system.toLowerCase()).not.toContain("sosyal medya");
   });
 
-  it("önbelleğin eski taslakları vermemesi için prompt sürümü 3'tür", () => {
-    expect(buildDraftFirstMessagePrompt(base).promptVersion).toBe(3);
+  it("önbelleğin eski taslakları vermemesi için prompt sürümü 4'tür", () => {
+    expect(buildDraftFirstMessagePrompt(base).promptVersion).toBe(4);
   });
 });
