@@ -63,17 +63,19 @@ function foldName(value: string): string {
 
 const MIN_STEM_LENGTH = 4;
 const MAX_SUFFIX_LENGTH = 2;
+/** Kayıtlı ada yapışmış ek ("CenterInc", "DentalLLC") modelin attığı kısımdır; en çok 3 harf. */
+const MAX_DROPPED_LENGTH = 3;
 
 /**
- * Model işletmenin adını küçük çekim farklarıyla yazabilir ("DTLA Smile" → "DTLA Smiles"). Kelime, alıcının
- * kendi kelimelerinden biriyle aynıysa veya ona en çok 2 harflik ek almış haliyse aynı ad sayılır. Kısa
- * kelimelerde (4 harften az) yalnızca tam eşleşme geçerlidir; yoksa alakasız adlar da kaçardı.
+ * Model işletmenin adını küçük farklarla yazabilir: ek alarak ("DTLA Smile" → "DTLA Smiles") veya kayıtlı ada
+ * yapışmış eki atarak ("Lopez Dental CenterInc" → "Lopez Dental Center"). Kök en az 4 harf olmalıdır; kısa
+ * kelimelerde yalnızca tam eşleşme geçerlidir, yoksa alakasız adlar da kaçardı.
  */
 function isOwnWord(word: string, ownWords: Set<string>): boolean {
   if (ownWords.has(word)) return true;
   for (const own of ownWords) {
-    if (own.length < MIN_STEM_LENGTH) continue;
-    if (word.startsWith(own) && word.length - own.length <= MAX_SUFFIX_LENGTH) return true;
+    if (own.length >= MIN_STEM_LENGTH && word.startsWith(own) && word.length - own.length <= MAX_SUFFIX_LENGTH) return true;
+    if (word.length >= MIN_STEM_LENGTH && own.startsWith(word) && own.length - word.length <= MAX_DROPPED_LENGTH) return true;
   }
   return false;
 }

@@ -151,6 +151,15 @@ describe("validateDraft", () => {
     }
   });
 
+  it("recognizes the own name when the stored name has a glued suffix the model drops (CenterInc → Center)", () => {
+    const result = validateDraft({
+      ...baseInput,
+      body: "Merhaba Lopez Dental Center ekibi, web siteniz için bir fikrimiz var.",
+      recipientBusinessName: "Lopez Dental CenterInc",
+    });
+    expect(result.reasons).toEqual([]);
+  });
+
   it("does not let the prefix tolerance excuse a different brand that merely starts like the own name", () => {
     const result = validateDraft({
       ...baseInput,

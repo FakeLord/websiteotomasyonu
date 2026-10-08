@@ -57,6 +57,12 @@ describe("buildDraftFirstMessagePrompt — dil ve şirket kimliği", () => {
     expect(system).toMatch(/uydurma/);
   });
 
+  it("yüzde ve istatistik yazmayı açıkça yasaklar (% işareti güvenlik kontrolünde yasaklı ifadedir)", () => {
+    const system = buildDraftFirstMessagePrompt(base).system;
+    expect(system).toMatch(/yüzde/i);
+    expect(system).toMatch(/istatistik/i);
+  });
+
   it("çıktı token sınırı makuldür (çeviri artık aynı çağrıda değil)", () => {
     expect(buildDraftFirstMessagePrompt(base).maxTokens).toBeLessThanOrEqual(600);
   });
@@ -88,7 +94,7 @@ describe("buildDraftFirstMessagePrompt — dil ve şirket kimliği", () => {
     expect(req.system.toLowerCase()).not.toContain("sosyal medya");
   });
 
-  it("önbelleğin eski taslakları vermemesi için prompt sürümü 4'tür", () => {
-    expect(buildDraftFirstMessagePrompt(base).promptVersion).toBe(4);
+  it("önbelleğin eski taslakları vermemesi için prompt sürümü 5'tir", () => {
+    expect(buildDraftFirstMessagePrompt(base).promptVersion).toBe(5);
   });
 });

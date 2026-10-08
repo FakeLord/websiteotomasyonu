@@ -54,6 +54,7 @@ const COMPOSITION_INSTRUCTIONS =
   "konumu) en az iki somut gözlem kullan ve bunlara bağla. Şirket bilgisindeki hizmetlerden bu işletmeye " +
   "en uygun olanı seç; bunun işletmeye somut faydasını (ör. daha çok randevu, daha hızlı yanıt, daha " +
   "güvenilir ve modern görünüm) bağlamdaki verilerle ilişkilendirerek anlat, sayı veya sonuç vaat etme. " +
+  "Yüzde, oran veya istatistik yazma; % işareti kullanma. " +
   "Yapı: işletmeye özgü gözlemlerle açılış, şirketin tek cümlelik tanıtımı, işletmeye uyarlanmış somut " +
   "fayda ve teklif, tek net bir çağrı.";
 
@@ -111,7 +112,7 @@ export function buildDraftFirstMessagePrompt(input: DraftFirstMessageInput): AIP
 
   return {
     operation: "draft_first_message",
-    promptVersion: 4,
+    promptVersion: 5,
     system,
     messages: [{ role: "user", content: context }],
     jsonSchema: jsonSchema(withSubject),
