@@ -29,6 +29,18 @@ export {
   type RunSearchJobOptions,
   type RunSearchJobResult,
 } from "./discovery/run-search-job";
+export {
+  MAX_TILE_DEPTH,
+  TILE_RESULT_CAP,
+  boundsFromViewport,
+  isValidBounds,
+  shouldSplitTile,
+  splitTile,
+  toPlacesRectangle,
+  type PlacesViewport,
+  type TileBounds,
+  type TilePoint,
+} from "./discovery/tiling";
 export { normalizeWebsiteInput } from "./website-analyzer/normalize-url";
 export { detectParkedOrEmpty } from "./website-analyzer/parked-page";
 export { extractContacts } from "./website-analyzer/extract-contacts";
