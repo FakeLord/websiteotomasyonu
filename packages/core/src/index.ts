@@ -86,6 +86,7 @@ export {
 } from "./email/resolve-inbound";
 export { validateDraft, type ValidateDraftInput, type ValidateDraftResult } from "./ai/validate-draft";
 export { stripSignOff } from "./ai/strip-sign-off";
+export { retryRejected, type CheckedDraft } from "./ai/retry-rejected";
 export { detectDraftLanguage, type DetectedLanguage } from "./ai/detect-language";
 export {
   normalizeAiConfig,
@@ -152,11 +153,11 @@ export {
   type WhatsappCandidateInput,
 } from "./routing/reachability";
 export {
+  contactOptions,
   googleMapsUrl,
-  quickContactTarget,
+  type ContactOption,
+  type ContactOptionKind,
   type QuickContactChannel,
-  type QuickContactKind,
-  type QuickContactTarget,
 } from "./routing/quick-contact";
 export type {
   Channel,

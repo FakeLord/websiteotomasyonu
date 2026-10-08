@@ -113,7 +113,7 @@ describe("buildDraftFirstMessagePrompt — uzunluk, biçim, sürüm", () => {
     }
   });
 
-  it("önbelleğin eski taslakları vermemesi için prompt sürümü 6'dır", () => {
-    expect(buildDraftFirstMessagePrompt(base).promptVersion).toBe(6);
+  it("önbelleğin eski taslakları vermemesi için prompt sürümü 7'dir", () => {
+    expect(buildDraftFirstMessagePrompt(base).promptVersion).toBe(7);
   });
 });

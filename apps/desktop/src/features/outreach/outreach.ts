@@ -4,6 +4,7 @@ import {
   buildTranslateDraftPrompt,
   computeFollowUpDueDate,
   detectDraftLanguage,
+  retryRejected,
   stripSignOff,
   validateDraft,
   type OutreachChannel,
@@ -396,7 +397,11 @@ export async function generateFirstMessageDraft(
     salesRulesSummary: context.salesRulesSummary,
   });
 
-  const result = await callAiGateway(workspaceId, request, { entityType: "business", entityId: business.id }, options);
+  // Kontrolden geçemeyen taslak kullanıcıya gösterilmeden yeniden üretilir (en çok 3 deneme).
+  return retryRejected((attempt) => draftOnce(attempt > 0 || options?.fresh === true));
+
+  async function draftOnce(fresh: boolean): Promise<FirstMessageDraft> {
+  const result = await callAiGateway(workspaceId, request, { entityType: "business", entityId: business.id }, { fresh });
   const parsed = draftFirstMessageOutputSchema.safeParse(result.json);
   if (!parsed.success) {
     return { ok: false, body: "", reasons: ["INVALID_SHAPE"], channel };
@@ -428,6 +433,7 @@ export async function generateFirstMessageDraft(
     reasons: validation.reasons,
     channel,
   };
+  }
 }
 
 export interface DraftTranslation {

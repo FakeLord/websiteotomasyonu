@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { googleMapsUrl, quickContactTarget, type QuickContactChannel } from "./quick-contact";
+import { contactOptions, googleMapsUrl, type QuickContactChannel } from "./quick-contact";
 
 const ch = (channel: string, normalizedValue: string, extra: Partial<QuickContactChannel> = {}): QuickContactChannel => ({
   channel,
@@ -9,61 +9,62 @@ const ch = (channel: string, normalizedValue: string, extra: Partial<QuickContac
   ...extra,
 });
 
-describe("quickContactTarget", () => {
-  it("sosyal medya varsa önce onu açar (Instagram, sonra Facebook)", () => {
-    const channels = [ch("EMAIL", "info@a.com"), ch("FACEBOOK", "facebook:sayfa"), ch("INSTAGRAM", "instagram:isletme")];
+const kinds = (channels: QuickContactChannel[], phone: string | null = null) => contactOptions(channels, phone).map((o) => o.channel);
 
-    expect(quickContactTarget(channels, "+905321112233")).toEqual({ channel: "INSTAGRAM", url: "https://instagram.com/isletme" });
-    expect(quickContactTarget(channels.slice(0, 2), null)).toEqual({ channel: "FACEBOOK", url: "https://facebook.com/sayfa" });
+describe("contactOptions", () => {
+  it("bütün kanalları listeler: önce e-posta ve WhatsApp, sonra sosyal medya, en sonda arama", () => {
+    const options = contactOptions(
+      [ch("INSTAGRAM", "instagram:isletme"), ch("PHONE", "+905321112233"), ch("FACEBOOK", "facebook:sayfa"), ch("EMAIL", "info@a.com")],
+      "+905321112233",
+    );
+
+    expect(options).toEqual([
+      { channel: "EMAIL", display: "info@a.com", url: "mailto:info@a.com" },
+      { channel: "WHATSAPP", display: "+905321112233", url: "https://wa.me/905321112233" },
+      { channel: "INSTAGRAM", display: "@isletme", url: "https://instagram.com/isletme" },
+      { channel: "FACEBOOK", display: "@sayfa", url: "https://facebook.com/sayfa" },
+      { channel: "PHONE", display: "+905321112233", url: "tel:+905321112233" },
+    ]);
   });
 
-  it("sosyal medya yoksa e-posta açar", () => {
-    expect(quickContactTarget([ch("PHONE", "+905321112233"), ch("EMAIL", "info@a.com")], "+905321112233")).toEqual({
-      channel: "EMAIL",
-      url: "mailto:info@a.com",
-    });
-  });
-
-  it("e-posta da yoksa ve telefon cep numarasıysa WhatsApp'tan yazar", () => {
-    expect(quickContactTarget([ch("PHONE", "+90 532 111 22 33")], null)).toEqual({
-      channel: "WHATSAPP",
-      url: "https://wa.me/905321112233",
-    });
-  });
-
-  it("kanal kaydı yoksa işletmenin ana telefonunu kullanır", () => {
-    expect(quickContactTarget([], "+905321112233")).toEqual({ channel: "WHATSAPP", url: "https://wa.me/905321112233" });
-  });
-
-  it("sabit hatta WhatsApp açmaz; arama bağlantısı verir", () => {
-    expect(quickContactTarget([ch("PHONE", "+493601856553")], "+493601856553")).toEqual({ channel: "PHONE", url: "tel:+493601856553" });
+  it("sabit hatta WhatsApp seçeneği çıkmaz, yalnızca arama çıkar", () => {
+    expect(kinds([ch("PHONE", "+493601856553")], "+493601856553")).toEqual(["PHONE"]);
   });
 
   it("türü bilinmeyen numarada (ABD) WhatsApp önermez", () => {
-    expect(quickContactTarget([], "+15125550132")).toEqual({ channel: "PHONE", url: "tel:+15125550132" });
+    expect(kinds([], "+15125550132")).toEqual(["PHONE"]);
   });
 
-  it("kayıtlı WhatsApp numarası telefondan önce gelir", () => {
-    expect(quickContactTarget([ch("PHONE", "+905321112233"), ch("WHATSAPP", "+905559998877")], null)?.url).toBe(
-      "https://wa.me/905559998877",
-    );
+  it("kayıtlı WhatsApp kanalı ile aynı cep numarası tek seçenek olur", () => {
+    const options = contactOptions([ch("WHATSAPP", "+905321112233"), ch("PHONE", "+905321112233")], "+905321112233");
+
+    expect(options.map((o) => o.url)).toEqual(["https://wa.me/905321112233", "tel:+905321112233"]);
   });
 
-  it("geçersiz veya sektirmiş kanalı atlar", () => {
+  it("aynı kanaldan birden çok adres varsa hepsini verir", () => {
+    const options = contactOptions([ch("EMAIL", "info@a.com"), ch("EMAIL", "randevu@a.com")], null);
+
+    expect(options.map((o) => o.display)).toEqual(["info@a.com", "randevu@a.com"]);
+  });
+
+  it("geçersiz veya geri dönmüş kanalı atlar", () => {
     const channels = [ch("INSTAGRAM", "instagram:eski", { status: "INVALID" }), ch("EMAIL", "x@a.com", { status: "BOUNCED" })];
 
-    expect(quickContactTarget(channels, "+905321112233")?.channel).toBe("WHATSAPP");
+    expect(kinds(channels, "+905321112233")).toEqual(["WHATSAPP", "PHONE"]);
   });
 
-  it("LinkedIn tam adres olarak kayıtlıysa onu kullanır", () => {
-    expect(quickContactTarget([ch("LINKEDIN", "linkedin:acme", { value: "https://www.linkedin.com/in/acme" })], null)?.url).toBe(
-      "https://www.linkedin.com/in/acme",
+  it("LinkedIn tam adres olarak kayıtlıysa onu kullanır; TikTok adındaki @ tekrarlanmaz", () => {
+    const options = contactOptions(
+      [ch("LINKEDIN", "linkedin:acme", { value: "https://www.linkedin.com/in/acme" }), ch("TIKTOK", "tiktok:@acme")],
+      null,
     );
+
+    expect(options.map((o) => o.url)).toEqual(["https://www.linkedin.com/in/acme", "https://tiktok.com/@acme"]);
   });
 
-  it("hiçbir kanal yoksa null döner", () => {
-    expect(quickContactTarget([], null)).toBeNull();
-    expect(quickContactTarget([ch("WEBSITE_FORM", "https://a.com/iletisim")], "  ")).toBeNull();
+  it("hiçbir kanal yoksa boş liste döner", () => {
+    expect(contactOptions([], null)).toEqual([]);
+    expect(contactOptions([ch("WEBSITE_FORM", "https://a.com/iletisim")], "  ")).toEqual([]);
   });
 });
 

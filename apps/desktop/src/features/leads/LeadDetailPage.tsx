@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Ban, CheckCircle2, GitMerge, MapPin, MapPinned, MessageSquarePlus, Send, Sparkles, Star, Tag } from "lucide-react";
+import { ArrowLeft, Ban, CheckCircle2, ChevronDown, GitMerge, MapPin, MapPinned, MessageSquarePlus, Send, Sparkles, Star, Tag } from "lucide-react";
 import {
   allowedNextStages,
   chooseChannel,
+  contactOptions,
   googleMapsUrl,
-  quickContactTarget,
   type BusinessStage,
   type Channel,
   type OutreachChannel,
@@ -25,7 +25,18 @@ import { Select } from "../../components/ui/input";
 import { Card, CardBody, CardHeader } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { Avatar } from "../../components/ui/data-display";
-import { PillTabsList, PillTabsTrigger, Tabs, TabsContent } from "../../components/ui/primitives";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  PillTabsList,
+  PillTabsTrigger,
+  Tabs,
+  TabsContent,
+} from "../../components/ui/primitives";
 import { ScoreBadge, StageBadge, WebsiteStatusBadge } from "../../components/domain/badges";
 import { ChannelIcon } from "../../components/domain/channel-icon";
 import { CustomerDealDialog } from "../customers/CustomerDealDialog";
@@ -255,7 +266,7 @@ export function LeadDetailPage() {
     city: business.city,
     googlePlaceId: business.google_place_id,
   });
-  const quickContact = quickContactTarget(
+  const contacts = contactOptions(
     channels.map((c) => ({ channel: c.channel, value: c.value, normalizedValue: c.normalized_value, status: c.status })),
     business.primary_phone_e164,
   );
@@ -314,15 +325,32 @@ export function LeadDetailPage() {
               <p className="mt-1 text-xs text-muted">{tr.leadDetail.leadScore}</p>
             </div>
             <div className="flex flex-col gap-2">
-              <Button
-                disabled={!quickContact || business.do_not_contact}
-                title={tr.leadDetail.quickContactHint}
-                aria-label={quickContact ? tr.leadDetail.quickContact[quickContact.channel] : tr.leadDetail.quickContactNone}
-                onClick={() => quickContact && openLink(quickContact.url)}
-              >
-                <Send />
-                {quickContact ? tr.leadDetail.quickContact[quickContact.channel] : tr.leadDetail.quickContactNone}
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button disabled={business.do_not_contact}>
+                    <Send />
+                    {tr.leadDetail.contactMenu}
+                    <ChevronDown />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-80">
+                  <DropdownMenuLabel>{contacts.length > 0 ? tr.leadDetail.contactMenuTitle : tr.leadDetail.contactMenuNone}</DropdownMenuLabel>
+                  {contacts.map((option) => (
+                    <DropdownMenuItem key={option.url} onSelect={() => openLink(option.url)}>
+                      <ChannelIcon channel={option.channel} />
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm text-text">{tr.leadDetail.contactKinds[option.channel]}</span>
+                        <span className="block truncate text-xs text-muted">{option.display}</span>
+                      </span>
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={() => openLink(mapsUrl)}>
+                    <MapPinned />
+                    {tr.leadDetail.contactMenuMaps}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Button variant="outline" onClick={() => openLink(mapsUrl)}>
                 <MapPinned />
                 {tr.leadDetail.openMaps}

@@ -78,7 +78,8 @@ const TEXT: Record<OutreachLanguage, PromptText> = {
     guardrail:
       "Yalnızca BAĞLAM bölümündeki bilgileri kullan. Bilmediğin bir şey sorulursa bunu ekip arkadaşımın " +
       "netleştireceğini söyle. Fiyat, indirim, tarih, referans uydurma. Karşı taraf istemiyorsa ısrar etme. " +
-      "Mesajın sonuna isim, unvan veya rol imzası ekleme; yalnızca \"Saygılarımla\" gibi kısa bir kapanış yaz.",
+      "Mesajın sonuna isim, unvan veya rol imzası ekleme; yalnızca \"Saygılarımla\" gibi kısa bir kapanış yaz. " +
+      "İşletmenin adını yazacaksan İşletme satırındaki yazımı harfi harfine kullan; adı değiştirme, kişi adı türetme.",
     channel: (channel) => `Kanal: ${channel}. Yalnızca istenen JSON şemasında cevap ver.`,
     labels: {
       business: "İşletme",
@@ -114,7 +115,8 @@ const TEXT: Record<OutreachLanguage, PromptText> = {
     guardrail:
       "Use only the information in the context. If something is unknown, say a teammate will clarify it. Never invent " +
       "prices, discounts, dates or references. Do not push if they are not interested. Do not add a name, title or role " +
-      "signature at the end; finish with a short closing such as \"Best regards\".",
+      "signature at the end; finish with a short closing such as \"Best regards\". If you mention the business name, " +
+      "copy its spelling exactly from the Business line; never alter it or derive a person's name from it.",
     channel: (channel) => `Channel: ${channel}. Reply only in the requested JSON schema.`,
     labels: {
       business: "Business",
@@ -177,7 +179,7 @@ export function buildDraftFirstMessagePrompt(input: DraftFirstMessageInput): AIP
 
   return {
     operation: "draft_first_message",
-    promptVersion: 6,
+    promptVersion: 7,
     system,
     messages: [{ role: "user", content: context }],
     jsonSchema: jsonSchema(isEmail),

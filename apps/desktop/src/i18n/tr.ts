@@ -784,17 +784,19 @@ export const tr = {
   leadDetail: {
     localTime: "yerel saat",
     openMaps: "Google Haritalar'da aç",
-    quickContact: {
-      INSTAGRAM: "İletişime geç · Instagram",
-      FACEBOOK: "İletişime geç · Facebook",
-      LINKEDIN: "İletişime geç · LinkedIn",
-      TIKTOK: "İletişime geç · TikTok",
-      EMAIL: "İletişime geç · E-posta",
-      WHATSAPP: "İletişime geç · WhatsApp",
+    contactMenu: "İletişime geç",
+    contactMenuNone: "İletişim adresi yok",
+    contactMenuTitle: "Hangi adresten ulaşmak istersiniz?",
+    contactMenuMaps: "Google Haritalar sayfası",
+    contactKinds: {
+      EMAIL: "E-posta yaz",
+      WHATSAPP: "WhatsApp'tan yaz",
+      INSTAGRAM: "Instagram",
+      FACEBOOK: "Facebook",
+      LINKEDIN: "LinkedIn",
+      TIKTOK: "TikTok",
       PHONE: "Telefonla ara",
     },
-    quickContactNone: "İletişime geç · kanal yok",
-    quickContactHint: "Sosyal medya varsa o, yoksa e-posta, o da yoksa kayıtlı telefona WhatsApp açılır.",
     tabs: {
       overview: "Genel",
       website: "Web Sitesi",
