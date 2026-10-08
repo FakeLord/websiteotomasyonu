@@ -3,9 +3,11 @@ import {
   DISCOVER_CATEGORIES,
   DISCOVER_MARKETS,
   categoryQueryTerm,
+  cityBoundsQuery,
   discoverCityCenter,
   discoverMarket,
   discoverTextQuery,
+  scanCategories,
 } from "./discover-markets";
 
 describe("DISCOVER_MARKETS", () => {
@@ -49,5 +51,24 @@ describe("categoryQueryTerm / discoverTextQuery", () => {
     expect(discoverTextQuery({ keyword: "emergency", category: "Dentist", city: "Austin", district: "Downtown" })).toBe(
       "Dentist emergency Downtown Austin",
     );
+  });
+});
+
+describe("scanCategories", () => {
+  it("Türkiye dışında İngilizce sorgu, Türkçe etiket üretir", () => {
+    expect(scanCategories(["Berber", "Oto Servis"], "US")).toEqual([
+      { label: "Berber", query: "Barber shop" },
+      { label: "Oto Servis", query: "Auto repair shop" },
+    ]);
+  });
+
+  it("Türkiye'de sorgu Türkçedir ve bilinmeyen etiket atlanır", () => {
+    expect(scanCategories(["Kafe", "Uydurma"], "tr")).toEqual([{ label: "Kafe", query: "Kafe" }]);
+  });
+});
+
+describe("cityBoundsQuery", () => {
+  it("şehre ülkenin İngilizce adını ekler", () => {
+    expect(cityBoundsQuery(" Austin ", "us")).toBe("Austin, United States");
   });
 });

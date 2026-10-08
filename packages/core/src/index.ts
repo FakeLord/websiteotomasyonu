@@ -15,6 +15,12 @@ export {
   type BusinessStage,
 } from "./pipeline/stage";
 export {
+  OPPORTUNITY_STAGES,
+  OPPORTUNITY_WEBSITE_STATUSES,
+  isOpportunity,
+  type OpportunityInput,
+} from "./pipeline/opportunity";
+export {
   placeToBusinessPayload,
   parseTurkishAddress,
   titleCaseTr,

@@ -127,3 +127,27 @@ export function discoverTextQuery(fields: { keyword: string; category: string; c
     .filter(Boolean)
     .join(" ");
 }
+
+export interface ScanCategory {
+  /** İşletmeye yazılan kategori (Türkçe etiket). */
+  label: string;
+  /** Places sorgusu. Konum sorguya yazılmaz; kare kısıtı zaten bölgeyi belirler. */
+  query: string;
+}
+
+/** Şehir taraması için seçilen kategoriler (ADR 0014); bilinmeyen etiket atlanır. */
+export function scanCategories(selectedLabels: string[], countryCode: string): ScanCategory[] {
+  const selected = new Set(selectedLabels);
+  return DISCOVER_CATEGORIES.filter((c) => selected.has(c.tr)).map((c) => ({ label: c.tr, query: categoryQueryTerm(c, countryCode) }));
+}
+
+/** Şehrin sınırını bulmak için Places sorgusu: "Austin, United States". */
+export function cityBoundsQuery(city: string, countryCode: string): string {
+  let country = countryCode.toUpperCase();
+  try {
+    country = new Intl.DisplayNames(["en"], { type: "region" }).of(country) ?? country;
+  } catch {
+    // Geçersiz kod: ham haliyle kullanılır.
+  }
+  return `${city.trim()}, ${country}`;
+}

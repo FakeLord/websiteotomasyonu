@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { platform } from "../../lib/platform";
-import { AlertTriangle, ExternalLink, History, Loader2, MapPin, Search, Star, Upload } from "lucide-react";
+import { AlertTriangle, ExternalLink, Grid3x3, History, Loader2, MapPin, Search, Star, Upload } from "lucide-react";
 import { supabase } from "../../lib/supabase-client";
 import { useWorkspaceMembership } from "../../lib/use-workspace-membership";
 import { useRealtimeTable } from "../../lib/use-realtime-table";
@@ -31,7 +31,9 @@ import { Switch } from "../../components/ui/primitives";
 import { ScoreBadge, WebsiteStatusBadge } from "../../components/domain/badges";
 import { ContactChannelBadges } from "../../components/domain/contact-channel-badges";
 import { ImportCsvDialog } from "../leads/ImportCsvDialog";
+import { usePlacesUsage } from "../../lib/use-jobs";
 import { DiscoverMap, type MapBusiness } from "./DiscoverMap";
+import { ScanPlanDialog } from "./ScanPlanDialog";
 
 interface SearchJobRow {
   id: string;
@@ -80,7 +82,8 @@ export function DiscoverPage() {
     discoverCityCenter(country, city) ?? discoverMarket(country)?.center ?? TURKEY_CENTER,
   );
   const [flyTarget, setFlyTarget] = useState<{ point: LatLng; zoom: number } | null>(null);
-  const [notice, setNotice] = useState<{ tone: "warn" | "error"; text: string } | null>(null);
+  const [notice, setNotice] = useState<{ tone: "warn" | "error" | "info"; text: string } | null>(null);
+  const [showScanPlan, setShowScanPlan] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const analysisQueue = useAnalysisStore((state) => state.queue);
   const analysisProgress = analysisQueue.running && analysisQueue.total > 0 ? analysisQueue : null;
@@ -118,30 +121,8 @@ export function DiscoverPage() {
 
   const activeJobId = selectedJobId ?? jobsQuery.data?.find((j) => j.status === "DONE")?.id ?? null;
 
-  const quotaQuery = useQuery({
-    queryKey: ["workspace-settings-quota", workspaceId],
-    enabled: !!workspaceId,
-    queryFn: async (): Promise<{ cap: number | null; used: number }> => {
-      const { data: settings, error: settingsError } = await supabase
-        .from("workspace_settings")
-        .select("outreach_limits")
-        .eq("workspace_id", workspaceId as string)
-        .single();
-      if (settingsError) throw settingsError;
-      const cap = (settings?.outreach_limits as { places_monthly_cap?: number | null } | null)?.places_monthly_cap ?? null;
-      const monthStart = new Date();
-      monthStart.setDate(1);
-      monthStart.setHours(0, 0, 0, 0);
-      const { data: jobs, error: jobsError } = await supabase
-        .from("search_jobs")
-        .select("api_calls")
-        .eq("workspace_id", workspaceId as string)
-        .eq("provider", "GOOGLE_PLACES")
-        .gte("created_at", monthStart.toISOString());
-      if (jobsError) throw jobsError;
-      return { cap, used: (jobs ?? []).reduce((sum, j) => sum + ((j as { api_calls: number }).api_calls ?? 0), 0) };
-    },
-  });
+  // Sunucudaki gerçek sayaç (elle arama ve şehir taraması aynı sayacı paylaşır).
+  const quotaQuery = usePlacesUsage();
 
   const resultsQuery = useQuery({
     queryKey: ["search-results", activeJobId],
@@ -182,7 +163,7 @@ export function DiscoverPage() {
       void queryClient.invalidateQueries({ queryKey: ["search-jobs", workspaceId] });
       void queryClient.invalidateQueries({ queryKey: ["search-results"] });
       void queryClient.invalidateQueries({ queryKey: ["businesses", workspaceId] });
-      void queryClient.invalidateQueries({ queryKey: ["workspace-settings-quota", workspaceId] });
+      void queryClient.invalidateQueries({ queryKey: ["places-usage", workspaceId] });
       void queryClient.invalidateQueries({ queryKey: ["dashboard-metrics"] });
       void queryClient.invalidateQueries({ queryKey: ["market-options", workspaceId] });
     },
@@ -357,6 +338,18 @@ export function DiscoverPage() {
                 {searching ? tr.discover.searching : tr.discover.searchButton}
               </Button>
               <p className="text-center text-xs text-muted">{tr.discover.estimate}</p>
+              <Button
+                variant="outline"
+                className="w-full"
+                disabled={!city.trim()}
+                onClick={() => {
+                  setNotice(null);
+                  setShowScanPlan(true);
+                }}
+              >
+                <Grid3x3 />
+                {tr.scanPlan.openButton}
+              </Button>
               {quota && (
                 <p className={cn("text-center text-xs", quotaExceeded ? "text-[#f87171]" : "text-subtle")}>
                   {tr.discover.quotaLine(quota.used, quota.cap)}
@@ -429,7 +422,7 @@ export function DiscoverPage() {
             <div
               className={cn(
                 "absolute top-3 left-1/2 z-[500] flex max-w-md -translate-x-1/2 items-center gap-2 rounded-lg px-3 py-2 text-sm shadow-lg",
-                notice.tone === "warn" ? "bg-warning/90 text-black" : "bg-danger/90 text-white",
+                notice.tone === "warn" ? "bg-warning/90 text-black" : notice.tone === "info" ? "bg-primary/90 text-white" : "bg-danger/90 text-white",
               )}
             >
               <AlertTriangle className="size-4 shrink-0" />
@@ -533,6 +526,18 @@ export function DiscoverPage() {
         )}
       </Card>
 
+      {showScanPlan && workspaceId && (
+        <ScanPlanDialog
+          workspaceId={workspaceId}
+          countryCode={country}
+          city={city}
+          onClose={() => setShowScanPlan(false)}
+          onStarted={() => {
+            setShowScanPlan(false);
+            setNotice({ tone: "info", text: tr.scanPlan.started });
+          }}
+        />
+      )}
       {showImport && workspaceId && <ImportCsvDialog workspaceId={workspaceId} onClose={() => setShowImport(false)} />}
     </div>
   );
