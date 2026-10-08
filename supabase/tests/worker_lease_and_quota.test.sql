@@ -72,9 +72,11 @@ update public.workspace_settings
 set outreach_limits = jsonb_set(outreach_limits, '{places_monthly_cap}', '1')
 where workspace_id = (select id from public.workspaces where name = 'Places Workspace');
 
-update public.search_jobs
-set api_calls = 5
-where workspace_id = (select id from public.workspaces where name = 'Places Workspace');
+-- Sayaç artık sunucuda tutulan places_usage'tır (ADR 0014); istemcinin bildirdiği api_calls değil.
+reset role;
+insert into public.places_usage (workspace_id, month, calls)
+select id, date_trunc('month', now())::date, 5 from public.workspaces where name = 'Places Workspace';
+set local role authenticated;
 
 select throws_like(
   $$ select public.enqueue_search_job(
