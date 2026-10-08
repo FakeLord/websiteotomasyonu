@@ -4,7 +4,7 @@ begin;
 set local client_min_messages = warning;
 truncate table public.workspaces cascade;
 
-select plan(32);
+select plan(35);
 
 insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at)
 values
@@ -118,6 +118,11 @@ insert into public.places_usage (workspace_id, month, calls) values (:'ws', date
 on conflict (workspace_id, month) do update set calls = 3;
 select is((public.consume_places_call(:'ws') ->> 'allowed')::boolean, false, 'Sınır dolduğunda sayaç tüketimi reddedilir');
 select is((select calls from public.places_usage where workspace_id = :'ws'), 3, 'Reddedilen çağrı sayacı artırmaz');
+-- Başarısız Google çağrısı iade edilir; iade sonrası tüketim yeniden kabul edilir.
+select public.refund_places_call(:'ws');
+select is((select calls from public.places_usage where workspace_id = :'ws'), 2, 'İade sayacı bir azaltır');
+select is((public.consume_places_call(:'ws') ->> 'allowed')::boolean, true, 'İadeden sonra tüketim kabul edilir');
+select is((select calls from public.places_usage where workspace_id = :'ws'), 3, 'Kabul edilen çağrı sayacı artırır');
 
 set local role authenticated;
 select ok(public.claim_next_scan_tile(:'ws', 'device-A') is null, 'Sınır doluyken BUDGET_PAUSED plan kare vermez');

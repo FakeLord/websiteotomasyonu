@@ -4,31 +4,11 @@
 // (SPEC.md → G.1, docs/adr/0004-places-vault.md).
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
-import { buildSearchRequest, isValidBody } from "./validate.ts";
+import { buildSearchRequest, fieldMaskFor, isValidBody } from "./validate.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
-
-// docs/SPEC.md → G.1: "tek field mask" — istek başına en ucuz SKU'ya düşecek
-// sabit alan listesi. nextPageToken üst seviye bir alan olduğu için maskeye
-// ayrıca eklenmeli, yoksa sayfalama kırılır.
-const FIELD_MASK = [
-  "places.id",
-  "places.displayName",
-  "places.formattedAddress",
-  "places.addressComponents",
-  "places.location",
-  "places.types",
-  "places.businessStatus",
-  "places.nationalPhoneNumber",
-  "places.internationalPhoneNumber",
-  "places.websiteUri",
-  "places.rating",
-  "places.userRatingCount",
-  "places.googleMapsUri",
-  "nextPageToken",
-].join(",");
 
 function json(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
@@ -84,21 +64,49 @@ Deno.serve(async (req) => {
     return json({ code: "VALIDATION", message: "Google Places API anahtarı ayarlı değil" }, 400);
   }
 
-  const googleResponse = await fetch("https://places.googleapis.com/v1/places:searchText", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Goog-Api-Key": apiKey,
-      "X-Goog-FieldMask": FIELD_MASK,
-    },
-    body: JSON.stringify(buildSearchRequest(rawBody)),
+  // ADR 0014: aylık çağrı sınırı burada, sunucuda zorlanır. Sayaç Google'a gitmeden ÖNCE tüketilir; sınır
+  // dolduysa istek hiç gönderilmez. Google çağrısı başarısız olursa (faturalanmaz) tüketim iade edilir.
+  const { data: quota, error: quotaError } = await adminClient.rpc("consume_places_call", {
+    ws: rawBody.workspaceId,
   });
+  if (quotaError) {
+    return json({ code: "UPSTREAM_ERROR", message: "Places sayacı okunamadı" }, 500);
+  }
+  if (!quota?.allowed) {
+    // 402: istemci bunu hız sınırı (429) gibi yeniden denemez; tarama planı "bütçe doldu" diye durur.
+    return json(
+      {
+        code: "QUOTA_EXCEEDED",
+        message: `Aylık Places çağrı sınırı doldu (${quota?.used ?? "?"}/${quota?.cap ?? "?"}). Ayarlar'dan sınırı artırabilirsiniz.`,
+      },
+      402,
+    );
+  }
+  const refund = () => adminClient.rpc("refund_places_call", { ws: rawBody.workspaceId });
+
+  let googleResponse: Response;
+  try {
+    googleResponse = await fetch("https://places.googleapis.com/v1/places:searchText", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": apiKey,
+        "X-Goog-FieldMask": fieldMaskFor(rawBody.mode),
+      },
+      body: JSON.stringify(buildSearchRequest(rawBody)),
+    });
+  } catch {
+    await refund();
+    return json({ code: "UPSTREAM_ERROR", message: "Google Places'a ulaşılamadı" }, 502);
+  }
 
   if (googleResponse.status === 429) {
+    await refund();
     return json({ code: "RATE_LIMITED", message: "Google Places rate limit" }, 429);
   }
 
   if (!googleResponse.ok) {
+    await refund();
     const errorText = await googleResponse.text();
     return json({ code: "VALIDATION", message: `Places API error: ${errorText}` }, 502);
   }
