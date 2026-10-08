@@ -97,6 +97,20 @@ function PlanRow({ plan, workspaceId }: { plan: ScanPlanProgress; workspaceId: s
     },
   });
 
+  const retryFailed = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.rpc("retry_failed_scan_tiles", { p_plan_id: plan.id });
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["scan-plans", workspaceId] });
+      void kickScan(workspaceId);
+    },
+  });
+
+  // Bütün bölgeler taranamadıysa "Tamamlandı" yanıltıcı olur.
+  const hasGaps = plan.status === "DONE" && plan.tilesFailed > 0;
+  const actionError = setStatus.error ?? retryFailed.error;
   const percent = plan.tilesTotal > 0 ? (plan.tilesFinished / plan.tilesTotal) * 100 : 0;
   const hint =
     plan.status === "BUDGET_PAUSED" ? tr.jobs.budgetPausedHint : plan.status === "ACTIVE" && !scanning ? tr.jobs.waitingHint : null;
@@ -107,7 +121,9 @@ function PlanRow({ plan, workspaceId }: { plan: ScanPlanProgress; workspaceId: s
         <p className="min-w-0 truncate text-sm font-medium text-text">
           {tr.jobs.planTitle(plan.city, plan.countryCode, plan.categoryCount)}
         </p>
-        <Badge tone={PLAN_TONES[plan.status]}>{tr.jobs.planStatus[plan.status]}</Badge>
+        <Badge tone={hasGaps ? "orange" : PLAN_TONES[plan.status]}>
+          {hasGaps ? tr.jobs.doneWithGaps : tr.jobs.planStatus[plan.status]}
+        </Badge>
       </div>
       <Progress value={percent} />
       <p className="flex justify-between gap-2 text-xs text-muted tabular-nums">
@@ -121,7 +137,12 @@ function PlanRow({ plan, workspaceId }: { plan: ScanPlanProgress; workspaceId: s
           {plan.lastError ? `: ${plan.lastError}` : ""}
         </p>
       )}
-      {setStatus.isError && <p className="text-xs text-[#f87171]">{setStatus.error.message || tr.jobs.actionError}</p>}
+      {actionError && <p className="text-xs text-[#f87171]">{actionError.message || tr.jobs.actionError}</p>}
+      {plan.tilesFailed > 0 && plan.status !== "CANCELLED" && (
+        <Button size="sm" variant="outline" disabled={retryFailed.isPending} onClick={() => retryFailed.mutate()}>
+          {tr.jobs.retryFailed}
+        </Button>
+      )}
       {isOpen(plan) && (
         <div className="flex gap-2 pt-0.5">
           {plan.status === "ACTIVE" && (

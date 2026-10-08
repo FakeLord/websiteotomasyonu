@@ -62,6 +62,8 @@ export const tr = {
     pause: "Duraklat",
     resume: "Sürdür",
     cancel: "İptal et",
+    retryFailed: "Taranamayanları yeniden dene",
+    doneWithGaps: "Eksik tamamlandı",
     cancelConfirm: "Bu tarama iptal edilsin mi? İptal edilen tarama yeniden başlatılamaz; bulunan işletmeler kalır.",
     actionError: "İşlem yapılamadı.",
     analysisTitle: "Site analizi",

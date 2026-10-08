@@ -4,7 +4,7 @@ begin;
 set local client_min_messages = warning;
 truncate table public.workspaces cascade;
 
-select plan(35);
+select plan(41);
 
 insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at)
 values
@@ -137,6 +137,21 @@ select ok(public.claim_next_scan_tile(:'ws', 'device-A') is not null, 'Sınır y
 select public.set_scan_plan_status(:'plan', 'PAUSED');
 select ok(public.claim_next_scan_tile(:'ws', 'device-B') is null, 'Duraklatılmış plan kare vermez');
 
+-- 9b) Taranamayan kareler yeniden denenebilir; tamamlanmış plan yeniden açılır.
+select public.set_scan_plan_status(:'plan', 'ACTIVE');
+select (public.claim_next_scan_tile(:'ws', 'device-A') ->> 'tileId') as failing \gset
+select public.complete_scan_tile(:'failing', 'device-A', 'FAILED', 0, 0, 0, 'ağ yok');
+select is((select status || ':' || error from public.scan_tiles where id = :'failing'), 'FAILED:ağ yok', 'Başarısız kare hata metniyle FAILED olur');
+reset role;
+update public.scan_tiles set status = 'DONE' where plan_id = :'plan' and status in ('QUEUED', 'RUNNING');
+update public.scan_plans set status = 'DONE' where id = :'plan';
+set local role authenticated;
+select is(public.retry_failed_scan_tiles(:'plan'), 1, 'Yeniden deneme başarısız kare sayısını döner');
+select is((select status || ':' || attempts from public.scan_tiles where id = :'failing'), 'QUEUED:0', 'Kare kuyruğa döner, deneme sayısı sıfırlanır');
+select is((select status from public.scan_plans where id = :'plan'), 'ACTIVE', 'Tamamlanmış plan yeniden ACTIVE olur');
+select is(public.retry_failed_scan_tiles(:'plan'), 0, 'Başarısız kare yokken hiçbir şey değişmez');
+select public.set_scan_plan_status(:'plan', 'PAUSED');
+
 -- 10) Yalıtım: başka çalışma alanının üyesi planı göremez, kare alamaz, durumunu değiştiremez.
 --     (Kurulum oturumsuz yapılır: loglayan tetikler üyelik ister; bootstrap yalnızca ilk çalışma alanı içindir.)
 reset role;
@@ -155,6 +170,11 @@ select throws_like(
 select throws_like(
   format($q$select public.set_scan_plan_status(%L, 'CANCELLED')$q$, :'plan'),
   '%scan plan not found%', 'Başka çalışma alanının planı değiştirilemez'
+);
+
+select throws_like(
+  format($q$select public.retry_failed_scan_tiles(%L)$q$, :'plan'),
+  '%scan plan not found%', 'Başka çalışma alanının kareleri yeniden denenemez'
 );
 
 reset role;

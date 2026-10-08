@@ -51,6 +51,13 @@ Toplu tarama saklanan Places verisini büyütür. Seçenekler: (a) işlenen lead
 bütçeden), hiç dokunulmamışların Places alanlarını temizle (`place_id` kalır); (b) yalnızca "eski veri" uyarısı göster;
 (c) Adım 1 dışında bırak. Karar gelene kadar `places_refreshed_at` izlenir, silme yapılmaz.
 
+## Uygulama notları (2026-10-08)
+- Sınır dolunca `places-search` 429 değil **402** `QUOTA_EXCEEDED` döner (429 hız sınırıdır ve yeniden denenir).
+- Fırsatlar aşaması yalnızca `NEW` değil, henüz yazılmamış üç aşamadır (`NEW`, `QUALIFIED`, `OUTREACH_READY`);
+  kural `packages/core/pipeline/opportunity.ts`. "Kanal yok" sekmesi ve bot engeli etiketi henüz yok.
+- Başarısız kare planı durdurmaz; üst üste üç başarısızlıkta tur durur ve dakikada bir yeniden dener.
+  Kalıcı FAILED kareler `retry_failed_scan_tiles()` ile ("Taranamayanları yeniden dene") kuyruğa döner.
+
 ## Ertelenenler (PHASE-15 orijinal kapsamından)
 Haritada elle dikdörtgen çizme, `includedType`/kategori sözlüğü (Google yer tipleri), kayıtlı aramalar, Google Haritalar
 bağlantısıyla tek işletme ekleme, 100.000 kayıt için sunucu tarafı sayfalama + harita kümeleme, USD bazlı maliyet tahmini.

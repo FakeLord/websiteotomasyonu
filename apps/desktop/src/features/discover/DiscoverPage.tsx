@@ -386,7 +386,7 @@ export function DiscoverPage() {
           )}
         </Card>
 
-        <Card className="relative h-[620px] overflow-hidden">
+        <Card className="relative isolate h-[620px] overflow-hidden">
           <DiscoverMap
             fitKey={resultsQuery.data ? activeJobId : null}
             initialCenter={discoverCityCenter(country, city) ?? discoverMarket(country)?.center ?? TURKEY_CENTER}
