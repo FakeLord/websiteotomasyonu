@@ -1,4 +1,5 @@
 import type { AIPromptRequest } from "@lbf/core";
+import { functionErrorMessage } from "./function-error";
 import { supabase } from "./supabase-client";
 
 async function sha256Hex(input: string): Promise<string> {
@@ -53,7 +54,8 @@ export async function callAiGateway(
   } finally {
     clearTimeout(timeoutId);
   }
-  if (error) throw error;
+  // supabase-js yalnızca "non-2xx status code" der; ağ geçidinin gerçek nedenini ({ message }) gösteririz.
+  if (error) throw new Error(await functionErrorMessage(error, "AI isteği başarısız oldu."));
   if (!data) throw new Error("AI sağlayıcısından boş yanıt alındı.");
 
   return { json: data.json, cached: !!data.cached };
