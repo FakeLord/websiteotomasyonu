@@ -52,3 +52,14 @@ Lead düzenleme · toplu atama/eleme · devir kartı (devral/ata/kapat) · ekipt
 - Claude Startups formu için iki soru (API ile ne yapılacak / Claude ile ne yapılacak) ≤500 karakter cevaplandı.
 - `.app` yayını değerlendirildi: yerel Node sunucusu (site analizi, SMTP, IMAP, kişisel kasa) buluta taşınmadan statik barındırma
   olmaz. **Karar: şimdilik yayına alınmıyor.**
+
+## 8. MVP kapanış turu (2026-10-10 / 11)
+- **Yurtdışı e-posta kilidi** (ADR 0017): varsayılan kapalı, yönetici açar; `mark_message_sent` da denetler.
+- **Taslak kuyruğu + Onay Bekleyenler** (ADR 0018): arka planda taslak, tek yerden onay/düzenle/reddet/gönder; kota ve kurulum
+  eksikliğinde iş bozulmadan durur.
+- **Ülke uyumu** (ADR 0019): ülke kuralları (TR/US/GB/CA/AU; tanımsız ülke kapalı), gönderen kimliği, e-posta alt bilgisi,
+  yanıtla çıkma, bastırma listesi, kalıcı silme. Genişletilmiş "yazmayın" anahtar kelimeleri.
+- **AI değerlendirme** (ADR 0020): 30+30 işletme ve 30+30 cevaplık set, koşucu `scripts/eval/run.ts`; cevap sınıflandırma istemi
+  Türkçe+İngilizce. Ücretsiz NVIDIA ile çalışır.
+- **Küçük eksikler**: anlaşma silme, rapor CSV, yeni cevapta ses, tanılama özeti.
+- **Doğrulama**: yerel yedek provası (582 işletme birebir geri yüklendi), uçtan uca kabul listesi (`docs/qa/mvp-acceptance.md`).

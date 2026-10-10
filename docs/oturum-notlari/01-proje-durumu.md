@@ -1,49 +1,45 @@
-# Proje durumu (2026-10-09)
+# Proje durumu (2026-10-11)
 
 ## MVP mi?
-**MVP'nin kapsadığı satış döngüsü uygulamada çalışıyor; "tam sürüm / yayına hazır" değil.** Yayın (`.app` adresi) bilerek yapılmıyor.
+**Kod tarafında MVP tamam; "bitti" işareti bulutta kabul testinden sonra konur** (`docs/qa/mvp-acceptance.md`). Yayın (`.app`
+adresi) bilerek yapılmıyor.
 
 SPEC'teki MVP döngüsü: *Google Maps'ten bul → analiz et → puanla → AI taslak → elle gönder → cevabı işle → teklife devret.*
 
 | Adım | Durum |
 |---|---|
-| Bul (elle arama + şehir taraması) | Var. Şehir taraması bulutta henüz denenmedi. |
-| Analiz (arka planda, otomatik) | Var; yerelde 160 işletmede hatasız. |
-| Puanlama | Var. |
-| AI taslak (Türkçe/İngilizce) | Var; Türkçe kalitesi modele bağlı. |
-| İletişime geç + temas kaydı + sonuç + aşama ilerlemesi | Var. |
-| Takip, zaman çizelgesi, filtreler, raporlar | Var. |
-| Devir kartı, müşteri | Var. |
+| Bul (elle arama + şehir taraması) | Var; kodda ve yerelde doğrulandı. Bulutta ilk gerçek tarama denendi. |
+| Analiz (arka planda, otomatik) | Var |
+| Puanlama | Var |
+| AI taslak (Türkçe/İngilizce) | Var; **ücretsiz NVIDIA** ile çalışır. Taslak kuyruğu + Onay Bekleyenler eklendi. |
+| İletişime geç + temas kaydı + sonuç + aşama ilerlemesi | Var |
+| Ülke uyumu | Var: ülke kuralları, gönderen kimliği + e-posta alt bilgisi, bastırma listesi, kalıcı silme, yurtdışı e-posta kilidi |
+| Takip, zaman çizelgesi, filtreler, raporlar (CSV) | Var |
+| Devir kartı, müşteri, anlaşma silme | Var |
 
 ## Kodun durumu
-- Dal: `feature/p15-automated-prospecting` (**yalnızca bu bilgisayarda**; GitHub'a gönderilmedi, `main`'e birleştirilmedi).
-  `feature/p14-global-data-model` (G2) de birleştirilmedi.
-- Testler (son çalıştırma): **734** birim, **375** pgTAP (veritabanı), **22** Deno (Edge Function). Tip kontrolü ve lint temiz.
-- Uygulama `apps/desktop/dist` olarak derlendi (baslat.cmd bunu sunar).
+- `main` GitHub'da güncel; tüm özellik dalları `main`'e birleşti (`feature/p14…p19a`, `p16a`, `p18a/b`).
+- Testler (son çalıştırma): **766** birim, **433** pgTAP, Deno (Edge Function) değişmedi. Tip kontrolü ve lint temiz.
+- Yerel yedek provası (2026-10-11): 582 işletme + 2.193 kanal temiz veritabanına birebir geri yüklendi (`docs/qa/backup-restore.md`).
 
-## Bulutta (Supabase) olmayanlar
-Bu oturumda yazılan tüm veritabanı değişiklikleri **yalnızca yerelde** uygulandı. Buluta `db push` ile gitmesi gerekiyor:
-
-`20261009100000_scan_plans`, `…101000_places_refund`, `…102000_scan_retry`, `…103000_clean_bogus_social_channels`,
-`…104000_chain_size_and_segment_performance`, `…105000_contact_attempts`, `…106000_update_business_details`,
-`…107000_bulk_actions`, `…108000_handoff_actions`, `…109000_remove_member`, `…110000_rename_workspace`,
-`…111000_campaign_edit_delete` — ve G2'ye ait daha eski `20260929*` migration'ları.
-`places-search` Edge Function'ı da yeniden yayınlanmalı.
+## Buluta gitmesi gerekenler (senin `db push`'un)
+Yeni migration'lar: `20261010100000_foreign_email_lock`, `…101000_draft_queue`, `…102000_draft_queue_release`,
+`…103000_country_compliance`, `…104000_delete_customer_deal`. Her `db push` sonrası `.\baslat.cmd build` ve `Ctrl+F5`.
 
 ## Faz tablosu (BACKLOG ile uyumlu)
 | Faz | Durum |
 |---|---|
 | G0 temizlik, G1 buluta taşıma | ☑ |
-| G2 küresel veri modeli | Kod hazır, yerelde doğrulandı; bulut `db push` + gerçek Places denemesi bekliyor |
-| G3 keşif motoru (ADR 0014) | Kısmen: kare tarama, aylık sayaç, İşler kutusu, Fırsatlar. **Adım 2 (taslak kuyruğu / "Onay bekleyenler") yapılmadı.** |
-| G4 çok dilli analiz/AI | Kısmen (TR/EN taslak, çeviri); değerlendirme seti yok |
-| G5 ülke bazlı uyum | ☐ (yapılmadı) |
-| G6 günlük kullanım eksikleri | Büyük kısmı ☑ (bkz. `02-yapilanlar.md`) |
-| G7 sunucu tarafı otomasyon, G8 yeni kanallar, G9 Jarvis işlemleri, G10 üretim | ☐ |
+| G2 küresel veri modeli | ☑ kod; bulutta kullanımda |
+| G3 keşif motoru + taslak kuyruğu (ADR 0014/0018) | ☑ kod |
+| G4 çok dilli AI | ◐ TR/EN taslak ve cevap sınıflandırma ✔; değerlendirme seti ve koşucu hazır (ADR 0020), **gerçek ölçüm sonucu bekleniyor** |
+| G5 ülke bazlı uyum (ADR 0019) | ☑ kod (listeden çıkma bağlantısı hariç: G7) |
+| G6 günlük kullanım eksikleri | ☑ MVP kapsamı; kalanlar gerekçeyle "MVP sonrası" |
+| G7 sunucu tarafı otomasyon, G8 yeni kanallar, G9 Jarvis işlemleri, G10 üretim | ☐ MVP sonrası |
 
-## MVP'den hâlâ eksik olanlar
-1. Bulutta hiçbir yeni özellik denenmedi.
-2. Ülke bazlı gönderim uyumu (G5): yabancı ülkeye soğuk e-posta için kurallar, listeden çıkma bağlantısı, kalıcı veri silme.
-3. Küçük eksikler: anlaşma silme, raporlarda dışa aktarma, kanal modu ayarları, kayıtlı aramalar, bildirim sesi.
-4. Uygulama kapalıyken hiçbir şey çalışmıyor (tarama, e-posta okuma).
-5. Bilgi Bankası'nın gerçek içeriği (kullanıcı dolduracak).
+## MVP sonrası (bilinçli ertelenen)
+1. Uygulama kapalıyken çalışma: tarama, taslak kuyruğu, e-posta okuma (G7).
+2. Listeden çıkma bağlantısı / `List-Unsubscribe` (G7).
+3. Instagram/Messenger otomatik cevap, WhatsApp Cloud API, reklam veren keşfi (G8).
+4. Jarvis işlemleri (G9); yayın, otomatik güncelleme, tam yedekten geri yükleme provası, maliyet paneli (G10).
+5. Kanal modu ayarları, zamanlı ikinci kanal, Haritalar linkiyle ekleme, presence, kayıtlı aramalar.

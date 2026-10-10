@@ -26,6 +26,7 @@ packages/contracts/      zod şemaları, DB tipleri, action sözleşmeleri
 packages/providers/      Provider interface'leri + mocks/
 supabase/                migrations/, functions/, tests/ (pgTAP), seed.sql
 jarvis/                  SKILL.md, actions.json (üretilir, elle düzenlenmez)
+scripts/                 smoke/ (gerçek servis duman testleri), eval/ (AI kalite ölçümü), ops/ (veri sıfırlama)
 docs/                    SPEC.md, phases/, adr/, qa/
 ```
 

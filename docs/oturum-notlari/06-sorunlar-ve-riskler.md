@@ -38,3 +38,13 @@
 - Bulut verisindeki eski puanlar sahte sosyal medya kanallarına göre hesaplanmıştı. `db push` sonrası **Ayarlar → Puanlama ve Limitler → Kaydet**
   tüm puanları yeniden hesaplar.
 - Yeni bulunan işletmeler analizleri bitene kadar "yazılamaz" görünür (e-posta/sosyal medya sitelerinden çıkarılır).
+
+## 2026-10-11 ek: ülke uyumu ve kapanış turu
+- **Hukuk danışmanı yok.** Ülke kuralları resmi/ikincil kaynaklardan derlenmiş muhafazakâr varsayılanlardır; CASL "10 iş günü" ve
+  Avustralya ceza rakamı doğrulanamadı. Ayrıntı: `docs/adr/0019-country-compliance.md`.
+- **Tüzel kişi / şahıs ayırt edilemez** (İngiltere, Türkiye esnaf). Türkiye İYS kaydı ve ret sorgusu otomatik değil, gönderendedir.
+- **Listeden çıkma bağlantısı yok**, yalnızca yanıtla çıkma; uygulama kapalıyken gelen çıkma cevapları açılınca işlenir.
+- **`activity_logs` yalnızca-ekle** olduğu için kalıcı silmeden önce yazılmış kayıtların özetinde işletme adı kalabilir.
+- **Ücretsiz NVIDIA** hız/kota belirsizdir; taslak 5–25 sn sürer, bazen JSON dışı yanıt verir (yeniden denenir). Türkçe dil bilgisi
+  hatası kodla yakalanamaz; Onay Bekleyenler'deki insan okuması son süzgeçtir.
+- **Kuyruk sekme açıkken ilerler** (tarama, analiz, taslak). Sunucu tarafı çalıştırma G7'dedir.
