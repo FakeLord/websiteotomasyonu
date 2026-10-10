@@ -5,6 +5,7 @@ import { useWorkspaceMembership } from "../../lib/use-workspace-membership";
 import { useRealtimeTable } from "../../lib/use-realtime-table";
 import { Avatar } from "../../components/ui/data-display";
 import { tr } from "../../i18n/tr";
+import { THEME } from "../../lib/theme-colors";
 import { formatRelative } from "../../lib/format";
 
 interface ActivityRow {
@@ -18,7 +19,7 @@ interface ActivityRow {
 function ActorMark({ row }: { row: ActivityRow }) {
   if (row.actor_type === "USER") return <Avatar name={row.profiles?.full_name || "?"} size="sm" />;
   const Icon = row.actor_type === "AI" ? Bot : row.actor_type === "JARVIS" ? Sparkles : Settings2;
-  const color = row.actor_type === "SYSTEM" ? "#8b95b4" : "#8b5cf6";
+  const color = row.actor_type === "SYSTEM" ? THEME.subtle : THEME.primary;
   return (
     <span className="flex size-8 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: `${color}22`, color }}>
       <Icon className="size-4" />

@@ -240,9 +240,9 @@ export function FollowUpsPage() {
         <div
           className={cn(
             "mb-4 rounded-lg px-3 py-2 text-sm",
-            notice.tone === "ok" && "bg-success/10 text-[#4ade80]",
-            notice.tone === "warn" && "bg-warning/10 text-[#fbbf24]",
-            notice.tone === "error" && "bg-danger/10 text-[#f87171]",
+            notice.tone === "ok" && "bg-success/10 text-success",
+            notice.tone === "warn" && "bg-warning/10 text-warning",
+            notice.tone === "error" && "bg-danger/10 text-danger",
           )}
         >
           {notice.text}
@@ -323,7 +323,7 @@ export function FollowUpsPage() {
                     <Td className="tabular-nums">
                       {row.step} / {Math.max(totalSteps, row.step)}
                     </Td>
-                    <Td className={cn("whitespace-nowrap", overdue ? "text-[#f87171]" : "text-muted")}>
+                    <Td className={cn("whitespace-nowrap", overdue ? "text-danger" : "text-muted")}>
                       <span className="flex items-center gap-1.5">
                         <Clock className="size-3.5" />
                         {formatDateTime(row.due_at)}
@@ -333,7 +333,7 @@ export function FollowUpsPage() {
                       {overdue ? (
                         <Badge tone="red">{tr.followUps.overdueTitle}</Badge>
                       ) : (
-                        <Badge tone={row.status === "DRAFTED" ? "violet" : row.status === "SENT" ? "green" : row.status === "PENDING" ? "orange" : "gray"}>
+                        <Badge tone={row.status === "DRAFTED" ? "navy" : row.status === "SENT" ? "green" : row.status === "PENDING" ? "orange" : "gray"}>
                           {tr.followUps.statuses[row.status]}
                         </Badge>
                       )}

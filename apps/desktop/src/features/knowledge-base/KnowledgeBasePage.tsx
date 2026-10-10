@@ -189,7 +189,7 @@ function ServicesTab({ workspaceId, isAdmin }: { workspaceId: string; isAdmin: b
 
   return (
     <div className="space-y-4">
-      {error && <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-[#f87171]">{error}</p>}
+      {error && <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>}
       {isAdmin && (
         <form
           className="flex gap-2"
@@ -400,7 +400,7 @@ function PackageDialog({
             <Label>{tr.kb.features}</Label>
             <Textarea rows={4} value={form.features} onChange={(e) => set("features", e.target.value)} placeholder={tr.kb.featuresPlaceholder} />
           </div>
-          {save.isError && <p className="text-sm text-[#f87171] sm:col-span-2">{save.error instanceof Error ? save.error.message : tr.common.error}</p>}
+          {save.isError && <p className="text-sm text-danger sm:col-span-2">{save.error instanceof Error ? save.error.message : tr.common.error}</p>}
           <div className="flex justify-end gap-2 sm:col-span-2">
             <Button variant="outline" onClick={onClose}>
               {tr.common.cancel}
@@ -572,7 +572,7 @@ function EntryDialog({
               {tr.kb.allowDiscountLabel}
             </label>
           )}
-          {save.isError && <p className="text-sm text-[#f87171]">{save.error instanceof Error ? save.error.message : tr.common.error}</p>}
+          {save.isError && <p className="text-sm text-danger">{save.error instanceof Error ? save.error.message : tr.common.error}</p>}
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={onClose}>
               {tr.common.cancel}

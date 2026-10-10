@@ -358,7 +358,7 @@ export function DiscoverPage() {
                 {tr.scanPlan.openButton}
               </Button>
               {quota && (
-                <p className={cn("text-center text-xs", quotaExceeded ? "text-[#f87171]" : "text-subtle")}>
+                <p className={cn("text-center text-xs", quotaExceeded ? "text-danger" : "text-subtle")}>
                   {tr.discover.quotaLine(quota.used, quota.cap)}
                 </p>
               )}
@@ -429,7 +429,7 @@ export function DiscoverPage() {
             <div
               className={cn(
                 "absolute top-3 left-1/2 z-[500] flex max-w-md -translate-x-1/2 items-center gap-2 rounded-lg px-3 py-2 text-sm shadow-lg",
-                notice.tone === "warn" ? "bg-warning/90 text-black" : notice.tone === "info" ? "bg-primary/90 text-white" : "bg-danger/90 text-white",
+                notice.tone === "warn" ? "bg-warning text-white" : notice.tone === "info" ? "bg-primary/90 text-white" : "bg-danger/90 text-white",
               )}
             >
               <AlertTriangle className="size-4 shrink-0" />
@@ -525,7 +525,7 @@ export function DiscoverPage() {
                   <Td className="font-medium">
                     {job.params?.textQuery}
                     {job.params?.location && <span className="ml-2 text-xs text-muted">({job.params.location.radiusMeters / 1000} km)</span>}
-                    {job.error && <p className="text-xs text-[#f87171]">{job.error}</p>}
+                    {job.error && <p className="text-xs text-danger">{job.error}</p>}
                   </Td>
                   <Td>
                     <Badge tone={JOB_TONES[job.status]}>{tr.discover.status[job.status]}</Badge>

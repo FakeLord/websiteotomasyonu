@@ -74,7 +74,7 @@ export function SenderProfileSection({ workspaceId }: { workspaceId: string }) {
           {tr.senderProfile.save}
         </Button>
         {message && (
-          <span role="status" className={message.tone === "ok" ? "text-xs text-muted" : "text-xs text-[#f87171]"}>
+          <span role="status" className={message.tone === "ok" ? "text-xs text-muted" : "text-xs text-danger"}>
             {message.text}
           </span>
         )}

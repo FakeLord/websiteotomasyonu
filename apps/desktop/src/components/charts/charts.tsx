@@ -1,13 +1,13 @@
 import { Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from "recharts";
+import { SEGMENTS, SERIES, THEME } from "../../lib/theme-colors";
 
-// dataviz validate_palette.js ile koyu yüzeye (#0c1326) karşı doğrulandı
-// (açıklık bandı, CVD ayrımı, normal görüş tabanı, kontrast). Sıra sabittir;
-// seri sayısı değişse de renkler yeniden dağıtılmaz.
-export const SERIES_COLORS = ["#3b82f6", "#d97706", "#ec4899", "#16a34a", "#8b5cf6"] as const;
-export const SEGMENT_COLORS = ["#3b82f6", "#d97706", "#0891b2", "#ec4899", "#8b5cf6", "#16a34a"] as const;
-export const OTHER_COLOR = "#5d688a";
+// Kurumsal palet (src/lib/theme-colors.ts): beyaz yüzeyde ≥ 4.5:1. Sıra sabittir; seri sayısı değişse de
+// renkler yeniden dağıtılmaz.
+export const SERIES_COLORS = SERIES;
+export const SEGMENT_COLORS = SEGMENTS;
+export const OTHER_COLOR = THEME.subtle;
 
-const AXIS_TICK = { fill: "#8b95b4", fontSize: 11 };
+const AXIS_TICK = { fill: THEME.muted, fontSize: 11 };
 
 export interface LineSeries {
   key: string;
@@ -30,7 +30,7 @@ function ChartTooltip({ active, payload, label, series }: {
 }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-lg border border-border-strong bg-surface-2 px-3 py-2 text-xs shadow-xl shadow-black/40">
+    <div className="rounded-lg border border-border-strong bg-surface px-3 py-2 text-xs shadow-pop">
       <p className="mb-1.5 font-medium text-text">{label}</p>
       {series.map((s) => {
         const entry = payload.find((p) => p.dataKey === s.key);
@@ -66,11 +66,11 @@ export function MultiLineChart({ data, series, xKey, height = 240 }: {
       </div>
       <ResponsiveContainer width="100%" height={height}>
         <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: -18 }}>
-          <CartesianGrid stroke="#1a2442" vertical={false} />
+          <CartesianGrid stroke={THEME.border} vertical={false} />
           <XAxis dataKey={xKey} tick={AXIS_TICK} axisLine={false} tickLine={false} />
           <YAxis tick={AXIS_TICK} axisLine={false} tickLine={false} allowDecimals={false} />
           <Tooltip
-            cursor={{ stroke: "#26325a", strokeWidth: 1 }}
+            cursor={{ stroke: THEME.borderStrong, strokeWidth: 1 }}
             content={(props) => (
               <ChartTooltip
                 active={props.active}
@@ -89,7 +89,7 @@ export function MultiLineChart({ data, series, xKey, height = 240 }: {
               stroke={s.color}
               strokeWidth={2}
               dot={false}
-              activeDot={{ r: 4, stroke: "#0c1326", strokeWidth: 2 }}
+              activeDot={{ r: 4, stroke: THEME.surface, strokeWidth: 2 }}
             />
           ))}
         </LineChart>
@@ -118,17 +118,17 @@ export function DonutChart({ segments, centerLabel, size = 180 }: {
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
-              data={visible.length > 0 ? visible : [{ key: "empty", label: "", value: 1, color: "#17213b" }]}
+              data={visible.length > 0 ? visible : [{ key: "empty", label: "", value: 1, color: THEME.surface3 }]}
               dataKey="value"
               nameKey="label"
               innerRadius="70%"
               outerRadius="100%"
               paddingAngle={visible.length > 1 ? 2 : 0}
-              stroke="#0c1326"
+              stroke={THEME.surface}
               strokeWidth={2}
               isAnimationActive={false}
             >
-              {(visible.length > 0 ? visible : [{ key: "empty", color: "#17213b" }]).map((s) => (
+              {(visible.length > 0 ? visible : [{ key: "empty", color: THEME.surface3 }]).map((s) => (
                 <Cell key={s.key} fill={s.color} />
               ))}
             </Pie>
@@ -138,7 +138,7 @@ export function DonutChart({ segments, centerLabel, size = 180 }: {
                   const entry = payload?.[0]?.payload as DonutSegment | undefined;
                   if (!active || !entry) return null;
                   return (
-                    <div className="rounded-lg border border-border-strong bg-surface-2 px-3 py-2 text-xs shadow-xl">
+                    <div className="rounded-lg border border-border-strong bg-surface px-3 py-2 text-xs shadow-pop">
                       <span className="text-muted">{entry.label}: </span>
                       <span className="font-medium text-text">
                         {entry.value.toLocaleString("tr-TR")} (%{total ? Math.round((entry.value / total) * 100) : 0})

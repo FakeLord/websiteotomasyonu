@@ -44,7 +44,7 @@ export function LoginPage() {
           <Input id="password" type="password" autoComplete="current-password" {...register("password")} />
           <FieldError message={errors.password?.message} />
         </div>
-        {authError && <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-[#f87171]">{authError}</p>}
+        {authError && <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">{authError}</p>}
         <Button type="submit" disabled={isSubmitting} className="w-full" size="lg">
           {tr.auth.loginButton}
         </Button>

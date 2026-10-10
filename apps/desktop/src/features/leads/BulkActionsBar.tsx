@@ -114,7 +114,7 @@ export function BulkActionsBar({ workspaceId, selectedIds, members, onClear }: B
         <p
           role="status"
           className={
-            "border-b border-border px-3 py-2 text-sm " + (notice.tone === "error" ? "bg-danger/10 text-[#f87171]" : "bg-surface-2 text-muted")
+            "border-b border-border px-3 py-2 text-sm " + (notice.tone === "error" ? "bg-danger/10 text-danger" : "bg-surface-2 text-muted")
           }
         >
           {notice.text}

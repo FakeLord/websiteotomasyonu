@@ -5,7 +5,7 @@ export function AppLogo({ className }: { className?: string }) {
   return (
     <span
       className={cn(
-        "flex size-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-violet shadow-lg shadow-primary/30",
+        "flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary",
         className,
       )}
       aria-hidden

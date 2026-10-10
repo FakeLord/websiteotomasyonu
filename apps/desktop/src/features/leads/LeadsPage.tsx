@@ -417,7 +417,7 @@ export function LeadsPage() {
           role="status"
           className={
             bulkNotice.tone === "error"
-              ? "mb-3 rounded-lg bg-danger/10 px-3 py-2 text-sm text-[#f87171]"
+              ? "mb-3 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger"
               : "mb-3 rounded-lg bg-surface-2 px-3 py-2 text-sm text-muted"
           }
         >
@@ -473,7 +473,7 @@ export function LeadsPage() {
               </button>
             ))}
             <p className="text-xs text-muted">{tr.leads.opportunities.hint}</p>
-            <Button size="sm" variant="violet" className="ml-auto" onClick={() => setShowPrepare(true)}>
+            <Button size="sm" variant="default" className="ml-auto" onClick={() => setShowPrepare(true)}>
               {tr.draftQueue.prepare.button}
             </Button>
             {showChains ? (
@@ -669,7 +669,7 @@ export function LeadsPage() {
                 key={chip.key}
                 type="button"
                 onClick={() => updateParams({ [chip.key]: null })}
-                className="flex items-center gap-1 rounded-md bg-primary/15 px-2 py-1 text-xs text-[#8fb0ff] hover:bg-primary/25"
+                className="flex items-center gap-1 rounded-md bg-primary/15 px-2 py-1 text-xs text-primary hover:bg-primary/25"
               >
                 {chip.label}
                 <X className="size-3" />
@@ -777,7 +777,7 @@ export function LeadsPage() {
                             {row.last_contact_channel ? ` · ${tr.channels[row.last_contact_channel as keyof typeof tr.channels] ?? ""}` : ""}
                           </span>
                         )}
-                        {isDueTab && row.next_action_at && <span className="block text-[11px] text-[#fbbf24]">{formatRelative(row.next_action_at)}</span>}
+                        {isDueTab && row.next_action_at && <span className="block text-[11px] text-warning">{formatRelative(row.next_action_at)}</span>}
                       </Td>
                     )}
                     {show("assignee") && (

@@ -100,7 +100,7 @@ export function DataExportSection({ workspaceId }: { workspaceId: string }) {
             <Download />
             {exporting ? tr.settings.exporting : tr.settings.exportButton}
           </Button>
-          {error && <p className="text-xs text-[#f87171]">{error}</p>}
+          {error && <p className="text-xs text-danger">{error}</p>}
         </CardBody>
       </Card>
       <Card>
@@ -112,7 +112,7 @@ export function DataExportSection({ workspaceId }: { workspaceId: string }) {
             {tr.settings.diagnosticsButton}
           </Button>
           {diagnosticsCopied === "ok" && <p className="text-xs text-muted">{tr.settings.diagnosticsCopied}</p>}
-          {diagnosticsCopied === "error" && <p className="text-xs text-[#f87171]">{tr.settings.diagnosticsFailed}</p>}
+          {diagnosticsCopied === "error" && <p className="text-xs text-danger">{tr.settings.diagnosticsFailed}</p>}
         </CardBody>
       </Card>
     </div>

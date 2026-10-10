@@ -19,7 +19,7 @@ import {
   type TransitionSource,
 } from "./progress-timeline";
 
-const OUTCOME_TONES = { ATTEMPTED: "gray", SENT: "blue", REPLIED: "green", UNREACHABLE: "orange", NOT_INTERESTED: "red", LATER: "violet", CANCELLED: "gray" } as const;
+const OUTCOME_TONES = { ATTEMPTED: "gray", SENT: "blue", REPLIED: "green", UNREACHABLE: "orange", NOT_INTERESTED: "red", LATER: "navy", CANCELLED: "gray" } as const;
 
 function useProgressSources(businessId: string) {
   const transitions = useQuery({
@@ -113,7 +113,7 @@ export function ProgressTab({ business }: { business: BusinessDetail }) {
           <div>
             <p className="text-xs text-muted">{tr.progress.nextFollowUp}</p>
             {summary.nextActionAt ? (
-              <p className={"mt-1 flex items-center gap-1.5 text-sm " + (overdue ? "text-[#f87171]" : "text-text")}>
+              <p className={"mt-1 flex items-center gap-1.5 text-sm " + (overdue ? "text-danger" : "text-text")}>
                 <CalendarClock className="size-4" />
                 {formatDateTime(summary.nextActionAt)}
                 {overdue && <Badge tone="red">{tr.progress.overdue}</Badge>}
@@ -129,7 +129,7 @@ export function ProgressTab({ business }: { business: BusinessDetail }) {
       <Card>
         <CardHeader title={tr.progress.timelineTitle} />
         <CardBody>
-          {error && <p className="text-sm text-[#f87171]">{error instanceof Error ? error.message : tr.common.error}</p>}
+          {error && <p className="text-sm text-danger">{error instanceof Error ? error.message : tr.common.error}</p>}
           {loading && <p className="text-sm text-muted">{tr.common.loading}</p>}
           {!loading && events.length === 0 && <p className="text-sm text-muted">{tr.progress.empty}</p>}
           <ol className="relative space-y-4 border-l border-border pl-5">
@@ -210,7 +210,7 @@ function EventBody({ event, nameOf }: { event: ProgressEvent; nameOf: (userId: s
       );
     case "reply":
       return (
-        <p className="text-sm text-[#4ade80]">
+        <p className="text-sm text-success">
           {tr.progress.replyReceived(tr.channels[event.message.channel as keyof typeof tr.channels] ?? event.message.channel)}
           <span className="block text-xs text-muted">{when}</span>
         </p>

@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Circle, CircleMarker, MapContainer, Popup, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import type { LatLng } from "../../lib/geo";
 import { tr } from "../../i18n/tr";
+import { THEME, scoreColor } from "../../lib/theme-colors";
 
 export interface MapBusiness {
   id: string;
@@ -15,13 +16,6 @@ export interface MapBusiness {
   rating: number | null;
   review_count: number | null;
   contact_channels?: Array<{ channel: string; status: string | null }>;
-}
-
-function scoreColor(score: number): string {
-  if (score >= 80) return "#22c55e";
-  if (score >= 60) return "#84cc16";
-  if (score >= 40) return "#f59e0b";
-  return "#ef4444";
 }
 
 function CenterTracker({ onCenterChange }: { onCenterChange: (center: LatLng) => void }) {
@@ -89,7 +83,7 @@ export function DiscoverMap({
   renderPopup,
 }: DiscoverMapProps) {
   return (
-    <MapContainer center={[initialCenter.lat, initialCenter.lng]} zoom={11} className="map-dark h-full w-full" zoomControl>
+    <MapContainer center={[initialCenter.lat, initialCenter.lng]} zoom={11} className="h-full w-full" zoomControl>
       <TileLayer
         url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
         attribution={tr.discover.mapAttribution}
@@ -102,7 +96,7 @@ export function DiscoverMap({
         <Circle
           center={[searchCenter.lat, searchCenter.lng]}
           radius={radiusMeters}
-          pathOptions={{ color: "#2f6bff", weight: 1, fillColor: "#2f6bff", fillOpacity: 0.06 }}
+          pathOptions={{ color: THEME.primary, weight: 1, fillColor: THEME.primary, fillOpacity: 0.06 }}
         />
       )}
       {businesses.map((b) => (
@@ -111,7 +105,7 @@ export function DiscoverMap({
           center={[b.lat, b.lng]}
           radius={selectedId === b.id ? 10 : 7}
           pathOptions={{
-            color: selectedId === b.id ? "#ffffff" : "#0c1326",
+            color: selectedId === b.id ? THEME.text : THEME.surface,
             weight: 2,
             fillColor: scoreColor(b.lead_score),
             fillOpacity: 0.95,

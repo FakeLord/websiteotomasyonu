@@ -58,7 +58,7 @@ function AcceptInviteForm() {
         <Input id="inviteCode" {...register("inviteCode")} />
         <FieldError message={errors.inviteCode?.message} />
       </div>
-      {error && <p className="text-sm text-[#f87171]">{error}</p>}
+      {error && <p className="text-sm text-danger">{error}</p>}
       <Button type="submit" disabled={isSubmitting} className="w-full">
         {tr.auth.acceptInviteButton}
       </Button>
@@ -93,7 +93,7 @@ function BootstrapWorkspaceForm() {
         <Input id="workspaceName" {...register("workspaceName")} />
         <FieldError message={errors.workspaceName?.message} />
       </div>
-      {error && <p className="text-sm text-[#f87171]">{error}</p>}
+      {error && <p className="text-sm text-danger">{error}</p>}
       <Button type="submit" variant="outline" disabled={isSubmitting} className="w-full">
         {tr.auth.bootstrapButton}
       </Button>

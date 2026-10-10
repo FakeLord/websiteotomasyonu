@@ -119,7 +119,7 @@ export function ManualAddDialog({ workspaceId, onClose }: ManualAddDialogProps) 
             </Button>
           </div>
         </form>
-        {mutation.isError && <p className="mt-3 text-sm text-[#f87171]">{tr.common.error}</p>}
+        {mutation.isError && <p className="mt-3 text-sm text-danger">{tr.common.error}</p>}
       </DialogContent>
     </Dialog>
   );
@@ -140,7 +140,7 @@ function Field({
     <div className={full ? "col-span-2" : undefined}>
       <Label>{label}</Label>
       {children}
-      {error && <p className="mt-1 text-xs text-[#f87171]">{error}</p>}
+      {error && <p className="mt-1 text-xs text-danger">{error}</p>}
     </div>
   );
 }

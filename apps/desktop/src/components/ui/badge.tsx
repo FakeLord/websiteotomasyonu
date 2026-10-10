@@ -2,19 +2,21 @@ import type * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../../lib/cn";
 
+/**
+ * Kurumsal rozet tonları: düz, açık zemin + koyu metin. Anlam: gray nötr, blue bilgi/etkin, navy kurumsal/otomasyon,
+ * green olumlu, orange dikkat, red olumsuz/risk. Başka ton eklenmez.
+ */
 export const badgeVariants = cva(
   "inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-medium [&_svg]:size-3",
   {
     variants: {
       tone: {
         gray: "bg-surface-3 text-muted",
-        blue: "bg-primary/15 text-[#6f9bff]",
-        violet: "bg-violet/15 text-[#a78bfa]",
-        green: "bg-success/15 text-[#4ade80]",
-        orange: "bg-warning/15 text-[#fbbf24]",
-        red: "bg-danger/15 text-[#f87171]",
-        pink: "bg-pink/15 text-[#f472b6]",
-        cyan: "bg-cyan/15 text-[#22d3ee]",
+        blue: "bg-primary/10 text-primary",
+        navy: "bg-sidebar/10 text-sidebar",
+        green: "bg-success/10 text-success",
+        orange: "bg-warning/10 text-warning",
+        red: "bg-danger/10 text-danger",
       },
     },
     defaultVariants: { tone: "gray" },
@@ -33,12 +35,10 @@ export function Dot({ tone = "gray" }: { tone?: BadgeTone }) {
   const colors: Record<BadgeTone, string> = {
     gray: "bg-subtle",
     blue: "bg-primary",
-    violet: "bg-violet",
+    navy: "bg-sidebar",
     green: "bg-success",
     orange: "bg-warning",
     red: "bg-danger",
-    pink: "bg-pink",
-    cyan: "bg-cyan",
   };
   return <span className={cn("inline-block size-2 shrink-0 rounded-full", colors[tone])} />;
 }

@@ -121,7 +121,7 @@ export function DraftMessageDialog({
               </Select>
             </div>
             <Button
-              variant="violet"
+              variant="default"
               disabled={generate.isPending || business.do_not_contact || !language}
               title={!language ? tr.draft.selectLanguageFirst : undefined}
               onClick={() => generate.mutate()}
@@ -131,21 +131,21 @@ export function DraftMessageDialog({
             </Button>
           </div>
 
-          {business.do_not_contact && <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-[#f87171]">{tr.routing.doNotContact}</p>}
+          {business.do_not_contact && <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">{tr.routing.doNotContact}</p>}
           {generate.isError && (
-            <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-[#f87171]">
+            <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
               {generate.error instanceof Error ? generate.error.message : tr.draft.error}
             </p>
           )}
 
           {draft && !draft.ok && (
             <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm">
-              <p className="mb-1 flex items-center gap-2 font-medium text-[#fbbf24]">
+              <p className="mb-1 flex items-center gap-2 font-medium text-warning">
                 <AlertTriangle className="size-4" />
                 {tr.draft.rejectedTitle}
               </p>
               <p className="mb-2 text-xs text-muted">{tr.draft.rejectedHint}</p>
-              <ul className="list-inside list-disc space-y-0.5 text-xs text-[#fcd34d]">
+              <ul className="list-inside list-disc space-y-0.5 text-xs text-warning">
                 {draft.reasons.map((r) => (
                   <li key={r}>{draftReasonLabel(r)}</li>
                 ))}
@@ -186,7 +186,7 @@ export function DraftMessageDialog({
                     </p>
                   )}
                   {translate.isError && (
-                    <p className="text-sm text-[#f87171]">
+                    <p className="text-sm text-danger">
                       {translate.error instanceof Error ? translate.error.message : tr.draft.translationFailed}
                     </p>
                   )}
@@ -203,7 +203,7 @@ export function DraftMessageDialog({
                   )}
                 </div>
               )}
-              {save.isError && <p className="text-sm text-[#f87171]">{save.error instanceof Error ? save.error.message : tr.common.error}</p>}
+              {save.isError && <p className="text-sm text-danger">{save.error instanceof Error ? save.error.message : tr.common.error}</p>}
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => void navigator.clipboard.writeText(body)}>
                   {tr.draft.copyButton}

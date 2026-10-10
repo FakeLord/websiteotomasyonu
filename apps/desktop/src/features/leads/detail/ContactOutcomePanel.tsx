@@ -96,7 +96,7 @@ export function ContactOutcomePanel({ businessId, pending, onClose }: ContactOut
       </div>
 
       {done ? (
-        <p role="status" className="flex items-center gap-2 text-sm text-[#4ade80]">
+        <p role="status" className="flex items-center gap-2 text-sm text-success">
           <CheckCircle2 className="size-4" />
           {done}
         </p>
@@ -157,7 +157,7 @@ export function ContactOutcomePanel({ businessId, pending, onClose }: ContactOut
             </p>
           )}
           {!pending.attemptId && !pending.error && <p className="text-xs text-muted">{tr.contactOutcome.recording}</p>}
-          {error && <p className="text-xs text-[#f87171]">{error}</p>}
+          {error && <p className="text-xs text-danger">{error}</p>}
         </>
       )}
     </div>

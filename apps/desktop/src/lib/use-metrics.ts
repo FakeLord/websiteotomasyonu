@@ -61,3 +61,43 @@ export function stageSegments(stageCounts: Record<string, number>): DonutSegment
   });
   return segments;
 }
+
+/** Huni adımları için aşama sırası: bir işletme bulunduğu aşamaya ve öncekilerin hepsine "ulaşmış" sayılır. */
+const FUNNEL_STAGE_ORDER = [
+  "NEW",
+  "QUALIFIED",
+  "OUTREACH_READY",
+  "CONTACTED",
+  "REPLIED",
+  "ENGAGED",
+  "PROPOSAL_READY",
+  "HANDED_OFF",
+  "WON",
+] as const;
+
+export interface StageFunnelCounts {
+  found: number;
+  contacted: number;
+  replied: number;
+  engaged: number;
+  proposal: number;
+  won: number;
+}
+
+/**
+ * Bugünkü aşama dağılımından satış hunisi: her adım, o aşamaya veya sonrasına gelmiş işletme sayısıdır.
+ * Elenen/kaybedilen (DISQUALIFIED, LOST) yalnızca ilk adıma ("bulunan") dahildir.
+ */
+export function stageFunnel(stageCounts: Record<string, number>): StageFunnelCounts {
+  const at = (stage: string) => stageCounts[stage] ?? 0;
+  const from = (stage: (typeof FUNNEL_STAGE_ORDER)[number]) =>
+    FUNNEL_STAGE_ORDER.slice(FUNNEL_STAGE_ORDER.indexOf(stage)).reduce((sum, s) => sum + at(s), 0);
+  return {
+    found: Object.values(stageCounts).reduce((sum, n) => sum + n, 0),
+    contacted: from("CONTACTED"),
+    replied: from("REPLIED"),
+    engaged: from("ENGAGED"),
+    proposal: from("PROPOSAL_READY"),
+    won: from("WON"),
+  };
+}

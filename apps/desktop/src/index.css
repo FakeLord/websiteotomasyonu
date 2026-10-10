@@ -2,28 +2,45 @@
 @import "@fontsource-variable/inter";
 @import "leaflet/dist/leaflet.css";
 
+/*
+ * Kurumsal tasarım sistemi (DESIGN-IS-2026-10-11). Renkler yalnızca burada tanımlanır; bileşenler anlamsal sınıfları
+ * (bg-surface, text-muted, text-danger …) kullanır. JS gerektiren yerler (grafik, harita) `src/lib/theme-colors.ts`
+ * içindeki aynı değerleri okur — iki dosya birlikte değişir.
+ */
 @theme {
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
 
-  --color-bg: #060a17;
-  --color-sidebar: #080d1d;
-  --color-surface: #0c1326;
-  --color-surface-2: #111a31;
-  --color-surface-3: #17213b;
-  --color-border: #1a2442;
-  --color-border-strong: #26325a;
-  --color-text: #e7ebf6;
-  --color-muted: #8b95b4;
-  --color-subtle: #5d688a;
+  /* Yüzeyler */
+  --color-bg: #f3f5f8;
+  --color-surface: #ffffff;
+  --color-surface-2: #f7f9fc;
+  --color-surface-3: #eef2f7;
+  --color-border: #dfe5ee;
+  --color-border-strong: #c5cfdd;
 
-  --color-primary: #2f6bff;
-  --color-primary-hover: #4a7fff;
-  --color-violet: #8b5cf6;
-  --color-success: #22c55e;
-  --color-warning: #f59e0b;
-  --color-danger: #ef4444;
-  --color-pink: #ec4899;
-  --color-cyan: #06b6d4;
+  /* Metin (beyaz üzerinde en az 4.5:1) */
+  --color-text: #0f172a;
+  --color-muted: #475569;
+  --color-subtle: #64748b;
+
+  /* Kenar çubuğu: derin lacivert */
+  --color-sidebar: #0b1f3a;
+  --color-sidebar-hover: #12294a;
+  --color-sidebar-active: #1b3d6d;
+  --color-sidebar-border: #1c3355;
+  --color-sidebar-text: #b7c3d7;
+  --color-sidebar-muted: #7d8ca6;
+
+  /* Vurgu ve anlamsal renkler */
+  --color-primary: #1d4ed8;
+  --color-primary-hover: #1e40af;
+  --color-success: #15803d;
+  --color-warning: #b45309;
+  --color-danger: #b91c1c;
+  --color-info: #0369a1;
+
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 1px 1px rgb(15 23 42 / 0.03);
+  --shadow-pop: 0 8px 24px rgb(15 23 42 / 0.12), 0 2px 6px rgb(15 23 42 / 0.08);
 }
 
 html,
@@ -37,8 +54,9 @@ body {
   background: var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-sans);
+  font-size: 14px;
   -webkit-font-smoothing: antialiased;
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 * {
@@ -51,6 +69,10 @@ body {
   outline-offset: 2px;
 }
 
+::selection {
+  background: rgb(29 78 216 / 0.18);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -60,31 +82,29 @@ body {
   }
 }
 
-/* Leaflet haritasını koyu temaya uydurur (OSM karoları açık renkli gelir). */
-.map-dark .leaflet-tile-pane {
-  filter: invert(1) hue-rotate(200deg) brightness(0.85) contrast(0.9) saturate(0.6);
-}
-.map-dark .leaflet-container {
-  background: var(--color-surface);
+/* Leaflet: açık tema ile uyumlu açılır pencere ve denetimler. */
+.leaflet-container {
+  background: var(--color-surface-3);
 }
 .leaflet-popup-content-wrapper,
 .leaflet-popup-tip {
-  background: var(--color-surface-2);
+  background: var(--color-surface);
   color: var(--color-text);
   border: 1px solid var(--color-border-strong);
+  box-shadow: var(--shadow-pop);
 }
 .leaflet-popup-content {
   margin: 12px;
 }
 .leaflet-control-attribution {
-  background: rgb(6 10 23 / 0.7) !important;
+  background: rgb(255 255 255 / 0.85) !important;
   color: var(--color-muted) !important;
 }
 .leaflet-control-attribution a {
   color: var(--color-muted) !important;
 }
 .leaflet-bar a {
-  background: var(--color-surface-2) !important;
+  background: var(--color-surface) !important;
   color: var(--color-text) !important;
   border-color: var(--color-border) !important;
 }

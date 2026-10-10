@@ -90,10 +90,10 @@ export function HandoffCard({ businessId, workspaceId }: { businessId: string; w
   const busy = accept.isPending || close.isPending;
 
   return (
-    <Card className="border-violet/40">
+    <Card className="border-primary/30">
       <CardHeader
         title={tr.handoff.title}
-        icon={<Handshake className="size-4 text-[#a78bfa]" />}
+        icon={<Handshake className="size-4 text-primary" />}
         action={<Badge tone={card.status === "OPEN" ? "orange" : "green"}>{tr.handoff.status[card.status]}</Badge>}
       />
       <CardBody className="space-y-3">
@@ -126,7 +126,7 @@ export function HandoffCard({ businessId, workspaceId }: { businessId: string; w
             {tr.handoff.close}
           </Button>
         </div>
-        {error && <p className="text-xs text-[#f87171]">{error}</p>}
+        {error && <p className="text-xs text-danger">{error}</p>}
       </CardBody>
     </Card>
   );

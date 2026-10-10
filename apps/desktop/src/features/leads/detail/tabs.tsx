@@ -85,7 +85,7 @@ export function WebsiteTab({ business, workspaceId }: { business: BusinessDetail
       <Card className="xl:col-span-1">
         <CardHeader
           title={tr.websiteAnalysis.title}
-          icon={<Globe className="size-4 text-cyan" />}
+          icon={<Globe className="size-4 text-info" />}
           action={
             <Button size="sm" variant="outline" disabled={analyze.isPending} onClick={() => analyze.mutate()}>
               {analyze.isPending ? <Loader2 className="animate-spin" /> : <RefreshCw />}
@@ -95,7 +95,7 @@ export function WebsiteTab({ business, workspaceId }: { business: BusinessDetail
         />
         <CardBody className="divide-y divide-border/60">
           {analyze.isError && (
-            <p className="pb-2 text-sm text-[#f87171]">{analyze.error instanceof Error ? analyze.error.message : tr.websiteAnalysis.analyzeError}</p>
+            <p className="pb-2 text-sm text-danger">{analyze.error instanceof Error ? analyze.error.message : tr.websiteAnalysis.analyzeError}</p>
           )}
           {!analysis ? (
             <p className="text-sm text-muted">{tr.websiteAnalysis.neverAnalyzed}</p>
@@ -126,7 +126,7 @@ export function WebsiteTab({ business, workspaceId }: { business: BusinessDetail
               </KeyValue>
               <KeyValue label={tr.websiteAnalysis.pagesFetched}>{analysis.pages_fetched}</KeyValue>
               <KeyValue label={tr.websiteAnalysis.lastAnalyzedAt}>{formatDateTime(analysis.created_at)}</KeyValue>
-              {isStale && <p className="pt-2 text-xs text-[#fbbf24]">{tr.websiteAnalysis.staleWarning}</p>}
+              {isStale && <p className="pt-2 text-xs text-warning">{tr.websiteAnalysis.staleWarning}</p>}
             </>
           )}
         </CardBody>
@@ -271,7 +271,7 @@ export function ContactTab({
             <Plus />
             {tr.leadDetail.addChannel}
           </Button>
-          {add.isError && <p className="w-full text-sm text-[#f87171]">{add.error instanceof Error ? add.error.message : tr.common.error}</p>}
+          {add.isError && <p className="w-full text-sm text-danger">{add.error instanceof Error ? add.error.message : tr.common.error}</p>}
         </form>
 
         {visible.length === 0 ? (

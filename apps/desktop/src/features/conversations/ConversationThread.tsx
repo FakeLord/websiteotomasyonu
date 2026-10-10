@@ -37,7 +37,7 @@ const INTENT_TONES = {
   STOP_CONTACT: "red",
   UNCLEAR: "orange",
   OTHER: "gray",
-  AUTO_REPLY: "violet",
+  AUTO_REPLY: "navy",
   WRONG_CONTACT: "orange",
   ALREADY_HAS_PROVIDER: "gray",
 } as const;
@@ -281,19 +281,19 @@ export function ConversationThread({ conversation, workspaceId }: { conversation
                   "max-w-[75%] rounded-2xl px-4 py-2.5 text-sm",
                   !outbound && "rounded-bl-md bg-surface-3 text-text",
                   outbound && !isDraft && !awaitingConfirm && "rounded-br-md bg-primary text-white",
-                  isDraft && "rounded-br-md border border-violet/50 bg-violet/10 text-text",
+                  isDraft && "rounded-br-md border border-primary/30 bg-primary/5 text-text",
                   awaitingConfirm && "rounded-br-md border border-warning/50 bg-warning/10 text-text",
                   m.status === "FAILED" && "border border-danger/50 bg-danger/10 text-text",
                 )}
               >
                 {isDraft && (
-                  <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-[#a78bfa]">
+                  <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-primary">
                     {m.author_type === "AI" ? <Bot className="size-3.5" /> : <Pencil className="size-3.5" />}
                     {m.author_type === "AI" ? tr.conversations.aiDraft : tr.conversations.manualDraft}
                   </p>
                 )}
                 {awaitingConfirm && (
-                  <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-[#fbbf24]">
+                  <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-warning">
                     <ClipboardPaste className="size-3.5" />
                     {tr.conversations.awaitingConfirm}
                   </p>
@@ -391,9 +391,9 @@ export function ConversationThread({ conversation, workspaceId }: { conversation
         <div
           className={cn(
             "mx-4 mb-2 rounded-lg px-3 py-2 text-sm",
-            notice.tone === "ok" && "bg-success/10 text-[#4ade80]",
-            notice.tone === "warn" && "bg-warning/10 text-[#fbbf24]",
-            notice.tone === "error" && "bg-danger/10 text-[#f87171]",
+            notice.tone === "ok" && "bg-success/10 text-success",
+            notice.tone === "warn" && "bg-warning/10 text-warning",
+            notice.tone === "error" && "bg-danger/10 text-danger",
           )}
         >
           {notice.text}
@@ -417,7 +417,7 @@ export function ConversationThread({ conversation, workspaceId }: { conversation
             <ClipboardPaste className="size-3.5" />
             {tr.conversations.pasteTitle}
           </button>
-          <Button size="sm" variant="violet" className="ml-auto" disabled={aiReply.isPending || conversation.status === "CLOSED"} onClick={() => aiReply.mutate()}>
+          <Button size="sm" variant="default" className="ml-auto" disabled={aiReply.isPending || conversation.status === "CLOSED"} onClick={() => aiReply.mutate()}>
             {aiReply.isPending ? <Loader2 className="animate-spin" /> : <Sparkles />}
             {tr.conversations.suggestReply}
           </Button>

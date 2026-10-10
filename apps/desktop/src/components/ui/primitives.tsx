@@ -22,7 +22,7 @@ export function DialogContent({ title, description, size = "md", className, chil
   const width = { md: "max-w-md", lg: "max-w-2xl", xl: "max-w-4xl" }[size];
   return (
     <DialogPrimitive.Portal>
-      <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" />
+      <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-slate-900/40" />
       <DialogPrimitive.Content
         className={cn(
           "fixed top-1/2 left-1/2 z-50 max-h-[90vh] w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border border-border-strong bg-surface p-5 shadow-2xl shadow-black/50",
@@ -66,7 +66,7 @@ export function DropdownMenuContent({
         align={align}
         sideOffset={6}
         className={cn(
-          "z-50 min-w-44 rounded-lg border border-border-strong bg-surface-2 p-1 shadow-xl shadow-black/40",
+          "z-50 min-w-44 rounded-lg border border-border-strong bg-surface-2 p-1 shadow-pop",
           className,
         )}
         {...props}

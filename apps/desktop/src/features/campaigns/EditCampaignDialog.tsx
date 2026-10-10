@@ -68,7 +68,7 @@ export function EditCampaignDialog({ campaign, onClose }: EditCampaignDialogProp
             </div>
           </div>
           <p className="text-xs text-muted">{tr.campaigns.edit.lockedHint}</p>
-          {save.isError && <p className="text-sm text-[#f87171]">{save.error.message}</p>}
+          {save.isError && <p className="text-sm text-danger">{save.error.message}</p>}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="ghost" onClick={onClose}>
               {tr.common.cancel}

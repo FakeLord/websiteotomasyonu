@@ -89,7 +89,7 @@ export function PrepareDraftsDialog({ open, onOpenChange, workspaceId, country, 
           <p className="text-xs text-muted">{tr.draftQueue.prepare.foreignHint}</p>
 
           {enqueue.isError && (
-            <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-[#f87171]">
+            <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
               {enqueue.error instanceof Error ? enqueue.error.message : tr.draftQueue.actionError}
             </p>
           )}
@@ -103,7 +103,7 @@ export function PrepareDraftsDialog({ open, onOpenChange, workspaceId, country, 
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               {tr.common.close}
             </Button>
-            <Button variant="violet" disabled={enqueue.isPending || !language} onClick={() => enqueue.mutate()}>
+            <Button variant="default" disabled={enqueue.isPending || !language} onClick={() => enqueue.mutate()}>
               {enqueue.isPending ? <Loader2 className="animate-spin" /> : <Sparkles />}
               {tr.draftQueue.prepare.start}
             </Button>

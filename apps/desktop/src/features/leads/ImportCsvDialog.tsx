@@ -219,7 +219,7 @@ export function ImportCsvDialog({ workspaceId, onClose }: ImportCsvDialogProps) 
             </div>
           )}
 
-          {done && <p className="rounded-lg bg-success/10 px-3 py-2 text-sm text-[#4ade80]">{tr.leads.importDone}</p>}
+          {done && <p className="rounded-lg bg-success/10 px-3 py-2 text-sm text-success">{tr.leads.importDone}</p>}
 
           <div className="flex justify-end">
             <Button type="button" variant="outline" onClick={onClose}>

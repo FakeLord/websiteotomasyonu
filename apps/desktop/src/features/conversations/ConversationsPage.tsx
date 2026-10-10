@@ -96,7 +96,7 @@ export function ConversationsPage() {
                       <span className="shrink-0 text-[11px] text-subtle">{formatRelative(last?.created_at ?? c.updated_at)}</span>
                     </div>
                     <p className="mt-0.5 flex items-center gap-1.5 truncate text-xs text-muted">
-                      {last?.status === "DRAFT" && <span className="font-medium text-[#a78bfa]">{tr.conversations.draftPrefix}</span>}
+                      {last?.status === "DRAFT" && <span className="font-medium text-primary">{tr.conversations.draftPrefix}</span>}
                       <span className="truncate">{last?.body ?? tr.conversations.noMessages}</span>
                     </p>
                   </div>

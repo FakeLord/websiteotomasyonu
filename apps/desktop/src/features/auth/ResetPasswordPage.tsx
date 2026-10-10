@@ -27,7 +27,7 @@ export function ResetPasswordPage() {
   return (
     <AuthShell title={tr.auth.resetTitle} description={tr.auth.resetDescription}>
       {sent ? (
-        <p className="rounded-lg bg-success/10 px-3 py-2 text-sm text-[#4ade80]">{tr.auth.resetSent}</p>
+        <p className="rounded-lg bg-success/10 px-3 py-2 text-sm text-success">{tr.auth.resetSent}</p>
       ) : (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>

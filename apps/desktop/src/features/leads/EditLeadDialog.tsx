@@ -117,7 +117,7 @@ export function EditLeadDialog({ business, workspaceId, onClose }: EditLeadDialo
             <Input value={form.website} onChange={set("website")} inputMode="url" />
           </Field>
 
-          {save.isError && <p className="col-span-2 text-sm text-[#f87171]">{save.error.message}</p>}
+          {save.isError && <p className="col-span-2 text-sm text-danger">{save.error.message}</p>}
           <div className="col-span-2 flex justify-end gap-2">
             <Button type="button" variant="ghost" onClick={onClose}>
               {tr.common.cancel}
@@ -138,7 +138,7 @@ function Field({ label, error, hint, full, children }: { label: string; error?: 
       <Label>{label}</Label>
       {children}
       {hint && !error && <p className="mt-1 text-xs text-muted">{hint}</p>}
-      {error && <p className="mt-1 text-xs text-[#f87171]">{error}</p>}
+      {error && <p className="mt-1 text-xs text-danger">{error}</p>}
     </div>
   );
 }

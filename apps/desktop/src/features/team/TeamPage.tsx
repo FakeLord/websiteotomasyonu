@@ -19,7 +19,7 @@ import { Avatar, PageHeader, Table, Td, Th, Tr } from "../../components/ui/data-
 import { Dialog, DialogContent } from "../../components/ui/primitives";
 
 const ROLES: WorkspaceRole[] = ["ADMIN", "MEMBER", "AGENT"];
-const ROLE_TONES = { ADMIN: "violet", MEMBER: "blue", AGENT: "cyan" } as const;
+const ROLE_TONES = { ADMIN: "navy", MEMBER: "blue", AGENT: "blue" } as const;
 
 interface InviteRow {
   id: string;
@@ -157,7 +157,7 @@ export function TeamPage() {
           )
         }
       />
-      {error && <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-[#f87171]">{error}</p>}
+      {error && <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>}
       {notice && (
         <p role="status" className="rounded-lg bg-surface-2 px-3 py-2 text-sm text-muted">
           {notice}
@@ -261,7 +261,7 @@ export function TeamPage() {
                     <Td>
                       <Badge tone={ROLE_TONES[invite.role]}>{tr.team.roles[invite.role]}</Badge>
                     </Td>
-                    <Td className={expired ? "text-[#f87171]" : "text-muted"}>{expired ? tr.team.expired : formatDate(invite.expires_at)}</Td>
+                    <Td className={expired ? "text-danger" : "text-muted"}>{expired ? tr.team.expired : formatDate(invite.expires_at)}</Td>
                     <Td className="whitespace-nowrap">
                       <button
                         type="button"
@@ -313,7 +313,7 @@ export function TeamPage() {
               <div>
                 <Label htmlFor="invite-email">{tr.auth.email}</Label>
                 <Input id="invite-email" type="email" {...register("email")} />
-                {errors.email && <p className="mt-1 text-xs text-[#f87171]">{errors.email.message}</p>}
+                {errors.email && <p className="mt-1 text-xs text-danger">{errors.email.message}</p>}
               </div>
               <div>
                 <Label htmlFor="invite-role">{tr.team.role}</Label>

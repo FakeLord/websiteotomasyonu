@@ -120,10 +120,10 @@ export function CustomersPage() {
       />
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label={tr.customers.kpi.total} value={rows.length} icon={Users} color="#3b82f6" />
-        <StatCard label={tr.customers.kpi.active} value={summary.active} icon={UserCheck} color="#22c55e" />
-        <StatCard label={tr.customers.kpi.revenue} value={formatMoneyTotals(summary.totalsByCurrency)} icon={Banknote} color="#f59e0b" />
-        <StatCard label={tr.customers.kpi.mrr} value={formatMoneyTotals(summary.mrrByCurrency)} icon={Repeat} color="#8b5cf6" />
+        <StatCard label={tr.customers.kpi.total} value={rows.length} icon={Users} />
+        <StatCard label={tr.customers.kpi.active} value={summary.active} icon={UserCheck} />
+        <StatCard label={tr.customers.kpi.revenue} value={formatMoneyTotals(summary.totalsByCurrency)} icon={Banknote} />
+        <StatCard label={tr.customers.kpi.mrr} value={formatMoneyTotals(summary.mrrByCurrency)} icon={Repeat} />
       </div>
 
       <Card>

@@ -49,20 +49,20 @@ function ChangePasswordCard() {
           <div>
             <Label htmlFor="new-password">{tr.auth.newPassword}</Label>
             <Input id="new-password" type="password" autoComplete="new-password" {...register("password")} />
-            {errors.password && <p className="mt-1 text-xs text-[#f87171]">{tr.auth.passwordTooShort}</p>}
+            {errors.password && <p className="mt-1 text-xs text-danger">{tr.auth.passwordTooShort}</p>}
           </div>
           <div>
             <Label htmlFor="confirm-password">{tr.auth.confirmPassword}</Label>
             <Input id="confirm-password" type="password" autoComplete="new-password" {...register("confirm")} />
-            {errors.confirm && <p className="mt-1 text-xs text-[#f87171]">{tr.auth.passwordMismatch}</p>}
+            {errors.confirm && <p className="mt-1 text-xs text-danger">{tr.auth.passwordMismatch}</p>}
           </div>
           <div className="flex items-center gap-3">
             <Button type="submit" disabled={isSubmitting}>
               {tr.settings.password.submit}
             </Button>
-            {done && <span className="text-xs text-[#4ade80]">{tr.settings.password.success}</span>}
+            {done && <span className="text-xs text-success">{tr.settings.password.success}</span>}
           </div>
-          {serverError && <p className="text-xs text-[#f87171]">{serverError}</p>}
+          {serverError && <p className="text-xs text-danger">{serverError}</p>}
         </form>
       </CardBody>
     </Card>
@@ -108,7 +108,7 @@ function WorkspaceNameRow({ workspaceId, name, canEdit }: { workspaceId: string;
         </Button>
       </div>
       <p className="text-xs text-subtle">{tr.settings.workspaceRenameHint}</p>
-      {message && <p className={"text-xs " + (message.ok ? "text-[#4ade80]" : "text-[#f87171]")}>{message.text}</p>}
+      {message && <p className={"text-xs " + (message.ok ? "text-success" : "text-danger")}>{message.text}</p>}
     </div>
   );
 }
@@ -179,7 +179,7 @@ export function GeneralSection() {
             <Button disabled={!name.trim() || save.isPending} onClick={() => save.mutate()}>
               {tr.settings.saveButton}
             </Button>
-            {saved && <span className="text-xs text-[#4ade80]">{tr.settings.saveSuccess}</span>}
+            {saved && <span className="text-xs text-success">{tr.settings.saveSuccess}</span>}
           </div>
         </CardBody>
       </Card>
@@ -290,7 +290,7 @@ export function FollowupPolicySection({ workspaceId }: { workspaceId: string }) 
           <Button disabled={save.isPending} onClick={() => save.mutate()}>
             {tr.settings.saveButton}
           </Button>
-          {message && <span className={`text-xs ${message.ok ? "text-[#4ade80]" : "text-[#f87171]"}`}>{message.text}</span>}
+          {message && <span className={`text-xs ${message.ok ? "text-success" : "text-danger"}`}>{message.text}</span>}
         </div>
       </CardBody>
     </Card>
@@ -315,7 +315,7 @@ export function IntegrationsSection() {
                 {card.title}
               </span>
             }
-            action={<Badge tone="violet">{card.status}</Badge>}
+            action={<Badge tone="navy">{card.status}</Badge>}
           />
           <CardBody>
             <p className="text-sm text-muted">{card.body}</p>

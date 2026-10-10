@@ -120,7 +120,7 @@ export function PipelinePage() {
           </Button>
         }
       />
-      {error && <p className="mb-4 rounded-lg bg-danger/10 px-3 py-2 text-sm text-[#f87171]">{error}</p>}
+      {error && <p className="mb-4 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>}
 
       <div className="grid gap-3 overflow-x-auto pb-2 xl:grid-cols-5" style={{ gridTemplateColumns: "repeat(5, minmax(240px, 1fr))" }}>
         {COLUMNS.map((stage) => {
@@ -177,7 +177,7 @@ export function PipelinePage() {
                         <ScoreBadge score={card.lead_score} />
                       </div>
                       {handoff && (
-                        <p className="mt-2 line-clamp-2 flex gap-1.5 rounded-md bg-violet/10 p-2 text-xs text-[#c4b5fd]">
+                        <p className="mt-2 line-clamp-2 flex gap-1.5 rounded-md bg-primary/5 p-2 text-xs text-primary">
                           <Handshake className="size-3.5 shrink-0" />
                           {handoff.summary}
                         </p>
@@ -210,7 +210,7 @@ export function PipelinePage() {
         className={cn(
           "mt-3 flex items-center justify-center gap-2 rounded-xl border border-dashed border-border py-4 text-sm text-muted transition-colors",
           dragged ? "opacity-100" : "opacity-50",
-          overColumn === "LOST" && "border-danger/60 bg-danger/10 text-[#f87171]",
+          overColumn === "LOST" && "border-danger/60 bg-danger/10 text-danger",
         )}
       >
         <XCircle className="size-4" />

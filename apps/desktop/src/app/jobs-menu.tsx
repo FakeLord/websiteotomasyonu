@@ -156,9 +156,9 @@ function DraftQueueSection({ workspaceId }: { workspaceId: string }) {
           <p className="text-xs text-muted tabular-nums">{tr.draftQueue.counts(waiting, queue.done, queue.failed)}</p>
           {loop.running && loop.current && <p className="text-xs text-muted">{tr.draftQueue.running(loop.current)}</p>}
           {!loop.running && waiting > 0 && !loop.stopped && <p className="text-xs text-muted">{tr.draftQueue.waitingHint}</p>}
-          {loop.stopped && <p className="text-xs text-[#fbbf24]">{tr.draftQueue.stopped[loop.stopped]}</p>}
-          {queue.failed > 0 && queue.lastError && <p className="text-xs text-[#f87171]">{queue.lastError}</p>}
-          {actionError && <p className="text-xs text-[#f87171]">{actionError.message || tr.draftQueue.actionError}</p>}
+          {loop.stopped && <p className="text-xs text-warning">{tr.draftQueue.stopped[loop.stopped]}</p>}
+          {queue.failed > 0 && queue.lastError && <p className="text-xs text-danger">{queue.lastError}</p>}
+          {actionError && <p className="text-xs text-danger">{actionError.message || tr.draftQueue.actionError}</p>}
           <div className="flex flex-wrap gap-2 pt-0.5">
             {queue.pendingApproval > 0 && (
               <Button size="sm" variant="outline" onClick={() => navigate("/review")}>
@@ -239,12 +239,12 @@ function PlanRow({ plan, workspaceId }: { plan: ScanPlanProgress; workspaceId: s
       </p>
       {hint && <p className="text-xs text-muted">{hint}</p>}
       {plan.tilesFailed > 0 && (
-        <p className="text-xs text-[#f87171]">
+        <p className="text-xs text-danger">
           {tr.jobs.planFailedTiles(plan.tilesFailed)}
           {plan.lastError ? `: ${plan.lastError}` : ""}
         </p>
       )}
-      {actionError && <p className="text-xs text-[#f87171]">{actionError.message || tr.jobs.actionError}</p>}
+      {actionError && <p className="text-xs text-danger">{actionError.message || tr.jobs.actionError}</p>}
       {plan.tilesFailed > 0 && plan.status !== "CANCELLED" && (
         <Button size="sm" variant="outline" disabled={retryFailed.isPending} onClick={() => retryFailed.mutate()}>
           {tr.jobs.retryFailed}
@@ -314,7 +314,7 @@ export function JobsMenu() {
         aria-label={tr.jobs.open}
         className={cn(
           "flex h-10 max-w-64 items-center gap-2 rounded-lg px-2.5 text-xs hover:bg-surface-2",
-          warn && !busy ? "text-[#fbbf24]" : "text-muted hover:text-text",
+          warn && !busy ? "text-warning" : "text-muted hover:text-text",
         )}
       >
         {busy ? (
@@ -339,7 +339,7 @@ export function JobsMenu() {
                 [...openPlans, ...finishedPlans].map((plan) => <PlanRow key={plan.id} plan={plan} workspaceId={workspaceId} />)}
             </ul>
           )}
-          {scan.error && !scan.running && <p className="mt-2 text-xs text-[#f87171]">{scan.error}</p>}
+          {scan.error && !scan.running && <p className="mt-2 text-xs text-danger">{scan.error}</p>}
         </section>
 
         <section>
@@ -351,7 +351,7 @@ export function JobsMenu() {
             </div>
           ) : problem ? (
             <div className="space-y-1.5">
-              <p className="text-xs text-[#fbbf24]">
+              <p className="text-xs text-warning">
                 {problem.failed > 0 ? tr.websiteAnalysis.indicatorFailed(problem.failed) : tr.websiteAnalysis.indicatorError}
                 {problem.firstError ? `: ${problem.firstError}` : ""}
               </p>

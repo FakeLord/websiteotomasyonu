@@ -39,7 +39,7 @@ interface MemberRow {
   } | null;
 }
 
-const MEMBER_TONES = { QUEUED: "gray", DRAFTED: "violet", SENT: "blue", REPLIED: "green", SKIPPED: "orange" } as const;
+const MEMBER_TONES = { QUEUED: "gray", DRAFTED: "navy", SENT: "blue", REPLIED: "green", SKIPPED: "orange" } as const;
 
 export function CampaignDetailPage() {
   const { campaignId } = useParams<{ campaignId: string }>();
@@ -236,11 +236,11 @@ export function CampaignDetailPage() {
       </Card>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        <StatCard label={tr.campaigns.members} value={s.total} icon={UserPlus} color="#3b82f6" />
-        <StatCard label={tr.campaigns.waiting} value={s.queued} icon={SkipForward} color="#8b95b4" />
-        <StatCard label={tr.campaigns.drafted} value={s.drafted} icon={Sparkles} color="#8b5cf6" />
-        <StatCard label={tr.campaigns.sent} value={s.sent} icon={MessagesSquare} color="#f59e0b" />
-        <StatCard label={tr.campaigns.replyRate} value={`%${replyRate(s)}`} icon={CheckCircle2} color="#22c55e" />
+        <StatCard label={tr.campaigns.members} value={s.total} icon={UserPlus} />
+        <StatCard label={tr.campaigns.waiting} value={s.queued} icon={SkipForward} />
+        <StatCard label={tr.campaigns.drafted} value={s.drafted} icon={Sparkles} />
+        <StatCard label={tr.campaigns.sent} value={s.sent} icon={MessagesSquare} />
+        <StatCard label={tr.campaigns.replyRate} value={`%${replyRate(s)}`} icon={CheckCircle2} />
       </div>
 
       <Card>
@@ -273,7 +273,7 @@ export function CampaignDetailPage() {
           </label>
           <Button
             size="sm"
-            variant="violet"
+            variant="default"
             disabled={!!progress || nextBatch.length === 0 || campaign.status !== "ACTIVE" || !language}
             onClick={() => void prepareDrafts(nextBatch)}
             title={campaign.status !== "ACTIVE" ? tr.campaigns.startFirst : undefined}
@@ -283,11 +283,11 @@ export function CampaignDetailPage() {
           </Button>
         </div>
         {campaign.status !== "ACTIVE" && campaign.status !== "COMPLETED" && (
-          <p className="border-b border-border px-3 py-2 text-xs text-[#fbbf24]">{tr.campaigns.startFirst}</p>
+          <p className="border-b border-border px-3 py-2 text-xs text-warning">{tr.campaigns.startFirst}</p>
         )}
         {(messages.length > 0 || error) && (
           <div className="space-y-0.5 border-b border-border px-3 py-2 text-xs">
-            {error && <p className="text-[#f87171]">{error}</p>}
+            {error && <p className="text-danger">{error}</p>}
             {messages.map((m) => (
               <p key={m} className="text-muted">
                 {m}

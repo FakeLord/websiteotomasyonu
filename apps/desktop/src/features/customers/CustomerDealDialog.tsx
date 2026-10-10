@@ -213,10 +213,10 @@ export function CustomerDealDialog({
             <Textarea value={form.note} onChange={(e) => set("note", e.target.value)} rows={3} />
           </div>
           {save.isError && (
-            <p className="text-sm text-[#f87171] sm:col-span-2">{save.error instanceof Error ? save.error.message : tr.common.error}</p>
+            <p className="text-sm text-danger sm:col-span-2">{save.error instanceof Error ? save.error.message : tr.common.error}</p>
           )}
           {remove.isError && (
-            <p className="text-sm text-[#f87171] sm:col-span-2">{remove.error instanceof Error ? remove.error.message : tr.common.error}</p>
+            <p className="text-sm text-danger sm:col-span-2">{remove.error instanceof Error ? remove.error.message : tr.common.error}</p>
           )}
           <div className="flex justify-end gap-2 sm:col-span-2">
             {isAdmin && deal.data && (

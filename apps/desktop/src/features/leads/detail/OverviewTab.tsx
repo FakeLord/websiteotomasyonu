@@ -9,7 +9,7 @@ import { buildLeadSummary } from "./lead-summary";
 import { channelDisplayValue, channelHref, type ContactChannelRow, type WorkspaceSettingsRow } from "./lead-data";
 import type { BusinessDetail } from "../types";
 
-const MODE_TONES: Record<string, BadgeTone> = { AUTOMATIC: "green", DRAFT: "blue", ASSISTED: "violet", MANUAL: "gray" };
+const MODE_TONES: Record<string, BadgeTone> = { AUTOMATIC: "green", DRAFT: "blue", ASSISTED: "navy", MANUAL: "gray" };
 
 export function ScoreReasons({ business }: { business: BusinessDetail }) {
   const reasons = (business.score_breakdown as { reasons?: Array<{ rule: string; points: number }> }).reasons ?? [];
@@ -24,7 +24,7 @@ export function ScoreReasons({ business }: { business: BusinessDetail }) {
               <span className={`size-1.5 rounded-full ${r.points >= 0 ? "bg-success" : "bg-danger"}`} />
               {tr.scoreRules[r.rule as keyof typeof tr.scoreRules] ?? r.rule}
             </span>
-            <span className={`font-medium tabular-nums ${r.points >= 0 ? "text-[#4ade80]" : "text-[#f87171]"}`}>
+            <span className={`font-medium tabular-nums ${r.points >= 0 ? "text-success" : "text-danger"}`}>
               {r.points > 0 ? `+${r.points}` : r.points}
             </span>
           </li>
@@ -91,7 +91,7 @@ export function OverviewTab({
       </Card>
 
       <Card>
-        <CardHeader title={tr.leadDetail.analysisSummary} icon={<Sparkles className="size-4 text-violet" />} />
+        <CardHeader title={tr.leadDetail.analysisSummary} icon={<Sparkles className="size-4 text-primary" />} />
         <CardBody className="space-y-4">
           <p className="rounded-lg bg-surface-2 p-3 text-sm leading-relaxed text-text">{summary}</p>
           <div>

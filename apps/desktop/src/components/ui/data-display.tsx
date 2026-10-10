@@ -2,6 +2,7 @@ import type * as React from "react";
 import { ChevronLeft, ChevronRight, type LucideIcon } from "lucide-react";
 import { cn } from "../../lib/cn";
 import { tr } from "../../i18n/tr";
+import { AVATAR_COLORS } from "../../lib/theme-colors";
 
 /* Table */
 
@@ -16,7 +17,7 @@ export function Table({ className, ...props }: React.TableHTMLAttributes<HTMLTab
 export function Th({ className, ...props }: React.ThHTMLAttributes<HTMLTableCellElement>) {
   return (
     <th
-      className={cn("border-b border-border px-3 py-2.5 text-left text-xs font-medium whitespace-nowrap text-muted", className)}
+      className={cn("border-b border-border bg-surface-2 px-3 py-2.5 text-left text-[11px] font-semibold tracking-wide whitespace-nowrap text-muted uppercase", className)}
       {...props}
     />
   );
@@ -27,12 +28,12 @@ export function Td({ className, ...props }: React.TdHTMLAttributes<HTMLTableCell
 }
 
 export function Tr({ className, ...props }: React.HTMLAttributes<HTMLTableRowElement>) {
-  return <tr className={cn("transition-colors hover:bg-surface-2/60", className)} {...props} />;
+  return <tr className={cn("transition-colors hover:bg-surface-2", className)} {...props} />;
 }
 
 /* Avatar */
 
-const AVATAR_COLORS = ["#2f6bff", "#8b5cf6", "#22c55e", "#f59e0b", "#ec4899", "#06b6d4", "#ef4444"];
+
 
 function hashString(value: string): number {
   let hash = 0;
@@ -65,7 +66,7 @@ export function Avatar({ name, size = "md", square = false, className }: AvatarP
         sizes[size],
         className,
       )}
-      style={{ background: `linear-gradient(135deg, ${color}, ${color}99)` }}
+      style={{ backgroundColor: color }}
       aria-hidden
     >
       {initials(name)}
@@ -79,36 +80,58 @@ interface StatCardProps {
   label: string;
   value: React.ReactNode;
   icon: LucideIcon;
-  color: string;
+  /** Önceki döneme göre yüzde değişim. */
   delta?: number | null;
+  /** Kıyas açıklaması ("önceki döneme göre"). */
+  deltaLabel?: string;
+  /** Değerin altındaki kısa not (örn. "12 yeni bu hafta"). */
+  hint?: string;
+  /** Mini trend çizgisi için gün gün değerler. */
+  trend?: number[];
   className?: string;
   compact?: boolean;
 }
 
-export function StatCard({ label, value, icon: Icon, color, delta, className, compact = false }: StatCardProps) {
+/** Küçük, eksen/etiket içermeyen trend çizgisi (kurumsal gösterge kutuları için). */
+export function Sparkline({ values, className }: { values: number[]; className?: string }) {
+  if (values.length < 2) return null;
+  const width = 96;
+  const height = 28;
+  const max = Math.max(...values);
+  const min = Math.min(...values);
+  const span = max - min || 1;
+  const step = width / (values.length - 1);
+  const points = values.map((v, i) => `${(i * step).toFixed(1)},${(height - 3 - ((v - min) / span) * (height - 6)).toFixed(1)}`);
   return (
-    <div
-      className={cn(
-        "flex rounded-xl border border-border bg-surface",
-        compact ? "flex-col gap-2 p-3" : "items-start gap-3 p-4",
-        className,
-      )}
-    >
-      <span
-        className={cn("flex shrink-0 items-center justify-center rounded-lg", compact ? "size-8" : "size-10")}
-        style={{ backgroundColor: `${color}22`, color }}
-      >
-        <Icon className={compact ? "size-4" : "size-5"} />
-      </span>
-      <div className="min-w-0">
-        <p className="truncate text-xs text-muted">{label}</p>
-        <p className="mt-0.5 text-2xl font-semibold tracking-tight text-text tabular-nums">{value}</p>
-        {delta !== undefined && delta !== null && (
-          <p className={cn("mt-0.5 text-xs font-medium", delta >= 0 ? "text-success" : "text-danger")}>
-            {delta >= 0 ? "▲" : "▼"} %{Math.abs(delta).toLocaleString("tr-TR", { maximumFractionDigits: 1 })}
-          </p>
-        )}
+    <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className={cn("h-8 w-full text-primary", className)} aria-hidden>
+      <polyline points={points.join(" ")} fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function StatCard({ label, value, icon: Icon, delta, deltaLabel, hint, trend, className, compact = false }: StatCardProps) {
+  const hasDelta = delta !== undefined && delta !== null;
+  return (
+    <div className={cn("rounded-lg border border-border bg-surface shadow-card", compact ? "p-3" : "p-4", className)}>
+      <div className="flex items-center justify-between gap-2">
+        <p className="truncate text-xs font-medium text-muted">{label}</p>
+        <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-surface-3 text-muted">
+          <Icon className="size-4" />
+        </span>
       </div>
+      <p className="mt-2 truncate text-2xl font-semibold tracking-tight text-text tabular-nums">{value}</p>
+      {trend && <Sparkline values={trend} className="mt-2" />}
+      {(hasDelta || hint) && (
+        <p className="mt-1.5 flex flex-wrap items-center gap-x-2 text-xs text-muted">
+          {hasDelta && (
+            <span className={cn("font-medium", delta >= 0 ? "text-success" : "text-danger")}>
+              {delta >= 0 ? "▲" : "▼"} %{Math.abs(delta).toLocaleString("tr-TR", { maximumFractionDigits: 1 })}
+            </span>
+          )}
+          {hasDelta && deltaLabel && <span>{deltaLabel}</span>}
+          {hint && <span>{hint}</span>}
+        </p>
+      )}
     </div>
   );
 }

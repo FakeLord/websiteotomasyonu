@@ -13,7 +13,7 @@ import { PageHeader, Pagination, Table, Td, Th, Tr } from "../../components/ui/d
 const PAGE_SIZE = 25;
 const ACTOR_TYPES = ["USER", "AI", "JARVIS", "SYSTEM"] as const;
 type ActorType = (typeof ACTOR_TYPES)[number];
-const ACTOR_TONES = { USER: "blue", AI: "violet", JARVIS: "pink", SYSTEM: "gray" } as const;
+const ACTOR_TONES = { USER: "blue", AI: "navy", JARVIS: "gray", SYSTEM: "gray" } as const;
 
 interface ActivityLogRow {
   id: number;

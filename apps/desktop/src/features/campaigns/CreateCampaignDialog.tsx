@@ -216,7 +216,7 @@ export function CreateCampaignDialog({ open, onOpenChange }: { open: boolean; on
           </div>
 
           {create.isError && (
-            <p className="text-sm text-[#f87171] md:col-span-2">{create.error instanceof Error ? create.error.message : tr.common.error}</p>
+            <p className="text-sm text-danger md:col-span-2">{create.error instanceof Error ? create.error.message : tr.common.error}</p>
           )}
           <div className="flex justify-end gap-2 md:col-span-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>

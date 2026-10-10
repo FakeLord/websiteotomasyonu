@@ -121,7 +121,7 @@ export function ScanPlanDialog({ workspaceId, countryCode, city, onClose, onStar
           </div>
 
           {capMissing && (
-            <div className="space-y-2 rounded-lg bg-warning/10 p-3 text-sm text-[#fbbf24]">
+            <div className="space-y-2 rounded-lg bg-warning/10 p-3 text-sm text-warning">
               <p>{tr.scanPlan.capMissing}</p>
               <Button size="sm" variant="outline" onClick={() => navigate("/settings?section=scoring")}>
                 {tr.scanPlan.openSettings}
@@ -137,8 +137,8 @@ export function ScanPlanDialog({ workspaceId, countryCode, city, onClose, onStar
               <p className="text-xs text-muted">{tr.scanPlan.estimate(categories.length, remaining)}</p>
             </div>
           )}
-          {findCity.isSuccess && !found && <p className="text-sm text-[#f87171]">{tr.scanPlan.cityNotFound}</p>}
-          {error && <p className="text-sm text-[#f87171]">{error.message || tr.scanPlan.startError}</p>}
+          {findCity.isSuccess && !found && <p className="text-sm text-danger">{tr.scanPlan.cityNotFound}</p>}
+          {error && <p className="text-sm text-danger">{error.message || tr.scanPlan.startError}</p>}
 
           <div className="flex justify-end gap-2">
             <Button variant="ghost" onClick={onClose}>

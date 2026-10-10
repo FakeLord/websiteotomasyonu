@@ -59,7 +59,7 @@ export function EraseBusinessButton({ businessId }: { businessId: string }) {
               />
             </div>
             {erase.isError && (
-              <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-[#f87171]">
+              <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
                 {erase.error instanceof Error ? erase.error.message : tr.erase.error}
               </p>
             )}

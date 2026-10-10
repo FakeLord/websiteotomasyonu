@@ -88,7 +88,7 @@ function ManualContactsCard({ workspaceId, range }: { workspaceId: string | unde
       <CardHeader title={tr.reports.manualContacts.title} />
       <CardBody className="space-y-3">
         <p className="text-xs text-muted">{tr.reports.manualContacts.hint}</p>
-        {query.isError && <p className="text-sm text-[#f87171]">{query.error instanceof Error ? query.error.message : tr.common.error}</p>}
+        {query.isError && <p className="text-sm text-danger">{query.error instanceof Error ? query.error.message : tr.common.error}</p>}
         {rows.length === 0 && !query.isError ? (
           <p className="py-4 text-center text-sm text-muted">{tr.reports.manualContacts.empty}</p>
         ) : (
@@ -183,9 +183,9 @@ function SegmentsTab({ workspaceId }: { workspaceId: string | undefined }) {
       />
       <CardBody className="space-y-3">
         <p className="text-xs text-muted">{tr.reports.segments.hint}</p>
-        {query.isError && <p className="text-sm text-[#f87171]">{query.error instanceof Error ? query.error.message : tr.common.error}</p>}
+        {query.isError && <p className="text-sm text-danger">{query.error instanceof Error ? query.error.message : tr.common.error}</p>}
         {best && bestRate !== null ? (
-          <p className="rounded-lg bg-success/10 px-3 py-2 text-sm text-[#4ade80]">
+          <p className="rounded-lg bg-success/10 px-3 py-2 text-sm text-success">
             {tr.reports.segments.best(best.key, bestRate, best.contacted)}
           </p>
         ) : (
@@ -328,7 +328,7 @@ export function ReportsPage() {
           </div>
         }
       />
-      {query.isError && <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-[#f87171]">{query.error instanceof Error ? query.error.message : tr.common.error}</p>}
+      {query.isError && <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">{query.error instanceof Error ? query.error.message : tr.common.error}</p>}
 
       <Tabs value={tab} onValueChange={(v) => setParams({ tab: v }, { replace: true })} className="space-y-5">
         <TabsList>
@@ -341,11 +341,11 @@ export function ReportsPage() {
 
         <TabsContent value="overview" className="space-y-5">
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-            <StatCard label={tr.reports.kpi.found} value={totals?.found ?? "—"} icon={Building2} color="#3b82f6" delta={delta("found")} />
-            <StatCard label={tr.reports.kpi.sent} value={totals?.sent ?? "—"} icon={Send} color="#f59e0b" delta={delta("sent")} />
-            <StatCard label={tr.reports.kpi.replyRate} value={`%${replyPct}`} icon={MessageSquareReply} color="#ec4899" />
-            <StatCard label={tr.reports.kpi.won} value={totals?.won ?? "—"} icon={UserCheck} color="#22c55e" delta={delta("won")} />
-            <StatCard label={tr.reports.kpi.revenue} value={formatMoneyTotals(m?.revenue ?? {})} icon={Banknote} color="#8b5cf6" />
+            <StatCard label={tr.reports.kpi.found} value={totals?.found ?? "—"} icon={Building2} delta={delta("found")} />
+            <StatCard label={tr.reports.kpi.sent} value={totals?.sent ?? "—"} icon={Send} delta={delta("sent")} />
+            <StatCard label={tr.reports.kpi.replyRate} value={`%${replyPct}`} icon={MessageSquareReply} />
+            <StatCard label={tr.reports.kpi.won} value={totals?.won ?? "—"} icon={UserCheck} delta={delta("won")} />
+            <StatCard label={tr.reports.kpi.revenue} value={formatMoneyTotals(m?.revenue ?? {})} icon={Banknote} />
           </div>
           <div className="grid gap-5 xl:grid-cols-3">
             <Card className="xl:col-span-2">
@@ -433,7 +433,7 @@ export function ReportsPage() {
                     <span className="text-sm text-text">{tr.reports.funnelSteps[step.key]}</span>
                     <div className="h-7 overflow-hidden rounded-md bg-surface-2">
                       <div
-                        className="flex h-full items-center rounded-md bg-gradient-to-r from-primary to-violet px-2 text-xs font-medium text-white"
+                        className="flex h-full items-center rounded-md bg-primary px-2 text-xs font-medium text-white"
                         style={{ width: `${Math.max(step.ofTop, step.value > 0 ? 6 : 0)}%` }}
                       >
                         {step.value > 0 ? step.value : ""}
@@ -484,7 +484,7 @@ export function ReportsPage() {
             </Table>
             <div className="border-t border-border p-4">
               <p className="mb-2 flex items-center gap-2 text-sm font-medium text-text">
-                <Sparkles className="size-4 text-violet" />
+                <Sparkles className="size-4 text-primary" />
                 {tr.reports.aiUsage}
               </p>
               {(m?.aiUsage.length ?? 0) === 0 ? (

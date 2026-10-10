@@ -5,6 +5,7 @@ import { DEFAULT_DAILY_LIMIT, PROVIDER_DEFAULTS, normalizeAiConfig, type AiChain
 import { supabase } from "../../lib/supabase-client";
 import { functionErrorMessage } from "../../lib/function-error";
 import { tr } from "../../i18n/tr";
+import { THEME } from "../../lib/theme-colors";
 import { Button } from "../../components/ui/button";
 import { Input, Label } from "../../components/ui/input";
 import { Card, CardBody, CardHeader } from "../../components/ui/card";
@@ -73,14 +74,14 @@ export function SecretInput({ workspaceId, name }: { workspaceId: string; name: 
           {tr.settings.saveButton}
         </Button>
       </form>
-      {message && <p className={`text-xs ${message.ok ? "text-[#4ade80]" : "text-[#f87171]"}`}>{message.text}</p>}
+      {message && <p className={`text-xs ${message.ok ? "text-success" : "text-danger"}`}>{message.text}</p>}
     </div>
   );
 }
 
 const PROVIDER_META: Record<string, { title: string; icon: typeof Bot; color: string; description: string }> = {
-  openai: { title: "OpenAI", icon: Bot, color: "#22c55e", description: tr.settings.openaiDescription },
-  nvidia: { title: "NVIDIA", icon: Cpu, color: "#84cc16", description: tr.settings.nvidiaDescription },
+  openai: { title: "OpenAI", icon: Bot, color: THEME.success, description: tr.settings.openaiDescription },
+  nvidia: { title: "NVIDIA", icon: Cpu, color: THEME.teal, description: tr.settings.nvidiaDescription },
 };
 
 interface UsageRow {
@@ -165,7 +166,7 @@ export function AiProvidersSection({ workspaceId }: { workspaceId: string }) {
       <p className="text-sm text-muted">{tr.settings.aiChainDescription}</p>
       <div className="grid gap-4 xl:grid-cols-2">
         {config.providers.map((provider, index) => {
-          const meta = PROVIDER_META[provider.id] ?? { title: provider.id, icon: Bot, color: "#8b95b4", description: provider.baseUrl };
+          const meta = PROVIDER_META[provider.id] ?? { title: provider.id, icon: Bot, color: THEME.subtle, description: provider.baseUrl };
           const Icon = meta.icon;
           const providerUsage = (usage.data ?? []).filter((u) => u.provider === provider.id);
           return (
@@ -242,7 +243,7 @@ export function AiProvidersSection({ workspaceId }: { workspaceId: string }) {
             {tr.settings.saveAiConfig}
           </Button>
         </CardBody>
-        {message && <p className={`px-4 pb-4 text-xs ${message.ok ? "text-[#4ade80]" : "text-[#f87171]"}`}>{message.text}</p>}
+        {message && <p className={`px-4 pb-4 text-xs ${message.ok ? "text-success" : "text-danger"}`}>{message.text}</p>}
       </Card>
 
       <Card>

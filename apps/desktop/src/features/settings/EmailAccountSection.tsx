@@ -162,9 +162,9 @@ export function EmailAccountSection() {
             {tr.settings.checkInbox}
           </Button>
         </div>
-        {message && <p className={`text-xs ${message.ok ? "text-[#4ade80]" : "text-[#f87171]"}`}>{message.text}</p>}
+        {message && <p className={`text-xs ${message.ok ? "text-success" : "text-danger"}`}>{message.text}</p>}
         {imap.lastRunAt && (
-          <p className={`text-xs ${imap.lastError ? "text-[#f87171]" : "text-muted"}`}>
+          <p className={`text-xs ${imap.lastError ? "text-danger" : "text-muted"}`}>
             {tr.settings.inboxLastCheck(formatDateTime(imap.lastRunAt))}{" "}
             {imap.lastError
               ? `${tr.settings.inboxError}: ${imap.lastError}`

@@ -29,7 +29,7 @@ export function SetPasswordPage() {
   if (!link) {
     return (
       <AuthShell title={tr.auth.setPasswordTitle}>
-        <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-[#f87171]">{tr.auth.otpLinkInvalid}</p>
+        <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">{tr.auth.otpLinkInvalid}</p>
         <div className="mt-4 text-center">
           <button type="button" onClick={() => navigate("/login", { replace: true })} className="text-sm text-muted hover:text-text">
             {tr.auth.backToLogin}
@@ -70,7 +70,7 @@ export function SetPasswordPage() {
           <Input id="confirm" type="password" autoComplete="new-password" {...register("confirm")} />
           <FieldError message={errors.confirm ? tr.auth.passwordMismatch : undefined} />
         </div>
-        {error && <p className="text-sm text-[#f87171]">{error}</p>}
+        {error && <p className="text-sm text-danger">{error}</p>}
         <Button type="submit" disabled={isSubmitting} className="w-full" size="lg">
           {tr.auth.setPasswordButton}
         </Button>

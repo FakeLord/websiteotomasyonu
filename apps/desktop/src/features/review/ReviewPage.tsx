@@ -104,7 +104,7 @@ function DraftCard({ draft, workspaceId, onChanged }: { draft: PendingDraft; wor
       )}
 
       {notice && (
-        <p className={notice.tone === "ok" ? "text-xs text-muted" : "text-xs text-[#f87171]"} role="status">
+        <p className={notice.tone === "ok" ? "text-xs text-muted" : "text-xs text-danger"} role="status">
           {notice.text}
         </p>
       )}
@@ -185,7 +185,7 @@ export function ReviewPage() {
       {drafts.isLoading ? (
         <p className="text-sm text-muted">{tr.common.loading}</p>
       ) : drafts.isError ? (
-        <p className="text-sm text-[#f87171]">{tr.draftQueue.review.loadError}</p>
+        <p className="text-sm text-danger">{tr.draftQueue.review.loadError}</p>
       ) : (drafts.data ?? []).length === 0 ? (
         <Card>
           <EmptyState icon={ClipboardCheck} title={tr.draftQueue.review.empty} />

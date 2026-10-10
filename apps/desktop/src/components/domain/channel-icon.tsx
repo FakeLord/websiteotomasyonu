@@ -1,6 +1,7 @@
 import type * as React from "react";
 import { Mail, MessageCircle, Music2, Phone } from "lucide-react";
 import { cn } from "../../lib/cn";
+import { THEME } from "../../lib/theme-colors";
 
 type SvgProps = React.SVGProps<SVGSVGElement>;
 
@@ -33,18 +34,19 @@ function LinkedinGlyph(props: SvgProps) {
 export type ChannelKey = "EMAIL" | "INSTAGRAM" | "FACEBOOK" | "WHATSAPP" | "LINKEDIN" | "TIKTOK" | "PHONE" | "WEBSITE";
 
 const CHANNELS: Record<ChannelKey, { color: string; Icon: React.ComponentType<SvgProps> }> = {
-  EMAIL: { color: "#f59e0b", Icon: Mail },
-  INSTAGRAM: { color: "#ec4899", Icon: InstagramGlyph },
-  FACEBOOK: { color: "#3b82f6", Icon: FacebookGlyph },
-  WHATSAPP: { color: "#22c55e", Icon: MessageCircle },
-  LINKEDIN: { color: "#0ea5e9", Icon: LinkedinGlyph },
-  TIKTOK: { color: "#e7ebf6", Icon: Music2 },
-  PHONE: { color: "#8b5cf6", Icon: Phone },
-  WEBSITE: { color: "#06b6d4", Icon: Mail },
+  // Kanal kimliği simgeden okunur; renk tek nötr tondur (kurumsal sadelik).
+  EMAIL: { color: THEME.primary, Icon: Mail },
+  INSTAGRAM: { color: THEME.muted, Icon: InstagramGlyph },
+  FACEBOOK: { color: THEME.muted, Icon: FacebookGlyph },
+  WHATSAPP: { color: THEME.success, Icon: MessageCircle },
+  LINKEDIN: { color: THEME.muted, Icon: LinkedinGlyph },
+  TIKTOK: { color: THEME.muted, Icon: Music2 },
+  PHONE: { color: THEME.muted, Icon: Phone },
+  WEBSITE: { color: THEME.info, Icon: Mail },
 };
 
 export function channelColor(channel: string): string {
-  return CHANNELS[channel as ChannelKey]?.color ?? "#8b95b4";
+  return CHANNELS[channel as ChannelKey]?.color ?? THEME.subtle;
 }
 
 interface ChannelIconProps {

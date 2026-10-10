@@ -82,7 +82,7 @@ export function JarvisPanel() {
   return (
     <aside className="flex w-[380px] shrink-0 flex-col border-l border-border bg-sidebar" aria-label={tr.shell.jarvisTitle}>
       <div className="flex h-16 items-center gap-3 border-b border-border px-4">
-        <span className="flex size-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-violet text-white">
+        <span className="flex size-9 items-center justify-center rounded-md bg-primary text-white">
           <Sparkles className="size-4" />
         </span>
         <div className="flex-1 leading-tight">
@@ -124,7 +124,7 @@ export function JarvisPanel() {
                 "max-w-[85%] rounded-xl px-3 py-2 text-sm whitespace-pre-wrap",
                 entry.role === "user" && "bg-primary text-white",
                 entry.role === "assistant" && !entry.error && "border border-border bg-surface text-text",
-                entry.error && "border border-danger/40 bg-danger/10 text-[#fca5a5]",
+                entry.error && "border border-danger/40 bg-danger/10 text-danger",
               )}
             >
               {entry.content}
@@ -132,7 +132,7 @@ export function JarvisPanel() {
                 <button
                   type="button"
                   onClick={() => runAction(entry.action!)}
-                  className="mt-2 flex items-center gap-1.5 rounded-md bg-primary/15 px-2.5 py-1.5 text-xs font-medium text-[#8fb0ff] hover:bg-primary/25"
+                  className="mt-2 flex items-center gap-1.5 rounded-md bg-primary/15 px-2.5 py-1.5 text-xs font-medium text-primary hover:bg-primary/25"
                 >
                   {entry.action.label}
                   <ArrowUpRight className="size-3.5" />

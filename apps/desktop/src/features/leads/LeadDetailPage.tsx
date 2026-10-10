@@ -200,7 +200,7 @@ function SalesPanel({
               {tr.customers.editDeal}
             </Button>
           )}
-          {error && <p className="text-xs text-[#f87171]">{error instanceof Error ? error.message : tr.common.error}</p>}
+          {error && <p className="text-xs text-danger">{error instanceof Error ? error.message : tr.common.error}</p>}
         </CardBody>
       </Card>
 
@@ -216,7 +216,7 @@ function SalesPanel({
               </div>
             </div>
           ) : recommended.doNotContact ? (
-            <p className="text-sm text-[#f87171]">{tr.routing.doNotContact}</p>
+            <p className="text-sm text-danger">{tr.routing.doNotContact}</p>
           ) : (
             <p className="text-sm text-muted">{tr.routing.noChannel}</p>
           )}
@@ -226,7 +226,7 @@ function SalesPanel({
       {business.possible_duplicate_of && duplicateTarget.data && (
         <Card className="border-warning/40">
           <CardBody className="space-y-3 pt-4">
-            <p className="text-sm text-[#fbbf24]">
+            <p className="text-sm text-warning">
               {tr.leads.possibleDuplicateBanner} ({duplicateTarget.data.name})
             </p>
             <Button
@@ -391,7 +391,7 @@ export function LeadDetailPage() {
               <EraseBusinessButton businessId={business.id} />
             </div>
             <div className="flex flex-col gap-2">
-              <Button variant="violet" onClick={() => setDraftOpen(true)} disabled={business.do_not_contact}>
+              <Button variant="default" onClick={() => setDraftOpen(true)} disabled={business.do_not_contact}>
                 <Sparkles />
                 {tr.leadDetail.aiDraft}
               </Button>

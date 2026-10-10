@@ -216,7 +216,7 @@ export function ConversationSidebar({ conversation, workspaceId }: { conversatio
             {conversation.status === "OPEN" ? <Lock /> : <Unlock />}
             {conversation.status === "OPEN" ? tr.conversations.close : tr.conversations.reopen}
           </Button>
-          {error && <p className="text-xs text-[#f87171]">{error}</p>}
+          {error && <p className="text-xs text-danger">{error}</p>}
         </CardBody>
       </Card>
 

@@ -80,7 +80,7 @@ export function TodayTasksCard() {
             </button>
           ))}
         </div>
-        {query.isError && <p className="text-sm text-[#f87171]">{query.error instanceof Error ? query.error.message : tr.common.error}</p>}
+        {query.isError && <p className="text-sm text-danger">{query.error instanceof Error ? query.error.message : tr.common.error}</p>}
         {!query.isError && rows.length === 0 ? (
           <p className="py-4 text-center text-sm text-muted">{query.isLoading ? tr.common.loading : tr.dashboard.todayTasks.empty}</p>
         ) : (
@@ -91,7 +91,7 @@ export function TodayTasksCard() {
                   <Avatar name={row.name} size="sm" square />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm text-text">{row.name}</span>
-                    <span className="block text-xs text-[#fbbf24]">{formatRelative(row.next_action_at)}</span>
+                    <span className="block text-xs text-warning">{formatRelative(row.next_action_at)}</span>
                   </span>
                   <StageBadge stage={row.stage} />
                 </button>
