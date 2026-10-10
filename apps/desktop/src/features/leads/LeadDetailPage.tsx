@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { EraseBusinessButton } from "./EraseBusinessButton";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Ban, CheckCircle2, ChevronDown, GitMerge, MapPin, MapPinned, MessageSquarePlus, Pencil, Send, Sparkles, Star, Tag } from "lucide-react";
 import {
@@ -387,6 +388,7 @@ export function LeadDetailPage() {
                 <MapPinned />
                 {tr.leadDetail.openMaps}
               </Button>
+              <EraseBusinessButton businessId={business.id} />
             </div>
             <div className="flex flex-col gap-2">
               <Button variant="violet" onClick={() => setDraftOpen(true)} disabled={business.do_not_contact}>

@@ -31,7 +31,23 @@ const JSON_SCHEMA = {
   additionalProperties: false,
 };
 
-const STOP_KEYWORDS = ["yazmayın", "istemiyorum", "rahatsız etmeyin", "stop"];
+const STOP_KEYWORDS = [
+  "yazmayın",
+  "istemiyorum",
+  "rahatsız etmeyin",
+  "stop",
+  // ADR 0019: e-posta alt bilgisindeki çıkma satırına verilen yanıtlar ve yaygın İngilizce ifadeler.
+  "çıkmak istiyorum",
+  "listeden çıkar",
+  "bir daha yazma",
+  "unsubscribe",
+  "remove me",
+  "do not contact",
+  "don't contact",
+  "do not email",
+  "opt out",
+  "opt-out",
+];
 
 /**
  * J.2 `classify_reply`. Kural tabanlı STOP kelime yedeği burada değil,

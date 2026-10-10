@@ -1,5 +1,6 @@
 import { platform } from "../../lib/platform";
 import {
+  appendComplianceFooter,
   buildDraftFirstMessagePrompt,
   buildTranslateDraftPrompt,
   computeFollowUpDueDate,
@@ -78,7 +79,30 @@ async function lastInboundMessageId(conversationId: string): Promise<string | nu
  * WhatsApp için metin panoya kopyalanıp ilgili sohbet açılır (SPEC → I.3
  * ASSISTED); diğer kanallarda metin panoya kopyalanır ve kullanıcı elle gönderir.
  */
-async function deliver(target: SendTarget, message: SendableMessage): Promise<Delivery> {
+/**
+ * E-postanın sonuna gönderen kimliği, posta adresi ve çıkma satırını ekler (ADR 0019). Dil metinden anlaşılır;
+ * belirsizse işletmenin ülkesine göre (TR → Türkçe, diğerleri İngilizce) seçilir.
+ */
+async function withComplianceFooter(workspaceId: string, businessId: string, body: string, fallbackName: string): Promise<string> {
+  const [settings, business] = await Promise.all([
+    supabase.from("workspace_settings").select("sender_profile").eq("workspace_id", workspaceId).maybeSingle(),
+    supabase.from("businesses").select("country_code").eq("id", businessId).maybeSingle(),
+  ]);
+  if (settings.error) throw settings.error;
+  if (business.error) throw business.error;
+  const profile = (settings.data?.sender_profile ?? {}) as { legalName?: string; postalAddress?: string };
+  const countryCode = (business.data?.country_code as string | undefined) ?? "TR";
+  const detected = detectDraftLanguage(body);
+  const language = detected === "tr" || detected === "en" ? detected : countryCode === "TR" ? "tr" : "en";
+  return appendComplianceFooter(body, {
+    language,
+    legalName: profile.legalName?.trim() || fallbackName,
+    postalAddress: profile.postalAddress ?? "",
+    countryCode,
+  });
+}
+
+async function deliver(workspaceId: string, target: SendTarget, message: SendableMessage): Promise<Delivery> {
   if (target.channel === "EMAIL") {
     const account = await getEmailAccount();
     if (!account) throw new Error(tr.conversations.noEmailAccount);
@@ -103,7 +127,12 @@ async function deliver(target: SendTarget, message: SendableMessage): Promise<De
         from_name: account.fromName,
         from_email: account.fromEmail,
       },
-      { to_email: channelRow.value, subject: message.subject ?? "", body: message.body, in_reply_to: inReplyTo },
+      {
+        to_email: channelRow.value,
+        subject: message.subject ?? "",
+        body: await withComplianceFooter(workspaceId, target.businessId, message.body, account.fromName),
+        in_reply_to: inReplyTo,
+      },
     );
     return { mode: "SMTP", externalMessageId };
   }
@@ -247,7 +276,7 @@ export async function sendDraftMessage(workspaceId: string, target: SendTarget, 
 
   let delivery: Delivery;
   try {
-    delivery = await deliver(target, message);
+    delivery = await deliver(workspaceId, target, message);
     if (delivery.mode === "SMTP") await finalizeSent(workspaceId, target, message, delivery.externalMessageId);
   } catch (err) {
     const reason = err instanceof Error ? err.message : tr.conversations.sendError;
@@ -259,7 +288,8 @@ export async function sendDraftMessage(workspaceId: string, target: SendTarget, 
 
 /** Onaylanmış bir asist mesajı için metni tekrar panoya kopyalar ve sohbeti yeniden açar. */
 export async function reopenAssistedMessage(target: SendTarget, message: SendableMessage): Promise<DeliveryMode> {
-  return (await deliver(target, message)).mode;
+  // Asist/manuel kanallarda gövdeye alt bilgi eklenmez; workspace kimliği yalnızca e-posta dalında kullanılır.
+  return (await deliver("", target, message)).mode;
 }
 
 /** Kullanıcı mesajı asist kanaldan gerçekten gönderdiğini onayladı. */

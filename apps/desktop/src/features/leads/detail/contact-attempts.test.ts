@@ -1,5 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { dateFromInput, followUpDate } from "./contact-attempts";
+
+// contact-attempts.ts Supabase istemcisini içe aktarır; istemci ortam değişkenleri yokken yüklenemez.
+// Burada yalnızca saf tarih yardımcıları sınanır.
+vi.mock("../../../lib/supabase-client", () => ({ supabase: {} }));
 
 describe("followUpDate", () => {
   it("verilen gün sonrasının 10:00'unu (yerel saat) döner", () => {

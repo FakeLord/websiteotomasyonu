@@ -1,4 +1,4 @@
-# BACKLOG — tek izleme listesi
+﻿# BACKLOG — tek izleme listesi
 
 Kaynak: 2026-10-07 kod/SPEC taraması ve `docs/adr/0010-global-pivot.md` (Yol Haritası v2).
 Durum: ☐ bekliyor · ◐ sürüyor · ☑ bitti. Bir madde bitince buradan işaretlenir ve ilgili `docs/qa/phase-NN.md`'ye yazılır.
@@ -35,7 +35,7 @@ Durum: ☐ bekliyor · ◐ sürüyor · ☑ bitti. Bir madde bitince buradan iş
 ### B. Eksik özellikler
 | # | Madde | Faz | Durum |
 | --- | --- | --- | --- |
-| 8 | Kalıcı veri silme RPC'si + bastırma listesi | G5 | ☐ |
+| 8 | Kalıcı veri silme RPC'si + bastırma listesi | G5 | ☑ 2026-10-10 (`erase_business`, `suppressions`; ADR 0019) |
 | 9 | Lead düzenleme (ad, telefon, site, kategori) | G6 | ☑ 2026-10-08 (`update_business_details`) |
 | 10 | Leadler'de sıralama ve toplu işlem | G6 | ☑ 2026-10-08 (sıralama + toplu atama/eleme) |
 | 11 | Dashboard "bugünün işleri" / "benim işlerim" | G6 | ☑ 2026-10-08 (kart + Leadler → Takip) |
@@ -83,10 +83,11 @@ Durum: ☐ bekliyor · ◐ sürüyor · ☑ bitti. Bir madde bitince buradan iş
 | Çok dilli STOP ve otomatik yanıt tespiti | G4 |
 | Yurtdışına e-posta kilidi (varsayılan kapalı, yönetici açar; ADR 0017) | G5 öncesi ☑ 2026-10-10 |
 | Taslak kuyruğu + Onay Bekleyenler (ADR 0018; ADR 0014 Adım 2) | G3 ☑ kod 2026-10-10, bulutta denenmedi |
-| Ülke kuralları (soğuk e-posta durumu, alt bilgi, yerel saat) | G5 |
+| Ülke kuralları (soğuk e-posta durumu, alt bilgi, yerel saat) | G5 ☑ kod 2026-10-10 (ADR 0019; listeden çıkma bağlantısı hariç) |
 | Listeden çıkma bağlantısı (`List-Unsubscribe`) | G5 |
 | Maliyet ve kullanım paneli (Places, AI, e-posta) | G10 |
 
 ### Gerçek hesapla denenmemiş (her fazın QA listesinde)
 E-posta gönderme ve cevabın otomatik gelmesi · OpenAI anahtarı ve NVIDIA'ya düşme · kampanya akışı ·
 harita karoları ve dosya indirme · iki kullanıcının aynı anda çalışması.
+

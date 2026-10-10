@@ -131,6 +131,29 @@ export const tr = {
     usageLine: (used: number, cap: number | null) =>
       cap === null ? `Bu ay ${used.toLocaleString("tr-TR")} çağrı (sınır tanımlı değil)` : `Bu ay ${used.toLocaleString("tr-TR")} / ${cap.toLocaleString("tr-TR")} çağrı`,
   },
+  senderProfile: {
+    title: "Gönderen kimliği",
+    description:
+      "Her e-postanın altına eklenir. ABD, İngiltere, Kanada ve Avustralya için posta adresi zorunludur; boşken bu ülkelere e-posta gönderilemez.",
+    legalNameLabel: "Şirket adı",
+    postalAddressLabel: "Posta adresi",
+    postalAddressHint: "Sokak, şehir, posta kodu ve ülke. Alıcıya e-postanın sonunda gösterilir.",
+    save: "Kaydet",
+    saved: "Gönderen kimliği kaydedildi.",
+    error: "Kaydedilemedi.",
+  },
+  erase: {
+    button: "Kalıcı sil",
+    title: "İşletmeyi kalıcı olarak sil",
+    description:
+      "İşletmenin kişisel verileri, konuşmaları ve kayıtları geri alınamaz şekilde silinir. E-posta, alan adı ve telefon özetleri bastırma listesine yazılır; aynı kişi tekrar eklenirse iletişime kapalı olur.",
+    reasonLabel: "Silme sebebi",
+    reasonPlaceholder: "Örn: işletme silinmesini talep etti",
+    reasonRequired: "Bir sebep yazın (en az 3 karakter).",
+    confirm: "Kalıcı olarak sil",
+    done: "İşletme silindi.",
+    error: "Silinemedi.",
+  },
   draftQueue: {
     alreadyHasMessage: "Bu işletme için zaten bir taslak veya mesaj var.",
     rejected: "Taslak güvenlik kontrolünden geçemedi.",
@@ -1075,6 +1098,11 @@ export const tr = {
     DUPLICATE_MESSAGE: "Aynı içerik son 30 günde bu konuşmada gönderildi.",
     FOREIGN_EMAIL_DISABLED:
       "Yurtdışındaki işletmeye e-posta kapalı. Bir yönetici Ayarlar → Puanlama ve Limitler'den açabilir.",
+    COUNTRY_RULE:
+      "Bu ülke için e-posta kuralı izin vermiyor (ülke kuralı tanımlı değil ya da adresin işletmenin kendi sitesinde yayımlanmış olması gerekiyor).",
+    MISSING_SENDER_PROFILE:
+      "Gönderen posta adresi girilmemiş. Ayarlar → Genel → Gönderen kimliği bölümünden ekleyin.",
+    SUPPRESSED: "Bu kişi veya alan adı bastırma listesinde (silme ya da çıkma talebi).",
   },
   routing: {
     title: "Önerilen Kanal",

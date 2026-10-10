@@ -106,6 +106,14 @@ describe("buildClassifyReplyPrompt / hasStopKeyword", () => {
     expect(hasStopKeyword("lütfen bir daha yazmayın")).toBe(true);
     expect(hasStopKeyword("teşekkürler, ilgileniyorum")).toBe(false);
   });
+
+  it("detects replies to the e-mail footer opt-out line and common English phrases (ADR 0019)", () => {
+    expect(hasStopKeyword("çıkmak istiyorum")).toBe(true);
+    expect(hasStopKeyword("Unsubscribe")).toBe(true);
+    expect(hasStopKeyword("Please remove me from your list")).toBe(true);
+    expect(hasStopKeyword("Do not contact us again")).toBe(true);
+    expect(hasStopKeyword("Sounds good, let's talk next week")).toBe(false);
+  });
 });
 
 describe("buildDraftReplyPrompt", () => {

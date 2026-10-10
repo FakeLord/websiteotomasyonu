@@ -6,6 +6,7 @@ import { cn } from "../../lib/cn";
 import { PageHeader } from "../../components/ui/data-display";
 import { Card } from "../../components/ui/card";
 import { ScoringSettingsSection } from "./ScoringSettingsSection";
+import { SenderProfileSection } from "./SenderProfileSection";
 import { EmailAccountSection } from "./EmailAccountSection";
 import { DataExportSection } from "./DataExportSection";
 import { AiProvidersSection } from "./AiProvidersSection";
@@ -59,7 +60,12 @@ export function SettingsPage() {
         <div className="min-w-0">
           {workspaceId && (
             <>
-                {active === "general" && <GeneralSection />}
+                {active === "general" && (
+                  <>
+                    <GeneralSection />
+                    {isAdmin && <SenderProfileSection workspaceId={workspaceId} />}
+                  </>
+                )}
                 {active === "api" && <AiProvidersSection workspaceId={workspaceId} />}
                 {active === "email" && <EmailAccountSection />}
                 {active === "scoring" && (

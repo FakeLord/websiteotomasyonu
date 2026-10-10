@@ -192,3 +192,10 @@ export {
   type WebsiteFetchResult,
   type WebsiteFetcherLike,
 } from "./website-analyzer/types";
+
+export {
+  appendComplianceFooter,
+  buildComplianceFooter,
+  type ComplianceFooterInput,
+  type FooterLanguage,
+} from "./compliance/footer";
