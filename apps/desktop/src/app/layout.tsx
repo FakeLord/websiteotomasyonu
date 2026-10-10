@@ -3,8 +3,9 @@ import { Sparkles } from "lucide-react";
 import { tr } from "../i18n/tr";
 import { OnlineBanner } from "../components/online-banner";
 import { cn } from "../lib/cn";
-import { navItems, type NavItem } from "./nav-items";
+import { navItems, type NavBadgeKey, type NavItem } from "./nav-items";
 import { useShellCounters } from "../lib/use-shell-data";
+import { useDraftQueue } from "../lib/use-jobs";
 import { useUiStore } from "../lib/ui-store";
 import { Topbar } from "./topbar";
 import { JarvisPanel } from "../features/jarvis/JarvisPanel";
@@ -36,7 +37,12 @@ function SidebarLink({ item, badgeCount }: { item: NavItem; badgeCount: number |
 }
 
 function Sidebar() {
-  const counters = useShellCounters().data;
+  const shellCounters = useShellCounters().data;
+  const draftQueue = useDraftQueue().data;
+  const counters: Partial<Record<NavBadgeKey, number>> = {
+    ...(shellCounters ?? {}),
+    ...(draftQueue ? { pendingApproval: draftQueue.pendingApproval } : {}),
+  };
   const setJarvisOpen = useUiStore((state) => state.setJarvisOpen);
   const main = navItems.filter((item) => item.group === "main");
   const workspace = navItems.filter((item) => item.group === "workspace");

@@ -483,22 +483,55 @@ export async function ensureConversation(workspaceId: string, businessId: string
   return created.id as string;
 }
 
+/** Taslağı konuşmaya DRAFT mesaj olarak kaydeder ve konuşma ile mesaj kimliklerini döner. */
+export async function saveDraftMessage(
+  workspaceId: string,
+  businessId: string,
+  draft: { channel: string; subject?: string | undefined; body: string; authorType: "AI" | "USER" },
+): Promise<{ conversationId: string; messageId: string }> {
+  const conversationId = await ensureConversation(workspaceId, businessId, draft.channel);
+  const { data, error } = await supabase
+    .from("messages")
+    .insert({
+      workspace_id: workspaceId,
+      conversation_id: conversationId,
+      direction: "OUT",
+      status: "DRAFT",
+      subject: draft.subject ?? null,
+      body: draft.body,
+      author_type: draft.authorType,
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return { conversationId, messageId: data.id as string };
+}
+
 /** Onaylanmış bir taslağı konuşmaya DRAFT mesaj olarak kaydeder; gönderim insan onayıyla Konuşmalar'da yapılır. */
 export async function saveDraftToConversation(
   workspaceId: string,
   businessId: string,
   draft: { channel: string; subject?: string | undefined; body: string; authorType: "AI" | "USER" },
 ): Promise<string> {
-  const conversationId = await ensureConversation(workspaceId, businessId, draft.channel);
-  const { error } = await supabase.from("messages").insert({
-    workspace_id: workspaceId,
-    conversation_id: conversationId,
-    direction: "OUT",
-    status: "DRAFT",
-    subject: draft.subject ?? null,
-    body: draft.body,
-    author_type: draft.authorType,
-  });
+  return (await saveDraftMessage(workspaceId, businessId, draft)).conversationId;
+}
+
+/** İşletmenin e-posta konuşmasında zaten taslak/onaylı/gönderilmiş giden mesaj var mı (kuyruk çift taslak üretmesin). */
+export async function hasOutgoingEmail(businessId: string): Promise<boolean> {
+  const { data: conversation, error } = await supabase
+    .from("conversations")
+    .select("id")
+    .eq("business_id", businessId)
+    .eq("channel", "EMAIL")
+    .maybeSingle();
   if (error) throw error;
-  return conversationId;
+  if (!conversation) return false;
+  const { count, error: countError } = await supabase
+    .from("messages")
+    .select("id", { count: "exact", head: true })
+    .eq("conversation_id", conversation.id as string)
+    .eq("direction", "OUT")
+    .in("status", ["DRAFT", "APPROVED", "SENT"]);
+  if (countError) throw countError;
+  return (count ?? 0) > 0;
 }

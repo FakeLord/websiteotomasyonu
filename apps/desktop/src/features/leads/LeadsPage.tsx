@@ -50,6 +50,7 @@ import {
 import { ScoreBadge, StageBadge, WebsiteStatusBadge } from "../../components/domain/badges";
 import { ContactChannelBadges } from "../../components/domain/contact-channel-badges";
 import { ManualAddDialog } from "./ManualAddDialog";
+import { PrepareDraftsDialog } from "./PrepareDraftsDialog";
 import { BulkActionsBar } from "./BulkActionsBar";
 import { ImportCsvDialog } from "./ImportCsvDialog";
 import type { BusinessListRow } from "./types";
@@ -128,7 +129,8 @@ export function LeadsPage() {
   const myUserId = useAuthStore((state) => state.session?.user.id);
   const { members, byId: membersById } = useWorkspaceMembers();
   const stageCounts = useDashboardMetrics(7).data?.stageCounts ?? {};
-  const { market } = useMarket();
+  const { market, rpcParams: marketRpc } = useMarket();
+  const [showPrepare, setShowPrepare] = useState(false);
   const [params, setParams] = useSearchParams();
   const [showFilters, setShowFilters] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
@@ -471,6 +473,9 @@ export function LeadsPage() {
               </button>
             ))}
             <p className="text-xs text-muted">{tr.leads.opportunities.hint}</p>
+            <Button size="sm" variant="violet" className="ml-auto" onClick={() => setShowPrepare(true)}>
+              {tr.draftQueue.prepare.button}
+            </Button>
             {showChains ? (
               <button type="button" className="text-xs text-primary hover:underline" onClick={() => updateParams({ chains: null })}>
                 {tr.leads.opportunities.hideChains}
@@ -847,6 +852,15 @@ export function LeadsPage() {
         </div>
       </Card>
 
+      {showPrepare && workspaceId && (
+        <PrepareDraftsDialog
+          open
+          onOpenChange={(open) => setShowPrepare(open)}
+          workspaceId={workspaceId}
+          country={marketRpc.p_country}
+          city={marketRpc.p_city}
+        />
+      )}
       {showAdd && workspaceId && <ManualAddDialog workspaceId={workspaceId} onClose={() => setShowAdd(false)} />}
       {showImport && workspaceId && <ImportCsvDialog workspaceId={workspaceId} onClose={() => setShowImport(false)} />}
     </div>

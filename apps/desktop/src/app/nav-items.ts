@@ -2,6 +2,7 @@ import {
   BarChart3,
   BookOpen,
   CalendarClock,
+  ClipboardCheck,
   Handshake,
   LayoutDashboard,
   Megaphone,
@@ -15,7 +16,7 @@ import {
 } from "lucide-react";
 import { tr } from "../i18n/tr";
 
-export type NavBadgeKey = "awaitingReply" | "overdueFollowUps" | "openHandoffs";
+export type NavBadgeKey = "awaitingReply" | "overdueFollowUps" | "openHandoffs" | "pendingApproval";
 
 export interface NavItem {
   path: string;
@@ -34,6 +35,7 @@ export const navItems: NavItem[] = [
   { path: "/discover", label: tr.nav.discover, icon: Search, group: "main" },
   { path: "/leads", label: tr.nav.leads, icon: Users, group: "main" },
   { path: "/conversations", label: tr.nav.conversations, icon: MessagesSquare, group: "main", badge: "awaitingReply" },
+  { path: "/review", label: tr.nav.review, icon: ClipboardCheck, group: "main", badge: "pendingApproval" },
   { path: "/follow-ups", label: tr.nav.followUps, icon: CalendarClock, group: "main", badge: "overdueFollowUps" },
   { path: "/pipeline", label: tr.nav.pipeline, icon: Handshake, group: "main", badge: "openHandoffs" },
   { path: "/customers", label: tr.nav.customers, icon: UserCheck, group: "main" },

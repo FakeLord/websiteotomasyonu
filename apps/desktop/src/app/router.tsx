@@ -11,6 +11,7 @@ import { DiscoverPage } from "../features/discover/DiscoverPage";
 import { LeadsPage } from "../features/leads/LeadsPage";
 import { LeadDetailPage } from "../features/leads/LeadDetailPage";
 import { ConversationsPage } from "../features/conversations/ConversationsPage";
+import { ReviewPage } from "../features/review/ReviewPage";
 import { FollowUpsPage } from "../features/followups/FollowUpsPage";
 import { ActivityLogPage } from "../features/activity-log/ActivityLogPage";
 import { TeamPage } from "../features/team/TeamPage";
@@ -45,6 +46,7 @@ export const router = createHashRouter([
           { path: "/leads", element: <LeadsPage /> },
           { path: "/leads/:businessId", element: <LeadDetailPage /> },
           { path: "/conversations", element: <ConversationsPage /> },
+          { path: "/review", element: <ReviewPage /> },
           { path: "/follow-ups", element: <FollowUpsPage /> },
           { path: "/pipeline", element: <PipelinePage /> },
           { path: "/customers", element: <CustomersPage /> },

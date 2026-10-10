@@ -1,14 +1,23 @@
 import { useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, ListChecks, Loader2 } from "lucide-react";
 import { tr } from "../i18n/tr";
 import { useAnalysisStore } from "../lib/analysis-store";
+import { useDraftStore } from "../lib/draft-store";
 import { useScanStore } from "../lib/scan-store";
 import { supabase } from "../lib/supabase-client";
-import { usePlacesUsage, useScanPlans, type ScanPlanProgress, type ScanPlanStatus } from "../lib/use-jobs";
+import {
+  useDraftQueue,
+  usePlacesUsage,
+  useScanPlans,
+  type ScanPlanProgress,
+  type ScanPlanStatus,
+} from "../lib/use-jobs";
 import { useWorkspaceMembership } from "../lib/use-workspace-membership";
 import { backfillWhatsappChannels } from "../lib/whatsapp-channels";
 import { kickBackgroundAnalysis, retryFailedAndKick } from "../workers/background-analysis";
+import { kickDraftQueue } from "../workers/draft-runner";
 import { kickScan } from "../workers/scan-runner";
 import { Badge, type BadgeTone } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
@@ -47,6 +56,7 @@ function useJobRunners(workspaceId: string | undefined) {
     const kick = () => {
       void kickBackgroundAnalysis(workspaceId);
       void kickScan(workspaceId);
+      void kickDraftQueue(workspaceId);
     };
     kick();
     const interval = window.setInterval(kick, RECHECK_INTERVAL_MS);
@@ -80,6 +90,16 @@ function useJobRunners(workspaceId: string | undefined) {
     for (const queryKey of REFRESH_KEYS) void queryClient.invalidateQueries({ queryKey });
   }, [analysis.done, analysis.running, queryClient]);
 
+  // Her taslak hazırlandığında: kuyruk sayaçları ve onay bekleyen listesi tazelenir.
+  const draftsDone = useDraftStore((state) => state.draft.done);
+  const draftsFailed = useDraftStore((state) => state.draft.failed);
+  useEffect(() => {
+    if (!workspaceId || draftsDone + draftsFailed === 0) return;
+    void queryClient.invalidateQueries({ queryKey: ["draft-queue", workspaceId] });
+    void queryClient.invalidateQueries({ queryKey: ["review-drafts", workspaceId] });
+    void queryClient.invalidateQueries({ queryKey: ["conversations", workspaceId] });
+  }, [draftsDone, draftsFailed, workspaceId, queryClient]);
+
   // Her kare kapandığında: ilerleme ve sayaç tazelenir, bulunan işletmeler beklemeden analize girer.
   useEffect(() => {
     if (!workspaceId || scan.tilesDone === 0) return;
@@ -93,6 +113,80 @@ function useJobRunners(workspaceId: string | undefined) {
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return <p className="mb-2 text-xs font-medium text-muted">{children}</p>;
+}
+
+/** Taslak kuyruğu (ADR 0018): ilerleme, durma nedeni, başarısızları yeniden dene / bekleyenleri iptal et. */
+function DraftQueueSection({ workspaceId }: { workspaceId: string }) {
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const loop = useDraftStore((state) => state.draft);
+  const queue = useDraftQueue().data;
+
+  const refresh = () => void queryClient.invalidateQueries({ queryKey: ["draft-queue", workspaceId] });
+  const retryFailed = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.rpc("retry_failed_draft_jobs", { ws: workspaceId });
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      refresh();
+      void kickDraftQueue(workspaceId);
+    },
+  });
+  const cancelQueued = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.rpc("cancel_draft_jobs", { ws: workspaceId });
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: refresh,
+  });
+
+  const waiting = (queue?.queued ?? 0) + (queue?.running ?? 0);
+  const total = waiting + (queue?.done ?? 0);
+  const actionError = retryFailed.error ?? cancelQueued.error;
+
+  return (
+    <section>
+      <SectionTitle>{tr.draftQueue.jobsTitle}</SectionTitle>
+      {!queue || (total === 0 && queue.failed === 0 && queue.pendingApproval === 0) ? (
+        <p className="text-sm text-muted">{tr.draftQueue.idle}</p>
+      ) : (
+        <div className="space-y-1.5">
+          {total > 0 && <Progress value={((queue.done ?? 0) / total) * 100} />}
+          <p className="text-xs text-muted tabular-nums">{tr.draftQueue.counts(waiting, queue.done, queue.failed)}</p>
+          {loop.running && loop.current && <p className="text-xs text-muted">{tr.draftQueue.running(loop.current)}</p>}
+          {!loop.running && waiting > 0 && !loop.stopped && <p className="text-xs text-muted">{tr.draftQueue.waitingHint}</p>}
+          {loop.stopped && <p className="text-xs text-[#fbbf24]">{tr.draftQueue.stopped[loop.stopped]}</p>}
+          {queue.failed > 0 && queue.lastError && <p className="text-xs text-[#f87171]">{queue.lastError}</p>}
+          {actionError && <p className="text-xs text-[#f87171]">{actionError.message || tr.draftQueue.actionError}</p>}
+          <div className="flex flex-wrap gap-2 pt-0.5">
+            {queue.pendingApproval > 0 && (
+              <Button size="sm" variant="outline" onClick={() => navigate("/review")}>
+                {tr.draftQueue.pendingApproval(queue.pendingApproval)}
+              </Button>
+            )}
+            {queue.failed > 0 && (
+              <Button size="sm" variant="outline" disabled={retryFailed.isPending} onClick={() => retryFailed.mutate()}>
+                {tr.draftQueue.retryFailed}
+              </Button>
+            )}
+            {queue.queued > 0 && (
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={cancelQueued.isPending}
+                onClick={() => {
+                  if (window.confirm(tr.draftQueue.cancelConfirm)) cancelQueued.mutate();
+                }}
+              >
+                {tr.draftQueue.cancelQueued}
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+    </section>
+  );
 }
 
 function PlanRow({ plan, workspaceId }: { plan: ScanPlanProgress; workspaceId: string }) {
@@ -200,16 +294,19 @@ export function JobsMenu() {
 
   const openPlans = plans.filter(isOpen);
   const finishedPlans = plans.filter((plan) => !isOpen(plan)).slice(0, FINISHED_PLANS_SHOWN);
+  const drafting = useDraftStore((state) => state.draft);
   const analysisRunning = analysis.running && analysis.total > 0;
-  const busy = scan.running || analysisRunning;
-  const warn = !!problem || !!scan.error || scan.budgetPaused;
+  const busy = scan.running || analysisRunning || drafting.running;
+  const warn = !!problem || !!scan.error || scan.budgetPaused || !!drafting.stopped;
 
   const summary =
     scan.running && scan.current
       ? tr.jobs.scanRunning(scan.current.city, scan.current.categoryLabel)
       : analysisRunning
         ? tr.websiteAnalysis.indicatorRunning(analysis.done, analysis.total)
-        : tr.jobs.title;
+        : drafting.running
+          ? tr.draftQueue.summary(drafting.done)
+          : tr.jobs.title;
 
   return (
     <DropdownMenu>
@@ -268,6 +365,8 @@ export function JobsMenu() {
             </p>
           )}
         </section>
+
+        {workspaceId && <DraftQueueSection workspaceId={workspaceId} />}
 
         {usage && (
           <section>

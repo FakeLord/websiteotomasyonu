@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "./supabase-client";
+import { useDraftStore } from "./draft-store";
 import { useScanStore } from "./scan-store";
 import { useWorkspaceMembership } from "./use-workspace-membership";
 
@@ -27,7 +28,34 @@ export interface ScanPlanProgress {
   lastError: string | null;
 }
 
+/** `draft_queue_progress` RPC sonucu (ADR 0018). */
+export interface DraftQueueProgress {
+  queued: number;
+  running: number;
+  done: number;
+  failed: number;
+  lastError: string | null;
+  /** Onay bekleyen (DRAFT, AI yazdı) giden mesaj sayısı. */
+  pendingApproval: number;
+}
+
 const LIVE_REFRESH_MS = 4000;
+
+/** Taslak kuyruğunun durumu ve onay bekleyen taslak sayısı. */
+export function useDraftQueue() {
+  const workspaceId = useWorkspaceMembership().data?.workspaceId;
+  const drafting = useDraftStore((state) => state.draft.running);
+  return useQuery({
+    queryKey: ["draft-queue", workspaceId],
+    enabled: !!workspaceId,
+    refetchInterval: drafting ? LIVE_REFRESH_MS : 30_000,
+    queryFn: async (): Promise<DraftQueueProgress> => {
+      const { data, error } = await supabase.rpc("draft_queue_progress", { ws: workspaceId as string });
+      if (error) throw new Error(error.message);
+      return data as DraftQueueProgress;
+    },
+  });
+}
 
 /** Bu ayki Google Places çağrı sayısı ve sınırı (sunucudaki gerçek sayaç). */
 export function usePlacesUsage() {
