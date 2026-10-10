@@ -47,6 +47,18 @@ const STOP_KEYWORDS = [
   "do not email",
   "opt out",
   "opt-out",
+  // Eval seti (scripts/eval) bulguları: anahtar kelime içermeyen ama net durdurma istekleri.
+  "iletişime geçmeyin",
+  "ulaşmayın",
+  "listenizden çıkar",
+  "kayıtlarınızdan silin",
+  "stop contacting",
+  "reach out to us again",
+  "do not reach out",
+  "take me off",
+  "leave me alone",
+  "leave us alone",
+  "delete my details",
 ];
 
 /**
@@ -56,8 +68,8 @@ const STOP_KEYWORDS = [
  */
 export function buildClassifyReplyPrompt(input: ClassifyReplyInput): AIPromptRequest {
   const system =
-    "Sen bir satış konuşmasındaki müşteri cevabını sınıflandıran bir asistansın. Türkçe cevapları " +
-    "analiz et. Niyetler: INTERESTED (ilgileniyor), NOT_INTERESTED (ilgilenmiyor), QUESTION (soru " +
+    "Sen bir satış konuşmasındaki müşteri cevabını sınıflandıran bir asistansın. Cevap Türkçe veya " +
+    "İngilizce olabilir; her iki dilde de aynı niyet kurallarıyla analiz et. Niyetler: INTERESTED (ilgileniyor), NOT_INTERESTED (ilgilenmiyor), QUESTION (soru " +
     "soruyor), STOP_CONTACT (bir daha yazılmasını istemiyor), AUTO_REPLY (otomatik yanıt: izin, " +
     "\"mesajınız alındı\"), WRONG_CONTACT (yanlış kişi veya işletme), ALREADY_HAS_PROVIDER (zaten " +
     "bir ajansı/web sitesi yapan biri var), UNCLEAR (belirsiz), OTHER (diğer). " +
@@ -70,7 +82,8 @@ export function buildClassifyReplyPrompt(input: ClassifyReplyInput): AIPromptReq
 
   return {
     operation: "classify_reply",
-    promptVersion: 1,
+    // 2: Türkçe + İngilizce cevaplar (eval seti, ADR 0020).
+    promptVersion: 2,
     system,
     messages: [{ role: "user", content: context }],
     jsonSchema: JSON_SCHEMA,

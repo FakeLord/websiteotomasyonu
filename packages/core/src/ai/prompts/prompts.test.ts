@@ -114,6 +114,12 @@ describe("buildClassifyReplyPrompt / hasStopKeyword", () => {
     expect(hasStopKeyword("Do not contact us again")).toBe(true);
     expect(hasStopKeyword("Sounds good, let's talk next week")).toBe(false);
   });
+
+  it("catches clear stop requests that contain no classic keyword (eval set)", () => {
+    expect(hasStopKeyword("Numaramı ve adresimi kayıtlarınızdan silin, bir daha iletişime geçmeyin.")).toBe(true);
+    expect(hasStopKeyword("Delete my details from your records and do not reach out to us again.")).toBe(true);
+    expect(hasStopKeyword("We'd love to hear more, please reach out to us tomorrow")).toBe(false);
+  });
 });
 
 describe("buildDraftReplyPrompt", () => {

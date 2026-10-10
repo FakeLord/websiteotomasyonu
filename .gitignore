@@ -20,3 +20,6 @@ src-tauri/gen/
 
 # Yerel test hesabı notu (şifre içerir, asla commit edilmez)
 .claude/yerel-giris.txt
+
+# AI değerlendirme sonuçları (scripts/eval/run.ts)
+scripts/eval/results/

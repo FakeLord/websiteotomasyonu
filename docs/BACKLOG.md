@@ -65,7 +65,7 @@ Durum: ☐ bekliyor · ◐ sürüyor · ☑ bitti. Bir madde bitince buradan iş
 | --- | --- | --- | --- |
 | 28 | Buluttaki veritabanı (ekip kullanımı) | G1 | ☑ |
 | 29 | IMAP ve zamanlanmış işlerin sekme kapalıyken çalışması | G7 | ☐ |
-| 30 | AI taslak değerlendirme seti (TR + EN, 30'ar örnek) | G4 | ☐ |
+| 30 | AI taslak değerlendirme seti (TR + EN, 30'ar örnek) | G4 | ◐ 2026-10-10 set + koşucu hazır (ADR 0020); gerçek model ölçümü bekliyor |
 | 31 | Bilgi Bankası'nın gerçek içeriği (hizmet, paket, fiyat, referans, SSS) | kullanıcı | ☐ |
 
 ### Küresel kapsamın getirdiği yeni işler
@@ -90,4 +90,5 @@ Durum: ☐ bekliyor · ◐ sürüyor · ☑ bitti. Bir madde bitince buradan iş
 ### Gerçek hesapla denenmemiş (her fazın QA listesinde)
 E-posta gönderme ve cevabın otomatik gelmesi · OpenAI anahtarı ve NVIDIA'ya düşme · kampanya akışı ·
 harita karoları ve dosya indirme · iki kullanıcının aynı anda çalışması.
+
 

@@ -97,6 +97,15 @@ export { validateDraft, type ValidateDraftInput, type ValidateDraftResult } from
 export { stripSignOff } from "./ai/strip-sign-off";
 export { findForeignWords } from "./ai/foreign-words";
 export { retryRejected, type CheckedDraft } from "./ai/retry-rejected";
+export {
+  summarizeClassifyEval,
+  summarizeDraftEval,
+  type ClassifyEvalResult,
+  type ClassifyEvalSummary,
+  type DraftEvalResult,
+  type DraftEvalSummary,
+  type EvalLanguage,
+} from "./ai/eval-report";
 export { detectDraftLanguage, type DetectedLanguage } from "./ai/detect-language";
 export {
   normalizeAiConfig,
