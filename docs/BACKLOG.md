@@ -81,6 +81,7 @@ Durum: ☐ bekliyor · ◐ sürüyor · ☑ bitti. Bir madde bitince buradan iş
 | Dil tespiti, çok dilli site analizi | G4 |
 | Hedef dilde taslak + Türkçe çeviri; dil bağımsız guardrail'ler | G4 |
 | Çok dilli STOP ve otomatik yanıt tespiti | G4 |
+| Yurtdışına e-posta kilidi (varsayılan kapalı, yönetici açar; ADR 0017) | G5 öncesi ☑ 2026-10-10 |
 | Ülke kuralları (soğuk e-posta durumu, alt bilgi, yerel saat) | G5 |
 | Listeden çıkma bağlantısı (`List-Unsubscribe`) | G5 |
 | Maliyet ve kullanım paneli (Places, AI, e-posta) | G10 |

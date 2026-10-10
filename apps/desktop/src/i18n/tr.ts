@@ -1019,6 +1019,8 @@ export const tr = {
     DAILY_OUTREACH_LIMIT: "Günlük ilk temas limiti doldu.",
     DAILY_CHANNEL_LIMIT: "Bu kanalın günlük gönderim limiti doldu.",
     DUPLICATE_MESSAGE: "Aynı içerik son 30 günde bu konuşmada gönderildi.",
+    FOREIGN_EMAIL_DISABLED:
+      "Yurtdışındaki işletmeye e-posta kapalı. Bir yönetici Ayarlar → Puanlama ve Limitler'den açabilir.",
   },
   routing: {
     title: "Önerilen Kanal",
@@ -1215,6 +1217,9 @@ export const tr = {
     cooldownLabel: "Kanal soğuma (saat)",
     placesMonthlyCapLabel: "Aylık Places çağrısı",
     unlimited: "Sınırsız",
+    allowForeignEmailLabel: "Yurtdışı işletmelere e-posta göndermeye izin ver",
+    allowForeignEmailHint:
+      "Kapalıyken Türkiye dışındaki işletmelere e-posta gönderilmez. Ülke kuralları (CAN-SPAM, PECR, CASL vb.) henüz uygulanmıyor; açmadan önce sorumluluğu değerlendirin.",
     recalculatingScores: (done: number, total: number) => `Skorlar yeniden hesaplanıyor: ${done}/${total}`,
     emailAccountTitle: "E-posta Hesabı (SMTP)",
     emailAccountDescription: "Kişisel SMTP hesabınız bu bilgisayarda Windows Kimlik Bilgisi Yöneticisi'nde saklanır ve e-posta gönderiminde kullanılır.",

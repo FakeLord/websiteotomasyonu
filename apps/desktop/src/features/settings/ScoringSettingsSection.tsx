@@ -15,6 +15,7 @@ interface WorkspaceSettingsRow {
     channels: Record<string, number>;
     channel_cooldown_hours: number;
     places_monthly_cap: number | null;
+    allow_foreign_email?: boolean;
   };
 }
 
@@ -232,6 +233,23 @@ export function ScoringSettingsSection({ workspaceId }: { workspaceId: string })
             </label>
           ))}
         </div>
+        <label className="mt-3 flex items-start gap-2 rounded-lg bg-surface-2 px-3 py-2 text-sm text-text">
+          <input
+            type="checkbox"
+            className="mt-1"
+            checked={draft.outreach_limits.allow_foreign_email === true}
+            onChange={(e) =>
+              setDraft({
+                ...draft,
+                outreach_limits: { ...draft.outreach_limits, allow_foreign_email: e.target.checked },
+              })
+            }
+          />
+          <span>
+            {tr.settings.allowForeignEmailLabel}
+            <span className="block text-xs text-muted">{tr.settings.allowForeignEmailHint}</span>
+          </span>
+        </label>
       </div>
 
       <div className="flex items-center gap-3">
