@@ -132,7 +132,9 @@ function createModelCaller(options: Options) {
       const payload = (await response.json()) as { choices?: { message?: { content?: string } }[] };
       const content = payload.choices?.[0]?.message?.content ?? "";
       const json = extractJsonObject(content);
-      if (json === null) throw new Error("Yanıttan JSON ayıklanamadı.");
+      // JSON dışı yanıt (kesilmiş/boş içerik) uygulamadaki gibi "geçersiz biçim" sayılır ve yeniden denenir;
+      // ham metin teşhis için örneğe yazılır.
+      if (json === null) return { __unparseable: content.slice(0, 400) };
       return json;
     }
     throw new Error("Hız sınırı: 4 denemede de yanıt alınamadı.");
@@ -181,8 +183,11 @@ async function evaluateDraft(
     const outcome = await retryRejected(async (attempt) => {
       attempts = attempt + 1;
       if (attempt > 0) await sleep(delayMs);
-      const raw = (await call(request)) as { subject?: unknown; body?: unknown };
-      if (typeof raw.body !== "string") return { ok: false, reasons: ["INVALID_SHAPE"] };
+      const raw = (await call(request)) as { subject?: unknown; body?: unknown; __unparseable?: unknown };
+      if (typeof raw.body !== "string") {
+        last = { body: typeof raw.__unparseable === "string" ? `[JSON DEĞİL] ${raw.__unparseable}` : "" };
+        return { ok: false, reasons: ["INVALID_SHAPE"] };
+      }
       const body = stripSignOff(raw.body);
       last = { ...(typeof raw.subject === "string" ? { subject: raw.subject } : {}), body };
       const written = detectDraftLanguage(body);
