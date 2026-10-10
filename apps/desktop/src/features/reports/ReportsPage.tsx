@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Banknote, Building2, Send, Sparkles, UserCheck, MessageSquareReply } from "lucide-react";
+import { Banknote, Building2, Download, Send, Sparkles, UserCheck, MessageSquareReply } from "lucide-react";
+import { downloadFile } from "../../lib/filters";
+import { Button } from "../../components/ui/button";
+import { buildReportCsv, isExportableTab } from "./report-export";
 import { useMarket } from "../../lib/use-market";
 import { supabase } from "../../lib/supabase-client";
 import { useWorkspaceMembership } from "../../lib/use-workspace-membership";
@@ -307,6 +310,20 @@ export function ReportsPage() {
                 <Input type="date" className="w-40" value={custom.from} onChange={(e) => setCustom((c) => ({ ...c, from: e.target.value }))} />
                 <Input type="date" className="w-40" value={custom.to} onChange={(e) => setCustom((c) => ({ ...c, to: e.target.value }))} />
               </>
+            )}
+            {isExportableTab(tab) && (
+              <Button
+                variant="outline"
+                disabled={!m}
+                onClick={() => {
+                  if (!m) return;
+                  const { filename, csv } = buildReportCsv(tab, m, range);
+                  downloadFile(csv, filename, "text/csv;charset=utf-8");
+                }}
+              >
+                <Download />
+                {tr.reports.export.button}
+              </Button>
             )}
           </div>
         }

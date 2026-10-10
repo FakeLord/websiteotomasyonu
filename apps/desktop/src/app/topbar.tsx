@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Bell, CalendarClock, ChevronDown, Handshake, LogOut, MapPin, MessagesSquare, Search, Settings } from "lucide-react";
+import { Bell, CalendarClock, ChevronDown, Handshake, LogOut, MapPin, MessagesSquare, Search, Settings, Volume2, VolumeX } from "lucide-react";
 import { tr } from "../i18n/tr";
+import { isNotifySoundEnabled, playNotifySound, setNotifySoundEnabled, shouldNotify } from "../lib/notify-sound";
 import { supabase } from "../lib/supabase-client";
 import { useUiStore } from "../lib/ui-store";
 import { useWorkspaceMembership } from "../lib/use-workspace-membership";
@@ -198,6 +199,16 @@ function NotificationsMenu() {
   ].filter((item) => item.count > 0);
   const total = items.reduce((sum, item) => sum + item.count, 0);
 
+  // Yeni cevap geldiğinde (cevap bekleyen konuşma sayısı arttığında) kısa bir ses çalar; tercih bu cihazda saklanır.
+  const [soundOn, setSoundOn] = useState(isNotifySoundEnabled);
+  const previousAwaiting = useRef<number | null>(null);
+  const awaiting = counters?.awaitingReply;
+  useEffect(() => {
+    if (awaiting === undefined) return;
+    if (shouldNotify(previousAwaiting.current, awaiting) && isNotifySoundEnabled()) playNotifySound();
+    previousAwaiting.current = awaiting;
+  }, [awaiting]);
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -220,6 +231,19 @@ function NotificationsMenu() {
             {item.text(item.count)}
           </DropdownMenuItem>
         ))}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onSelect={(event) => {
+            event.preventDefault();
+            const next = !soundOn;
+            setNotifySoundEnabled(next);
+            setSoundOn(next);
+            if (next) playNotifySound();
+          }}
+        >
+          {soundOn ? <Volume2 /> : <VolumeX />}
+          {soundOn ? tr.shell.soundOn : tr.shell.soundOff}
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

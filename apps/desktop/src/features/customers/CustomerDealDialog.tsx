@@ -124,6 +124,21 @@ export function CustomerDealDialog({
     },
   });
 
+  const isAdmin = useWorkspaceMembership().data?.role === "ADMIN";
+
+  const remove = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.rpc("delete_customer_deal", { p_business_id: businessId });
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["customer-deal", businessId] });
+      void queryClient.invalidateQueries({ queryKey: ["customers"] });
+      void queryClient.invalidateQueries({ queryKey: ["report-metrics"] });
+      onOpenChange(false);
+    },
+  });
+
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((prev) => ({ ...prev, [key]: value }));
 
   return (
@@ -200,7 +215,22 @@ export function CustomerDealDialog({
           {save.isError && (
             <p className="text-sm text-[#f87171] sm:col-span-2">{save.error instanceof Error ? save.error.message : tr.common.error}</p>
           )}
+          {remove.isError && (
+            <p className="text-sm text-[#f87171] sm:col-span-2">{remove.error instanceof Error ? remove.error.message : tr.common.error}</p>
+          )}
           <div className="flex justify-end gap-2 sm:col-span-2">
+            {isAdmin && deal.data && (
+              <Button
+                variant="danger"
+                className="mr-auto"
+                disabled={remove.isPending}
+                onClick={() => {
+                  if (window.confirm(tr.customers.deleteDealConfirm)) remove.mutate();
+                }}
+              >
+                {tr.customers.deleteDeal}
+              </Button>
+            )}
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               {tr.common.cancel}
             </Button>

@@ -26,10 +26,10 @@ Durum: ☐ bekliyor · ◐ sürüyor · ☑ bitti. Bir madde bitince buradan iş
 | --- | --- | --- | --- |
 | 1 | Üst çubuktaki şehir seçici yalnızca İşletme Bul ve Kampanya'da etkili → her ekranda geçerli pazar filtresi (ülke → şehir) | G2 | ☑ |
 | 2 | Devir kartı devralınamıyor/kapatılamıyor/atanamıyor | G6 | ☑ 2026-10-08 (`accept_handoff`/`close_handoff`, detay sayfasında kart) |
-| 3 | `secondChannelAfterDays` kullanılmıyor; kanal INVALID olunca otomatik yedek kanal yok | G6 | ☐ |
+| 3 | `secondChannelAfterDays` kullanılmıyor; kanal INVALID olunca otomatik yedek kanal yok | G6 | ☐ MVP sonrası (kanal INVALID olunca sıradaki kanal önerisi zaten çalışır; zamanlı ikinci kanal G7 ile) |
 | 4 | Telefon kanalı için arama notu ekranı yok | G6 | ☑ 2026-10-08 (temas kutusunda not alanı; İlerleme sekmesinde görünür) |
-| 5 | Arama iptali ve kayıtlı aramalar (`is_saved`) arayüzde yok | G3 | ☐ |
-| 6 | Bildirim zili yalnızca sayaç; ses/masaüstü bildirimi yok | G6 | ☐ |
+| 5 | Arama iptali ve kayıtlı aramalar (`is_saved`) arayüzde yok | G3 | ☐ MVP sonrası (düşük öncelik) |
+| 6 | Bildirim zili yalnızca sayaç; ses/masaüstü bildirimi yok | G6 | ☑ 2026-10-11 (yeni cevapta ses; zil menüsünden açılır/kapanır) |
 | 7 | Masaüstünde 587 portlu SMTP bağlanamıyor | G0 | ☑ (`62da7d3`) |
 
 ### B. Eksik özellikler
@@ -39,15 +39,15 @@ Durum: ☐ bekliyor · ◐ sürüyor · ☑ bitti. Bir madde bitince buradan iş
 | 9 | Lead düzenleme (ad, telefon, site, kategori) | G6 | ☑ 2026-10-08 (`update_business_details`) |
 | 10 | Leadler'de sıralama ve toplu işlem | G6 | ☑ 2026-10-08 (sıralama + toplu atama/eleme) |
 | 11 | Dashboard "bugünün işleri" / "benim işlerim" | G6 | ☑ 2026-10-08 (kart + Leadler → Takip) |
-| 12 | Tanılama log paketi dışa aktarma | G6 | ☐ |
-| 13 | Google Haritalar linkiyle işletme ekleme | G3 | ☐ |
-| 14 | Google kredi/ücretsiz kota takibi ve otomatik geçiş | G3 | ☐ |
+| 12 | Tanılama log paketi dışa aktarma | G6 | ☑ 2026-10-11 (Ayarlar → Veri: gizli veri içermeyen tanılama özeti panoya kopyalanır) |
+| 13 | Google Haritalar linkiyle işletme ekleme | G3 | ☐ MVP sonrası (kısa link çözümü ve yer kimliği çağrısı ek Places maliyeti) |
+| 14 | Google kredi/ücretsiz kota takibi ve otomatik geçiş | G3 | ☐ MVP sonrası (tek fatura hesabı kararı; aylık çağrı sayacı mevcut) |
 | 15 | Ekip: üye çıkarma, daveti yeniden gönderme | G6 | ☑ 2026-10-08 (`remove_workspace_member`, daveti yeniden gönder) |
 | 16 | Şifre değiştirme, profil, çalışma alanı adı | G6 | ☑ 2026-10-08 (`rename_workspace`; profil adı zaten vardı) |
-| 17 | Kampanya düzenleme/silme, anlaşma silme | G6 | ◐ kampanya ☑ 2026-10-08; anlaşma silme ☐ |
-| 18 | Raporlarda dışa aktarma | G6 | ☐ |
-| 19 | "X düzenliyor" göstergesi (presence) | G6 | ☐ |
-| 20 | Kanal modu ayarları (AUTO / ASSISTED / MANUAL) | G6 | ☐ |
+| 17 | Kampanya düzenleme/silme, anlaşma silme | G6 | ☑ 2026-10-11 (kampanya ☑ 2026-10-08; anlaşma silme `delete_customer_deal`, yalnızca yönetici) |
+| 18 | Raporlarda dışa aktarma | G6 | ☑ 2026-10-11 (Genel/Kaynak/Kanal/Dönüşüm/Ekip sekmeleri CSV) |
+| 19 | "X düzenliyor" göstergesi (presence) | G6 | ☐ MVP sonrası (iki kişilik ekipte düşük değer) |
+| 20 | Kanal modu ayarları (AUTO / ASSISTED / MANUAL) | G6 | ☐ G7 ile (şu an tek gerçek fark AUTO; sunucu otomasyonu olmadan ayar işlevsiz) |
 
 ### C. Büyük işler
 | # | Madde | Faz | Durum |
@@ -90,5 +90,6 @@ Durum: ☐ bekliyor · ◐ sürüyor · ☑ bitti. Bir madde bitince buradan iş
 ### Gerçek hesapla denenmemiş (her fazın QA listesinde)
 E-posta gönderme ve cevabın otomatik gelmesi · OpenAI anahtarı ve NVIDIA'ya düşme · kampanya akışı ·
 harita karoları ve dosya indirme · iki kullanıcının aynı anda çalışması.
+
 
 
