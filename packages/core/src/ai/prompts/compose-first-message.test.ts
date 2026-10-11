@@ -9,6 +9,8 @@ import {
   composeObservation,
   composeShortObservation,
   composeSubject,
+  displayName,
+  tidyOffer,
   type FirstMessageFacts,
 } from "./compose-first-message";
 
@@ -168,5 +170,37 @@ describe("assembleFirstMessage", () => {
       expect(result.reasons).toEqual([]);
       expect(result.ok).toBe(true);
     }
+  });
+});
+
+describe("displayName", () => {
+  it("unvan/slogan ekini atar, düz adı korur", () => {
+    expect(displayName("Hakan Kaymaz | Osteopat Fizyoterapist")).toBe("Hakan Kaymaz");
+    expect(displayName("Gülşen Diş Kliniği - Şişli")).toBe("Gülşen Diş Kliniği");
+    expect(displayName("Gülşen Diş Kliniği")).toBe("Gülşen Diş Kliniği");
+  });
+
+  it("gözlem ve konu satırında kısa ad kullanılır", () => {
+    const f = facts({ businessName: "Hakan Kaymaz | Osteopat Fizyoterapist", channel: "WHATSAPP" });
+    expect(composeObservation(f)).not.toContain("|");
+    expect(composeShortObservation(f)).toBe("Hakan Kaymaz için Google'da iyi yorumlar görüyoruz ancak web siteniz yok.");
+    expect(composeSubject(f)).toBe("Hakan Kaymaz için web sitesi önerisi");
+  });
+});
+
+describe("tidyOffer", () => {
+  const dm = facts({ channel: "WHATSAPP", businessName: "Hakan Kaymaz | Osteopat Fizyoterapist", rating: 4.9, reviewCount: 40 });
+
+  it("gözlemi yineleyen, süslü veya yabancı kelimeli cümleleri atar; hitabı siler", () => {
+    const raw =
+      "Hakan Bey, Şişli'de osteopat pratiğiniz için Google üzerindeki harika 4,9 puanını görmek güzel. Web siteniz bulunmaması hastaların size ulaşmasını zorlaştırıyor. " +
+      "Hostlys olarak, işletmenizin ruhunu yansıtan bir web presence tasarlıyoruz. Size özel ücretsiz bir örnek tasarım hazırlayabiliriz. Kısa bir görüşme ister misiniz?";
+    expect(tidyOffer(raw, dm)).toBe("Size özel ücretsiz bir örnek tasarım hazırlayabiliriz. Kısa bir görüşme ister misiniz?");
+  });
+
+  it("DM'de uzun teklifi sınırda keser; hiçbir cümle kalmazsa boş döner", () => {
+    const long = Array.from({ length: 10 }, () => "Size özel hazırladığımız örnek tasarımı kısa bir görüşmede gösterebiliriz.").join(" ");
+    expect(tidyOffer(long, dm).split(/\s+/).length).toBeLessThanOrEqual(30);
+    expect(tidyOffer("Web siteniz yok. Harika 4,9 puanınız var.", dm)).toBe("");
   });
 });

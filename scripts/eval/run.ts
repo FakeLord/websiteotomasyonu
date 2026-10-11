@@ -25,7 +25,6 @@ import {
   retryRejected,
   stripSignOff,
   assembleFirstMessage,
-  cleanOffer,
   summarizeClassifyEval,
   summarizeDraftEval,
   validateDraft,
@@ -193,7 +192,6 @@ async function evaluateDraft(
       }
       // Uygulamadaki gibi: model yalnızca teklif paragrafını yazar; iskelet kodla eklenir.
       const offer = stripSignOff(raw.body);
-      if (cleanOffer(offer).length === 0) return { ok: false, reasons: ["INVALID_SHAPE"] };
       const assembled = assembleFirstMessage(
         {
           language: testCase.language,
@@ -207,6 +205,7 @@ async function evaluateDraft(
         },
         offer,
       );
+      if (assembled.offer.length === 0) return { ok: false, reasons: ["INVALID_SHAPE"] };
       const body = assembled.body;
       last = { subject: assembled.subject, body };
       const written = detectDraftLanguage(body);

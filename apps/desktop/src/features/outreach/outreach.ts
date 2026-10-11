@@ -3,7 +3,6 @@ import {
   appendComplianceFooter,
   assembleFirstMessage,
   buildDraftFirstMessagePrompt,
-  cleanOffer,
   buildTranslateDraftPrompt,
   computeFollowUpDueDate,
   detectDraftLanguage,
@@ -459,7 +458,7 @@ export async function generateFirstMessageDraft(
     offer,
   );
   // Model boş/yalnızca selamlama döndürdüyse teklif paragrafı yoktur: geçersiz biçim sayılır ve yeniden denenir.
-  if (cleanOffer(offer).length === 0) {
+  if (assembled.offer.length === 0) {
     return { ok: false, body: "", reasons: ["INVALID_SHAPE"], channel };
   }
   const body = assembled.body;

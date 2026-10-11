@@ -1,4 +1,5 @@
 import type { OutreachChannel } from "../types";
+import { findForeignWords } from "../foreign-words";
 import { isAutomationBlockedIssue } from "../../website-analyzer/automation-blocked";
 import type { OutreachLanguage } from "./draft-first-message";
 
@@ -116,10 +117,19 @@ function reputationOf(facts: FirstMessageFacts): Reputation {
   return "NONE";
 }
 
+/**
+ * Google kayıt adları çoğu zaman unvan/slogan taşır ("Hakan Kaymaz | Osteopat Fizyoterapist"). Mesajda yalnızca
+ * ilk parça doğal durur; ayraç yoksa ad olduğu gibi kalır.
+ */
+export function displayName(name: string): string {
+  const head = name.split(/\s+[|–—:/]\s+|\s+-\s+/)[0]?.trim() ?? "";
+  return head.length >= 3 ? head : name.trim();
+}
+
 /** İşletmeye özel gözlem paragrafı (e-posta). */
 export function composeObservation(facts: FirstMessageFacts): string {
   const { kind, issues } = classifySite(facts);
-  const name = facts.businessName;
+  const name = displayName(facts.businessName);
   const aud = audience(facts.category, facts.language);
   const seed = `${name}|${kind}`;
   const rep = reputationOf(facts);
@@ -184,24 +194,26 @@ export function composeObservation(facts: FirstMessageFacts): string {
 /** DM için tek cümlelik kısa gözlem. */
 export function composeShortObservation(facts: FirstMessageFacts): string {
   const { kind, issues } = classifySite(facts);
-  const name = facts.businessName;
+  const name = displayName(facts.businessName);
   const tr = facts.language === "tr";
+  const good = reputationOf(facts) !== "NONE";
   if (kind === "NONE") {
-    return tr ? `${name} için Google'da iyi yorumlar görüyoruz ancak web siteniz yok.` : `${name} has great Google reviews but no website.`;
+    if (tr) return good ? `${name} için Google'da iyi yorumlar görüyoruz ancak web siteniz yok.` : `${name} için Google kaydını gördük ancak web siteniz yok.`;
+    return good ? `${name} has great Google reviews but no website.` : `We found ${name} on Google but could not find a website.`;
   }
   if (kind === "BROKEN") {
-    return tr ? `${name} web siteniz şu anda açılmıyor.` : `${name}'s website does not seem to load right now.`;
+    return tr ? `${name} için web sitenizi açmaya çalıştık ancak sayfa açılmadı.` : `We tried to open the ${name} website but the page would not load.`;
   }
   if (kind === "WEAK") {
     const first = issuePhrases(issues, facts.language)[0] ?? "";
-    return tr ? `${name} web sitenizi incelerken ${first} dikkatimizi çekti.` : `Looking at ${name}'s website, we noticed that ${first}.`;
+    return tr ? `${name} web sitesini incelerken ${first} dikkatimizi çekti.` : `Looking at the ${name} website, we noticed that ${first}.`;
   }
   return tr ? `${name} için internetteki görünürlüğünüzü birlikte güçlendirebiliriz.` : `We think we can help ${name} get more from its online presence.`;
 }
 
 export function composeSubject(facts: FirstMessageFacts): string {
   const { kind } = classifySite(facts);
-  const name = facts.businessName;
+  const name = displayName(facts.businessName);
   if (facts.language === "tr") {
     if (kind === "NONE" || kind === "BROKEN") return `${name} için web sitesi önerisi`;
     if (kind === "WEAK") return `${name} web sitesi hakkında kısa bir öneri`;
@@ -224,17 +236,53 @@ export function cleanOffer(raw: string): string {
   return lines.join(" ").replace(/\s{2,}/g, " ").trim();
 }
 
+const ADDRESS_PREFIX = /^\p{Lu}[\p{L}'’.-]*(?:\s+\p{Lu}[\p{L}'’.-]*)?\s+(?:Bey|Hanım|Hanımefendi),\s*/u;
+/** Gözlemde zaten söylenenleri (puan, yorum, site durumu) yineleyen cümleler. */
+const REPEATS_OBSERVATION =
+  /\b(puan|yorum|yıldız|ratings?|reviews?|stars?)\b|web sitesi?\w*\s+(yok|bulunm\w*|açılm\w*)|web siteniz\s+(yok|bulunm\w*|açılm\w*)|(no|without a|not have a)\s+website/i;
+/** Küçük modelin sık yazdığı boş süslü ifadeler. */
+const BUZZ = /ruhunu|yeni nesil|hissiyat|vitrin|web presence|digital presence|dijital varlık/i;
+const OFFER_LIMITS = { EMAIL: { words: 50, chars: 360 }, DM: { words: 30, chars: 230 } } as const;
+
+/**
+ * Model hazır gözlemi tekrar edebilir, kendine hitap ("Hakan Bey,") ekleyebilir, süslü/yabancı ifade yazabilir veya
+ * uzatabilir. Burada cümle cümle ayıklanır; kalan teklif kısa ve gözlemden bağımsızdır. Hiç cümle kalmazsa boş döner
+ * (çağıran yeniden dener).
+ */
+export function tidyOffer(raw: string, facts: FirstMessageFacts): string {
+  const cleaned = cleanOffer(raw).replace(ADDRESS_PREFIX, "");
+  const sentences = cleaned.match(/[^.!?]+[.!?]+|[^.!?]+$/g)?.map((s) => s.trim()).filter(Boolean) ?? [];
+  const allowed = [facts.businessName, displayName(facts.businessName), facts.category ?? ""];
+  const limit = facts.channel === "EMAIL" ? OFFER_LIMITS.EMAIL : OFFER_LIMITS.DM;
+  const kept: string[] = [];
+  let words = 0;
+  let chars = 0;
+  for (const sentence of sentences) {
+    if (REPEATS_OBSERVATION.test(sentence) || BUZZ.test(sentence)) continue;
+    if (findForeignWords(sentence, facts.language, allowed).length > 0) continue;
+    const w = sentence.split(/\s+/).length;
+    if (words + w > limit.words || chars + sentence.length > limit.chars) break;
+    kept.push(sentence);
+    words += w;
+    chars += sentence.length + 1;
+  }
+  return kept.join(" ");
+}
+
 /** Selamlama + gözlem + (modelin) teklif paragrafı + kapanış. DM'de selamlama kısa, kapanış yoktur. */
-export function assembleFirstMessage(facts: FirstMessageFacts, offer: string): { subject: string; body: string } {
-  const cleaned = cleanOffer(offer);
+export function assembleFirstMessage(
+  facts: FirstMessageFacts,
+  offer: string,
+): { subject: string; body: string; offer: string } {
+  const cleaned = tidyOffer(offer, facts);
   const tr = facts.language === "tr";
   const subject = composeSubject(facts);
   if (facts.channel === "EMAIL") {
     const greeting = tr ? "Merhaba," : "Hello,";
     const closing = tr ? "Saygılarımla" : "Best regards";
     const parts = [greeting, composeObservation(facts), cleaned, closing].filter((part) => part.length > 0);
-    return { subject, body: parts.join("\n\n") };
+    return { subject, body: parts.join("\n\n"), offer: cleaned };
   }
   const greeting = tr ? "Merhaba," : "Hello,";
-  return { subject, body: [`${greeting} ${composeShortObservation(facts)}`, cleaned].filter((p) => p.length > 0).join("\n\n") };
+  return { subject, body: [`${greeting} ${composeShortObservation(facts)}`, cleaned].filter((p) => p.length > 0).join("\n\n"), offer: cleaned };
 }

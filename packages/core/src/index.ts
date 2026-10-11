@@ -100,6 +100,8 @@ export { retryRejected, type CheckedDraft } from "./ai/retry-rejected";
 export {
   assembleFirstMessage,
   cleanOffer,
+  displayName,
+  tidyOffer,
   classifySite,
   composeObservation,
   composeShortObservation,
