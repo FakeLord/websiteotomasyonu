@@ -4,6 +4,8 @@ name: Haftalık veritabanı yedeği
 # Gerekli depo sırları (Settings → Secrets and variables → Actions):
 #   SUPABASE_DB_URL    "Session pooler" bağlantı dizesi (Project → Connect). Doğrudan bağlantı IPv6'dır, Actions'ta çalışmaz.
 #   BACKUP_PASSPHRASE  Yedeği şifreleyen uzun parola (kaybedilirse yedek açılamaz; parola yöneticisinde saklayın).
+#   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY  (isteğe bağlı) müşteri belgeleri kovasının dosya yedeği için (ADR 0026).
+#                      Tanımlı değilse storage yedeği atlanır; veritabanı yedeği etkilenmez.
 # Vault (API anahtarları) dökülmez: şifreleme anahtarı Supabase'dedir; geri yüklemede anahtarlar Ayarlar'dan yeniden girilir.
 
 on:
@@ -65,5 +67,69 @@ jobs:
         with:
           name: db-backup
           path: backup-*.dump.gpg
+          retention-days: 30
+          if-no-files-found: error
+
+  storage-backup:
+    name: Storage dosyaları → gpg
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Sırları denetle
+        id: gate
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ] || [ -z "$BACKUP_PASSPHRASE" ]; then
+            echo "::warning::SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY / BACKUP_PASSPHRASE tanımlı değil; storage yedeği atlandı."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Dosyaları indir
+        if: steps.gate.outputs.run == 'true'
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/ops/backup-storage.mjs storage-files
+
+      - name: Arşivle ve şifrele (AES-256)
+        if: steps.gate.outputs.run == 'true'
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          if [ -z "$(ls -A storage-files 2>/dev/null)" ]; then
+            echo "::notice::Kovada dosya yok; arşiv oluşturulmadı."
+            echo "empty=true" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          tar -czf storage.tar.gz -C storage-files .
+          printf '%s' "$BACKUP_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0             --symmetric --cipher-algo AES256 --output "storage-$(date -u +%Y%m%d).tar.gz.gpg" storage.tar.gz
+          rm -rf storage.tar.gz storage-files
+
+      - name: Şifre çözülüp okunabildiğini doğrula
+        if: steps.gate.outputs.run == 'true' && env.empty != 'true'
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          file=$(ls storage-*.tar.gz.gpg)
+          printf '%s' "$BACKUP_PASSPHRASE" | gpg --batch --pinentry-mode loopback --passphrase-fd 0 --decrypt "$file" | tar -tz | head -n 5
+
+      - uses: actions/upload-artifact@v4
+        if: steps.gate.outputs.run == 'true' && env.empty != 'true'
+        with:
+          name: storage-backup
+          path: storage-*.tar.gz.gpg
           retention-days: 30
           if-no-files-found: error
