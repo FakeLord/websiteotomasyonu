@@ -47,14 +47,19 @@ işaretleyin; takılan adımın ekran görüntüsünü (anahtar/şifre görünme
 - [ ] Ayarlar → Veri: JSON dışa aktarma ve tanılama özeti çalışır.
 - [ ] GitHub → Actions → "Haftalık veritabanı yedeği" elle çalıştırıldı ve başarılı (SUPABASE_DB_URL, BACKUP_PASSPHRASE sırları tanımlı).
 
-## 7. Kapanış
-- [ ] `docs/BACKLOG.md` içinde MVP kapsamındaki maddelerin hepsi ☑ veya gerekçeli "MVP sonrası".
-- [ ] Bu liste tamamlandıysa MVP "bitti" olarak işaretlenir; `docs/oturum-notlari/01-proje-durumu.md` güncellenir.
-
-## 6. Müşteri detay sayfası (ADR 0024)
+## 7. Müşteri detay sayfası (ADR 0024)
 - [ ] Müşteriler → bir satıra tıkla: detay sayfası açılır (Genel, Hesaplar ve hizmetler, Belgeler, Geçmiş).
 - [ ] "Hesap ekle" ile Alan adı, Hosting ve Paket kalemi ekle; istediğin kadar eklenebilir, düzenlenir. Yenileme tarihini 10 gün sonraya ver: Genel'de "Yaklaşan yenilemeler"de çıkar.
 - [ ] Belgeler → "Belge yükle": bir PDF fatura yükle (fatura no + tutar); listede görünür, indir simgesi dosyayı açar.
 - [ ] 10 MB'tan büyük veya .exe dosyası reddedilir.
 - [ ] Yönetici olmayan üye silme simgesini görmez; yönetici belgeyi silince dosya da kalkar.
 - [ ] Şifre alanı yoktur (bilinçli): not alanına şifre yöneticisi kaydı yazılır.
+
+## 8. Kapanış
+- [ ] `docs/BACKLOG.md` içinde MVP kapsamındaki maddelerin hepsi ☑ veya gerekçeli "MVP sonrası".
+- [ ] Bu liste tamamlandıysa MVP "bitti" olarak işaretlenir; `docs/oturum-notlari/01-proje-durumu.md` güncellenir.
+
+> **Yerelde doğrulananlar (2026-10-11, yerel Supabase + web kipi, bulut verisine dokunulmadı):** Bölüm 4 → listeden çıkma
+> bağlantısı (ilk tıklama, ikinci tıklama, POST; işletme DNC, log düştü); Bölüm 6 → kalıcı silmede dosya kovadan da kalktı;
+> Bölüm 7 → hesap ekleme, yenileme uyarısı, belge yükleme/indirme, .exe ve 10 MB üstü reddi; Onay Bekleyenler kanal etiketi.
+> Gerçek bulut, SMTP/IMAP, NVIDIA ve GitHub yedeği bu turda denenemedi; kutular işaretsiz bırakıldı.
