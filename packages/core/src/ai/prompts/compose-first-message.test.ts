@@ -219,6 +219,14 @@ describe("tidyOffer", () => {
     expect(out).toBe("Hostlys'ten ücretsiz örnek tasarım hazırlayabiliriz. Kısa bir görüşme ister misiniz?");
   });
 
+  it("komuttan sızan yer tutucuyu, iç etiketi ve örnek şirket adını içeren cümleleri atar", () => {
+    const out = tidyOffer(
+      "[ŞİRKET BİLGİSİ'ndeki teklif, 15 dakikalık görüşme]. Biz Örnek Atölye; web sitesi hazırlıyoruz. Ücretsiz bir örnek tasarım hazırlayabiliriz. Evet veya hayır mı?",
+      dm,
+    );
+    expect(out).toBe("Ücretsiz bir örnek tasarım hazırlayabiliriz. Evet veya hayır mı?");
+  });
+
   it("ekli halleri de gözlem tekrarı sayar ('puanla'), vizyon klişesini atar ve soruyla bitirir", () => {
     const out = tidyOffer(
       "Şişli'de 4,9 puanla ilgi görüyor. Hostlys ekibi size özel web çözümleri geliştiriyor. Şirketinizin vizyonuna uygun ücretsiz örnek tasarım hazırlayalım.",

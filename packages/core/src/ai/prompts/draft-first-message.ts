@@ -80,8 +80,9 @@ const TEXT: Record<OutreachLanguage, PromptText> = {
       "(2) ŞİRKET BİLGİSİ'ndeki teklifi bu işletmeye uyarlayarak sun. (3) Cevaplaması kolay tek bir soruyla bitir. " +
       "Hazır gözlemi tekrar etme; selamlama, imza veya konu yazma. Yüzde, oran veya istatistik yazma; % işareti kullanma.",
     shape:
-      "Biçim örneği (köşeli parantezleri ŞİRKET BİLGİSİ'ne göre doldur; örnekteki kelimeleri kopyalama): " +
-      "\"Biz [şirket adı]; [ne yaptığımız, tek sade cümle]. [ŞİRKET BİLGİSİ'ndeki teklif, tek somut adım]. [Evet/hayır ya da gün/saat soran tek soru]?\" " +
+      "Yalnızca cümle yapısı için örnek (şirket adı, hizmet ve teklif örnekteki gibi DEĞİL, ŞİRKET BİLGİSİ'ndeki gibi olmalı): " +
+      "\"Biz Örnek Atölye; küçük işletmelere web sitesi hazırlıyoruz. Size özel bir örnek tasarım hazırlayıp kısa bir görüşmede " +
+      "paylaşmak isteriz. Bu hafta 15 dakikanız olur mu?\" Köşeli parantez veya yer tutucu yazma. " +
       "Her cümle tek başına anlamlı olsun; anlamsız fiil-nesne birleşimleri kurma (ör. 'siteyi tasarımla tanıştıralım').",
     guardrail:
       "Şirketi ve teklifi yalnızca ŞİRKET BİLGİSİ'nden al; orada olmayan hizmet, fiyat, süre, referans veya teklif uydurma. " +
@@ -119,8 +120,9 @@ const TEXT: Record<OutreachLanguage, PromptText> = {
       "Do not repeat the ready observation; do not write a greeting, signature or subject. Do not write percentages, " +
       "ratios or statistics; never use the % sign.",
     shape:
-      "Shape example (fill the brackets from COMPANY INFO; do not copy the example words): " +
-      "\"We are [company name]; [what we do, one simple sentence]. [The offer from COMPANY INFO, one concrete step]. [One yes/no or day/time question]?\" " +
+      "Example of sentence structure only (company name, service and offer must come from COMPANY INFO, not from the example): " +
+      "\"We are Sample Studio; we build websites for small businesses. We would like to prepare a sample design for you and " +
+      "share it in a short call. Do you have 15 minutes this week?\" Never write brackets or placeholders. " +
       "Every sentence must make sense on its own; avoid odd verb-object pairings.",
     guardrail:
       "Take the company and its offer ONLY from COMPANY INFO; never invent services, prices, timelines, references or offers " +
@@ -197,7 +199,7 @@ export function buildDraftFirstMessagePrompt(input: DraftFirstMessageInput): AIP
   return {
     operation: "draft_first_message",
     // 9: iskelet kodda, model yalnızca teklif paragrafını yazar (kalite turu, 2026-10-11).
-    promptVersion: 10,
+    promptVersion: 11,
     system,
     messages: [{ role: "user", content: context }],
     jsonSchema: jsonSchema(false),

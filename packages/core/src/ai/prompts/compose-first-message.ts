@@ -240,6 +240,8 @@ const ADDRESS_PREFIX = /^\p{Lu}[\p{L}'’.-]*(?:\s+\p{Lu}[\p{L}'’.-]*)?\s+(?:B
 /** Gözlemde zaten söylenenleri (puan, yorum, site durumu) yineleyen cümleler. */
 const REPEATS_OBSERVATION =
   /(?<![\p{L}])(?:puan|yorum|yıldız|ratings?|reviews?|stars?)(?![\p{L}])|(?<![\p{L}])(?:puan|yorum|yıldız)\p{L}*|web\s+site\p{L}*\s+(?:yok|bulunm\p{L}*|açılm\p{L}*|mevcut)|(?<![\p{L}])(?:zorlaştır|bulamıy|ulaşamıy)\p{L}*|(no|without a|not have a)\s+website/iu;
+/** Komuttan sızan yer tutucu, iç etiket veya örnek ad: gönderilecek metinde asla olmamalı. */
+const LEAKED_PROMPT = /[[\]{}]|ŞİRKET BİLGİSİ|COMPANY INFO|Örnek Atölye|Sample Studio/iu;
 /** Küçük modelin sık yazdığı boş süslü ifadeler. */
 const BUZZ = /ruhunu|vizyon|yeni nesil|hissiyat|vitrin|web presence|digital presence|dijital varlık/i;
 const OFFER_LIMITS = { EMAIL: { words: 50, chars: 360 }, DM: { words: 30, chars: 230 } } as const;
@@ -259,7 +261,7 @@ export function tidyOffer(raw: string, facts: FirstMessageFacts): string {
   let words = 0;
   let chars = 0;
   for (const sentence of sentences) {
-    if (REPEATS_OBSERVATION.test(sentence) || BUZZ.test(sentence)) continue;
+    if (LEAKED_PROMPT.test(sentence) || REPEATS_OBSERVATION.test(sentence) || BUZZ.test(sentence)) continue;
     if (findForeignWords(sentence, facts.language, allowed).length > 0) continue;
     const w = sentence.split(/\s+/).length;
     if (w < 3) continue;
