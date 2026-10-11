@@ -254,6 +254,8 @@ export function LeadDetailPage() {
   const channelsQuery = useContactChannels(businessId);
   const settings = useWorkspaceSettings().data;
   const [draftOpen, setDraftOpen] = useState(false);
+  // "İletişime geç → E-posta" taslak penceresini e-posta kanalı seçili açar (posta programı boş açılmaz).
+  const [draftChannel, setDraftChannel] = useState<OutreachChannel | null>(null);
   const [dealOpen, setDealOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [pending, setPending] = useState<PendingContact | null>(null);
@@ -288,6 +290,13 @@ export function LeadDetailPage() {
   };
   // Önce bağlantı açılır (tarayıcı açılır pencereyi yalnızca tıklamanın hemen içinde izin verir), sonra temas kaydedilir.
   const contact = (option: ContactOption) => {
+    // Uygulamanın kendi SMTP hesabı ve AI taslağı var: e-posta için bilgisayardaki posta programını boş açmak yerine
+    // taslak penceresi açılır; gönderim ve temas kaydı uygulamadan yapılır.
+    if (option.channel === "EMAIL") {
+      setDraftChannel("EMAIL");
+      setDraftOpen(true);
+      return;
+    }
     openLink(option.url);
     setPending({ attemptId: null, channel: option.channel, address: option.display, error: null });
     logContactAttempt(business.id, option.channel, option.display).then(
@@ -448,11 +457,14 @@ export function LeadDetailPage() {
       {draftOpen && (
         <DraftMessageDialog
           open={draftOpen}
-          onOpenChange={setDraftOpen}
+          onOpenChange={(next) => {
+            setDraftOpen(next);
+            if (!next) setDraftChannel(null);
+          }}
           workspaceId={workspaceId}
           business={business}
           availableChannels={channels.map((c) => c.channel).filter((c) => OUTREACH.includes(c as Channel))}
-          recommendedChannel={recommendedChannel}
+          recommendedChannel={draftChannel ?? recommendedChannel}
         />
       )}
       {pending && <ContactOutcomePanel key={`${pending.channel}:${pending.address}`} businessId={business.id} pending={pending} onClose={() => setPending(null)} />}
