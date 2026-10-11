@@ -200,7 +200,15 @@ describe("tidyOffer", () => {
 
   it("DM'de uzun teklifi sınırda keser; hiçbir cümle kalmazsa boş döner", () => {
     const long = Array.from({ length: 10 }, () => "Size özel hazırladığımız örnek tasarımı kısa bir görüşmede gösterebiliriz.").join(" ");
-    expect(tidyOffer(long, dm).split(/\s+/).length).toBeLessThanOrEqual(30);
+    expect(tidyOffer(long, dm).split(/\s+/).length).toBeLessThanOrEqual(38);
     expect(tidyOffer("Web siteniz yok. Harika 4,9 puanınız var.", dm)).toBe("");
+  });
+
+  it("ekli halleri de gözlem tekrarı sayar ('puanla'), vizyon klişesini atar ve soruyla bitirir", () => {
+    const out = tidyOffer(
+      "Şişli'de 4,9 puanla ilgi görüyor. Hostlys ekibi size özel web çözümleri geliştiriyor. Şirketinizin vizyonuna uygun ücretsiz örnek tasarım hazırlayalım.",
+      dm,
+    );
+    expect(out).toBe("Hostlys ekibi size özel web çözümleri geliştiriyor. Size kısa bir örnek göndermemizi ister misiniz?");
   });
 });

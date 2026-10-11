@@ -239,9 +239,9 @@ export function cleanOffer(raw: string): string {
 const ADDRESS_PREFIX = /^\p{Lu}[\p{L}'’.-]*(?:\s+\p{Lu}[\p{L}'’.-]*)?\s+(?:Bey|Hanım|Hanımefendi),\s*/u;
 /** Gözlemde zaten söylenenleri (puan, yorum, site durumu) yineleyen cümleler. */
 const REPEATS_OBSERVATION =
-  /\b(puan|yorum|yıldız|ratings?|reviews?|stars?)\b|web sitesi?\w*\s+(yok|bulunm\w*|açılm\w*)|web siteniz\s+(yok|bulunm\w*|açılm\w*)|(no|without a|not have a)\s+website/i;
+  /(?<![\p{L}])(?:puan|yorum|yıldız|ratings?|reviews?|stars?)(?![\p{L}])|(?<![\p{L}])(?:puan|yorum|yıldız)\p{L}*|web sitesi?\w*\s+(yok|bulunm\w*|açılm\w*)|web siteniz\s+(yok|bulunm\w*|açılm\w*)|(no|without a|not have a)\s+website/iu;
 /** Küçük modelin sık yazdığı boş süslü ifadeler. */
-const BUZZ = /ruhunu|yeni nesil|hissiyat|vitrin|web presence|digital presence|dijital varlık/i;
+const BUZZ = /ruhunu|vizyon|yeni nesil|hissiyat|vitrin|web presence|digital presence|dijital varlık/i;
 const OFFER_LIMITS = { EMAIL: { words: 50, chars: 360 }, DM: { words: 30, chars: 230 } } as const;
 
 /**
@@ -265,6 +265,11 @@ export function tidyOffer(raw: string, facts: FirstMessageFacts): string {
     kept.push(sentence);
     words += w;
     chars += sentence.length + 1;
+  }
+  if (kept.length === 0) return "";
+  // Mesaj tek bir soruyla bitmeli; model sormadıysa kod ekler.
+  if (!/[?]$/.test(kept[kept.length - 1] ?? "")) {
+    kept.push(facts.language === "tr" ? "Size kısa bir örnek göndermemizi ister misiniz?" : "Would you like us to send you a short example?");
   }
   return kept.join(" ");
 }
