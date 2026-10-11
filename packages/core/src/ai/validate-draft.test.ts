@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateDraft, type ValidateDraftInput } from "./validate-draft";
+import { properNameWords, validateDraft, type ValidateDraftInput } from "./validate-draft";
 
 const basePackages = [
   { id: "p1", name: "Website Paketi", summary: "", priceMin: 5000, priceMax: 15000, deliveryDaysMin: 7, deliveryDaysMax: 21 },
@@ -279,5 +279,23 @@ describe("validateDraft — hitap ve platform adları", () => {
 
   it("gerçek bir marka adını yine yakalar", () => {
     expect(refs("Daha önce Mavi Gülüş Kliniği için de çalıştık.")).toHaveLength(1);
+  });
+});
+
+describe("validateDraft — gönderenin kendi adı ve 'Biz'", () => {
+  const run = (body: string, contextNames: string[] = []) =>
+    validateDraft({ ...baseInput, body, contextNames, recipientBusinessName: "Gülşen Diş Kliniği" }).reasons.filter((r) =>
+      r.startsWith("UNVERIFIED_REFERENCE"),
+    );
+
+  it("cümle başındaki 'Biz' ve 'We' marka adının parçası sayılmaz", () => {
+    expect(run("Biz Hostlys olarak web sitesi hazırlıyoruz.")).toEqual([]);
+    expect(run("We Hostlys build websites.")).toEqual([]);
+  });
+
+  it("Bilgi Bankası'ndaki çok kelimeli şirket adı referans sayılmaz; uydurulan ad yine yakalanır", () => {
+    const names = properNameWords("Şirket: Hostlys Bilişim web siteleri hazırlar.");
+    expect(run("Hostlys Bilişim olarak size yardımcı olabiliriz.", names)).toEqual([]);
+    expect(run("Yazılım Atölyesi olarak size yardımcı olabiliriz.", names)).toHaveLength(1);
   });
 });

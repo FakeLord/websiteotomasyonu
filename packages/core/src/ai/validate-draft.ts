@@ -99,6 +99,7 @@ const GREETING_WORDS = new Set(
 const NON_NAME_WORDS = new Set(
   [
     "bey", "hanım", "hanımefendi", "bay", "bayan", "mr", "mrs", "ms", "dr", "doktor", "doç", "prof",
+    "biz", "bizim", "we", "our", "us",
     "google", "maps", "haritalar", "instagram", "facebook", "whatsapp", "linkedin", "tiktok", "youtube", "messenger",
   ].map(foldName),
 );
@@ -108,6 +109,14 @@ const SECOND_PERSON_POSSESSIVE = /(?:iniz|ınız|unuz|ünüz)(?:in|ın|un|ün|e|
 
 function isNonNameWord(word: string): boolean {
   return GREETING_WORDS.has(word) || NON_NAME_WORDS.has(word) || (word.length > 6 && SECOND_PERSON_POSSESSIVE.test(word));
+}
+
+/**
+ * Metindeki özel ad benzeri (Büyük harfle başlayan) kelimeler. Gönderen şirketin kendi tanıtım metni (Bilgi Bankası)
+ * doğrulanmış bilgidir: oradaki adlar ("Hostlys Bilişim") mesajda geçince başka bir müşteri referansı sayılmamalıdır.
+ */
+export function properNameWords(text: string): string[] {
+  return [...new Set(text.match(/[A-ZÇĞİÖŞÜ][\wçğıöşü]+/g) ?? [])];
 }
 
 function findReferenceCandidates(body: string): string[] {

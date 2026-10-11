@@ -8,6 +8,7 @@ import {
   detectDraftLanguage,
   extractReadyOffer,
   findForeignWords,
+  properNameWords,
   retryRejected,
   stripSignOff,
   validateDraft,
@@ -518,7 +519,8 @@ export async function generateFirstMessageDraft(
     verifiedReferenceNames: context.verifiedReferenceNames,
     recipientBusinessName: business.name,
     // Şirketin kendi adı (Şirket kaydının başlığı) müşteri referansı sayılmaz.
-    contextNames: [...businessContextNames(business), ...context.companyNames],
+    // Gönderen şirketin Bilgi Bankası'ndaki kendi adları (ör. "Hostlys Bilişim") başka bir müşteri referansı sayılmaz.
+    contextNames: [...businessContextNames(business), ...context.companyNames, ...properNameWords(context.companyFacts)],
     stopRequest: business.do_not_contact,
   });
 

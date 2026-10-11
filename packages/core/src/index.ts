@@ -93,7 +93,7 @@ export {
   type InboundMatchContext,
   type InboundTarget,
 } from "./email/resolve-inbound";
-export { validateDraft, type ValidateDraftInput, type ValidateDraftResult } from "./ai/validate-draft";
+export { properNameWords, validateDraft, type ValidateDraftInput, type ValidateDraftResult } from "./ai/validate-draft";
 export { stripSignOff } from "./ai/strip-sign-off";
 export { composeFollowUp, type FollowUpFacts } from "./ai/prompts/compose-follow-up";
 export { findForeignWords } from "./ai/foreign-words";
