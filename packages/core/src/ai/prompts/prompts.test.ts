@@ -182,3 +182,28 @@ describe("buildFollowupDraftPrompt", () => {
     expect(req.messages[0]?.content).toContain("İlk mesaj metni");
   });
 });
+
+describe("buildDraftReplyPrompt — dil ve biçim (v2)", () => {
+  const input = {
+    conversationSummary: "",
+    lastMessages: [{ direction: "IN" as const, body: "Fiyat nedir?" }],
+    intent: "QUESTION",
+    relevantKb: [],
+    channel: "EMAIL" as const,
+  };
+
+  it("varsayılan Türkçe; İngilizce istenince İngilizce komut verir", () => {
+    expect(buildDraftReplyPrompt(input).system).toMatch(/düzgün bir Türkçeyle/);
+    const en = buildDraftReplyPrompt({ ...input, language: "en" });
+    expect(en.system).toMatch(/natural, simple, fluent English/);
+    expect(en.system).toContain("English");
+  });
+
+  it("kısa yazmayı, imza/unvan yazmamayı ve ısrar etmemeyi söyler; sürüm 2", () => {
+    const req = buildDraftReplyPrompt(input);
+    expect(req.system).toMatch(/En çok 60 kelime/);
+    expect(req.system).toMatch(/imza, unvan/);
+    expect(req.system).toMatch(/ısrar etme/);
+    expect(req.promptVersion).toBe(2);
+  });
+});

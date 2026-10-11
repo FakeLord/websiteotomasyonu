@@ -2,7 +2,16 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Bot, Check, ClipboardPaste, ExternalLink, Loader2, Pencil, Send, Sparkles, Trash2, X } from "lucide-react";
-import { buildDraftReplyPrompt, isAutoReply, validateDraft, type OutreachChannel } from "@lbf/core";
+import {
+  buildDraftReplyPrompt,
+  detectDraftLanguage,
+  findForeignWords,
+  isAutoReply,
+  retryRejected,
+  stripSignOff,
+  validateDraft,
+  type OutreachChannel,
+} from "@lbf/core";
 import { draftReplyOutputSchema } from "@lbf/contracts";
 import { ingestInboundMessage } from "../outreach/inbound";
 import { supabase } from "../../lib/supabase-client";
@@ -136,39 +145,62 @@ export function ConversationThread({ conversation, workspaceId }: { conversation
         supabase.from("service_packages").select("id, name, summary, price_min, price_max, delivery_days_min, delivery_days_max").eq("workspace_id", workspaceId).eq("is_active", true),
         supabase.from("kb_entries").select("title").eq("workspace_id", workspaceId).eq("type", "REFERENCE").eq("is_verified_real", true),
       ]);
-      const result = await callAiGateway(
-        workspaceId,
-        buildDraftReplyPrompt({
-          conversationSummary: conversation.summary,
-          lastMessages: messages.filter((m) => m.status !== "DRAFT").slice(-4).map((m) => ({ direction: m.direction, body: m.body })),
-          intent: lastIntent,
-          relevantKb: (kbEntries ?? []).map((k) => ({ id: k.id as string, title: k.title as string, content: k.body as string })),
-          channel: outreachChannel,
-        }),
-        { entityType: "conversation", entityId: conversation.id },
-      );
-      const parsed = draftReplyOutputSchema.parse(result.json);
-      const validation = validateDraft({
-        body: parsed.body,
+      // Cevap, müşterinin son mesajının dilinde yazılır; yanlış dil, yabancı kelime veya kontrol ihlali olursa
+      // kullanıcıya gösterilmeden yeniden üretilir (en çok 3 deneme).
+      const lastInbound = [...messages].reverse().find((m) => m.direction === "IN")?.body ?? "";
+      const language = detectDraftLanguage(lastInbound) === "en" ? "en" : "tr";
+      const packageInfo = (packages ?? []).map((p) => ({
+        id: p.id as string,
+        name: p.name as string,
+        summary: (p.summary as string | null) ?? "",
+        priceMin: p.price_min as number | null,
+        priceMax: p.price_max as number | null,
+        deliveryDaysMin: p.delivery_days_min as number | null,
+        deliveryDaysMax: p.delivery_days_max as number | null,
+      }));
+      const request = buildDraftReplyPrompt({
+        conversationSummary: conversation.summary,
+        lastMessages: messages.filter((m) => m.status !== "DRAFT").slice(-4).map((m) => ({ direction: m.direction, body: m.body })),
+        intent: lastIntent,
+        relevantKb: (kbEntries ?? []).map((k) => ({ id: k.id as string, title: k.title as string, content: k.body as string })),
         channel: outreachChannel,
-        packages: (packages ?? []).map((p) => ({
-          id: p.id as string,
-          name: p.name as string,
-          summary: (p.summary as string | null) ?? "",
-          priceMin: p.price_min as number | null,
-          priceMax: p.price_max as number | null,
-          deliveryDaysMin: p.delivery_days_min as number | null,
-          deliveryDaysMax: p.delivery_days_max as number | null,
-        })),
-        salesRules: { allowDiscountMention: false, forbiddenWords: FORBIDDEN_WORDS },
-        verifiedReferenceNames: (references ?? []).map((e) => e.title as string),
-        recipientBusinessName: business?.name,
-        contextNames: business ? businessContextNames(business) : [],
-        stopRequest: business?.do_not_contact ?? false,
+        language,
       });
-      if (!validation.ok) {
-        throw new Error(`${tr.draft.rejectedTitle}: ${validation.reasons.map(draftReasonLabel).join(", ")}`);
+      const contextNames = business ? businessContextNames(business) : [];
+      const attemptDraft = async (attempt: number) => {
+        const result = await callAiGateway(
+          workspaceId,
+          request,
+          { entityType: "conversation", entityId: conversation.id },
+          { fresh: attempt > 0 },
+        );
+        const checked = draftReplyOutputSchema.safeParse(result.json);
+        if (!checked.success) return { ok: false, reasons: ["INVALID_SHAPE"], parsed: null as null | typeof checked.data };
+        const body = stripSignOff(checked.data.body);
+        const written = detectDraftLanguage(body);
+        const leaked = findForeignWords(body, language, [business?.name ?? "", ...contextNames]);
+        const validation = validateDraft({
+          body,
+          channel: outreachChannel,
+          packages: packageInfo,
+          salesRules: { allowDiscountMention: false, forbiddenWords: FORBIDDEN_WORDS },
+          verifiedReferenceNames: (references ?? []).map((e) => e.title as string),
+          recipientBusinessName: business?.name,
+          contextNames,
+          stopRequest: business?.do_not_contact ?? false,
+        });
+        const reasons = [
+          ...(written !== "unknown" && written !== language ? ["WRONG_LANGUAGE"] : []),
+          ...(leaked.length > 0 ? [`FOREIGN_WORD:${leaked[0]}`] : []),
+          ...validation.reasons,
+        ];
+        return { ok: reasons.length === 0, reasons, parsed: { ...checked.data, body } as typeof checked.data | null };
+      };
+      const outcome = await retryRejected(attemptDraft);
+      if (!outcome.ok || !outcome.parsed) {
+        throw new Error(`${tr.draft.rejectedTitle}: ${outcome.reasons.map(draftReasonLabel).join(", ")}`);
       }
+      const parsed = outcome.parsed;
       const { error } = await supabase.from("messages").insert({
         workspace_id: workspaceId,
         conversation_id: conversation.id,

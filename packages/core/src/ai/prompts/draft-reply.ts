@@ -12,6 +12,8 @@ export interface DraftReplyInput {
   intent: string;
   relevantKb: KbSnippet[];
   channel: OutreachChannel;
+  /** Cevabın yazılacağı dil (müşterinin son mesajının dili). Verilmezse Türkçe. */
+  language?: "tr" | "en";
 }
 
 const JSON_SCHEMA = {
@@ -31,6 +33,21 @@ const GUARDRAIL_INSTRUCTIONS =
   "arkadaşımın netleştireceğini söyle ve questions_for_human'a yaz. Fiyat, indirim, tarih, " +
   "referans uydurma. Karşı taraf istemiyorsa ısrar etme.";
 
+const STYLE_INSTRUCTIONS: Record<"tr" | "en", string> = {
+  tr:
+    "Cevabı doğal, sade ve düzgün bir Türkçeyle, kısa cümlelerle yaz; çeviri gibi duran veya süslü cümleler kurma, " +
+    "başka dilden tek kelime kullanma. Önce müşterinin son mesajındaki soruya veya isteğe doğrudan cevap ver, sonra " +
+    "tek bir somut sonraki adım öner (ör. kısa görüşme için gün ve saat sormak). En çok 60 kelime yaz. " +
+    "Selamlamayı yalnızca konuşmada henüz biz yazmadıysak kullan; imza, unvan, konu satırı veya ad yazma. " +
+    "Müşteri ilgisiz, meşgul veya reddedici ise kısa teşekkür et ve kapıyı açık bırak; ısrar etme.",
+  en:
+    "Write the reply in natural, simple, fluent English with short sentences; no flowery wording and no words from " +
+    "another language. First answer the question or request in the customer's last message directly, then suggest one " +
+    "concrete next step (e.g. ask for a day and time for a short call). At most 60 words. " +
+    "Use a greeting only if we have not written in this conversation yet; do not write a signature, title, subject line " +
+    "or name. If the customer is uninterested, busy or declining, thank them briefly and leave the door open; do not push.",
+};
+
 /** J.2 `draft_reply`: özet + son 4 mesaj + ilgili KB girdileriyle cevap taslağı. */
 export function buildDraftReplyPrompt(input: DraftReplyInput): AIPromptRequest {
   const kbText = input.relevantKb.map((k) => `[${k.id}] ${k.title}: ${k.content}`).join("\n");
@@ -40,7 +57,8 @@ export function buildDraftReplyPrompt(input: DraftReplyInput): AIPromptRequest {
     .join("\n");
 
   const system = [
-    `Sen bir dijital ajansın satış asistanısın. Kanal: ${input.channel}.`,
+    `Sen bir yazılım şirketinin satış asistanısın. Kanal: ${input.channel}. Cevap dili: ${(input.language ?? "tr") === "en" ? "English" : "Türkçe"}.`,
+    STYLE_INSTRUCTIONS[input.language ?? "tr"],
     GUARDRAIL_INSTRUCTIONS,
     "Yalnızca istenen JSON şemasında cevap ver.",
   ].join(" ");
@@ -54,11 +72,11 @@ export function buildDraftReplyPrompt(input: DraftReplyInput): AIPromptRequest {
 
   return {
     operation: "draft_reply",
-    promptVersion: 1,
+    promptVersion: 2,
     system,
     messages: [{ role: "user", content: context }],
     jsonSchema: JSON_SCHEMA,
-    maxTokens: 500,
-    temperature: 0.6,
+    maxTokens: 400,
+    temperature: 0.4,
   };
 }
