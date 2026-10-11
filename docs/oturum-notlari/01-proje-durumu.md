@@ -33,13 +33,13 @@ Yeni migration'lar: `20261010100000_foreign_email_lock`, `…101000_draft_queue`
 | G2 küresel veri modeli | ☑ kod; bulutta kullanımda |
 | G3 keşif motoru + taslak kuyruğu (ADR 0014/0018) | ☑ kod |
 | G4 çok dilli AI | ◐ TR/EN taslak ve cevap sınıflandırma ✔; değerlendirme seti ve koşucu hazır (ADR 0020), **gerçek ölçüm sonucu bekleniyor** |
-| G5 ülke bazlı uyum (ADR 0019) | ☑ kod (listeden çıkma bağlantısı hariç: G7) |
+| G5 ülke bazlı uyum (ADR 0019) | ☑ kod; listeden çıkma bağlantısı da eklendi (ADR 0023, bulutta denenmedi) |
 | G6 günlük kullanım eksikleri | ☑ MVP kapsamı; kalanlar gerekçeyle "MVP sonrası" |
 | G7 sunucu tarafı otomasyon, G8 yeni kanallar, G9 Jarvis işlemleri, G10 üretim | ☐ MVP sonrası |
 
 ## MVP sonrası (bilinçli ertelenen)
 1. Uygulama kapalıyken çalışma: tarama, taslak kuyruğu, e-posta okuma (G7).
-2. Listeden çıkma bağlantısı / `List-Unsubscribe` (G7).
+2. (Yapıldı: listeden çıkma bağlantısı, ADR 0023.)
 3. Instagram/Messenger otomatik cevap, WhatsApp Cloud API, reklam veren keşfi (G8).
 4. Jarvis işlemleri (G9); yayın, otomatik güncelleme, tam yedekten geri yükleme provası, maliyet paneli (G10).
 5. Kanal modu ayarları, zamanlı ikinci kanal, Haritalar linkiyle ekleme, presence, kayıtlı aramalar.

@@ -7,6 +7,8 @@ import { useWorkspaceMembership } from "../../lib/use-workspace-membership";
 import { Button } from "../../components/ui/button";
 import { Label, Textarea } from "../../components/ui/input";
 import { Dialog, DialogContent } from "../../components/ui/primitives";
+import { supabase } from "../../lib/supabase-client";
+import { STORAGE_BUCKET } from "../customers/customer-data";
 import { rpc } from "../outreach/outreach";
 
 /** Kalıcı silme (ADR 0019): yalnızca yönetici görür; sebep zorunlu; kişisel veri silinir, özetler bastırma listesine yazılır. */
@@ -18,8 +20,17 @@ export function EraseBusinessButton({ businessId }: { businessId: string }) {
   const [reason, setReason] = useState("");
 
   const erase = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       if (reason.trim().length < 3) throw new Error(tr.erase.reasonRequired);
+      // Müşteri belgeleri (ADR 0024): kayıtlar cascade ile silinir ama dosyalar kovada kalırdı; önce dosyalar kaldırılır.
+      // Dosya silinemezse işlem durur ki yol bilgisi kaybolmadan yeniden denenebilsin.
+      const { data: files, error: listError } = await supabase.from("customer_documents").select("file_path").eq("business_id", businessId);
+      if (listError) throw new Error(listError.message);
+      const paths = (files ?? []).map((f) => f.file_path as string);
+      if (paths.length > 0) {
+        const { error: removeError } = await supabase.storage.from(STORAGE_BUCKET).remove(paths);
+        if (removeError) throw new Error(removeError.message);
+      }
       return rpc("erase_business", { p_business_id: businessId, p_reason: reason.trim() });
     },
     onSuccess: () => {
