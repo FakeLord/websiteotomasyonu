@@ -32,6 +32,7 @@ const emailSchema = z.object({
   subject: z.string().max(998),
   body: z.string().max(200_000),
   in_reply_to: z.string().max(998).nullable().optional(),
+  list_unsubscribe_url: z.string().max(2048).nullable().optional(),
 });
 const imapSchema = z.object({
   host: z.string().min(1).max(255),

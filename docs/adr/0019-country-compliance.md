@@ -33,8 +33,7 @@
 ## Bilinen sınırlar (riskler)
 - Alıcı tüzel mi şahıs mı (GB, TR esnaf) ayırt edilemez; risk kullanıcıdadır. Hukuk danışmanı yoktur (D1).
 - Rolle ilgi (CA/AU) elle değerlendirilir; sistem yalnızca adresin site kaynaklı olduğunu denetler.
-- **Listeden çıkma bağlantısı / `List-Unsubscribe` başlığı yok**: kimlik doğrulamalı herkese açık Edge Function ve SMTP başlığı
-  gerektirir (G7/G10). Günlük 30 e-posta hacminde Gmail/Yahoo toplu gönderici kuralları (≥5.000/gün) kapsamında değildir.
+- **Listeden çıkma bağlantısı / `List-Unsubscribe`**: ADR 0023 ile eklendi (2026-10-11); bulutta denenmedi. Günlük 30 e-posta hacminde Gmail/Yahoo toplu gönderici kuralları (≥5.000/gün) kapsamında değildir.
 - Çıkma isteğinin yanıtla gelmesi gelen kutusunun çalışmasına bağlıdır (uygulama açıkken). 10/5 iş günü süresi bu yüzden uygulama
   sürekli açık değilse aşılabilir.
 - `activity_logs` yalnızca-ekle olduğundan (kural 4) silme öncesi yazılmış kayıtların özetlerinde işletme adı kalabilir.

@@ -71,6 +71,27 @@ describe("sendEmail", () => {
     expect(sentMails[0]).toMatchObject({ inReplyTo: "<musteri-1@klinik.com>", references: "<musteri-1@klinik.com>" });
   });
 
+  it("https listeden çıkma bağlantısını List-Unsubscribe ve tek tıklama başlıklarına yazar", async () => {
+    const sentMails: Array<Record<string, unknown>> = [];
+    const spy = { sendMail: async (mail: Record<string, unknown>) => void sentMails.push(mail) } as unknown as MailTransport;
+    await sendEmail(smtp, { ...message, list_unsubscribe_url: "https://proje.supabase.co/functions/v1/unsubscribe?t=abc&lang=tr" }, spy);
+    expect(sentMails[0]).toMatchObject({
+      headers: {
+        "List-Unsubscribe": "<https://proje.supabase.co/functions/v1/unsubscribe?t=abc&lang=tr>",
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      },
+    });
+  });
+
+  it("https olmayan veya bozuk bağlantıda başlık eklemez", async () => {
+    const sentMails: Array<Record<string, unknown>> = [];
+    const spy = { sendMail: async (mail: Record<string, unknown>) => void sentMails.push(mail) } as unknown as MailTransport;
+    for (const bad of ["http://x.com/u", "javascript:alert(1)", "https://x.com/u Bcc: a@b.com", "https://x.com/<u>", null]) {
+      await sendEmail(smtp, { ...message, list_unsubscribe_url: bad }, spy);
+    }
+    for (const mail of sentMails) expect(mail).not.toHaveProperty("headers");
+  });
+
   it("boş veya yok in_reply_to'da thread başlığı eklemez", async () => {
     const sentMails: Array<Record<string, unknown>> = [];
     const spy = { sendMail: async (mail: Record<string, unknown>) => void sentMails.push(mail) } as unknown as MailTransport;

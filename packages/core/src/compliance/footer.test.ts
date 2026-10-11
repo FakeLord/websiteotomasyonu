@@ -31,3 +31,19 @@ describe("appendComplianceFooter", () => {
     expect(appendComplianceFooter(once, { ...base, language: "en" })).toBe(once);
   });
 });
+
+describe("unsubscribeUrl (ADR 0023)", () => {
+  it("bağlantı verilince alt bilgiye tıklama satırı eklenir; yanıtla çık satırı kalır", () => {
+    const url = "https://proje.supabase.co/functions/v1/unsubscribe?t=abc&lang=en";
+    const footer = buildComplianceFooter({ ...base, language: "en", unsubscribeUrl: url });
+    expect(footer).toContain(`To unsubscribe, click: ${url}`);
+    expect(footer).toContain('reply with "unsubscribe"');
+    const tr = buildComplianceFooter({ ...base, language: "tr", unsubscribeUrl: url });
+    expect(tr).toContain(`Listeden çıkmak için tıklayın: ${url}`);
+  });
+
+  it("bağlantı yoksa satır eklenmez", () => {
+    expect(buildComplianceFooter({ ...base, language: "en" })).not.toContain("click:");
+    expect(buildComplianceFooter({ ...base, language: "en", unsubscribeUrl: null })).not.toContain("click:");
+  });
+});

@@ -7,7 +7,7 @@
 //! cevaplar `In-Reply-To` ile bu kimliğe eşlenir). CLAUDE.md #9: Rust'ta iş
 //! kuralı yazma.
 
-use lettre::message::header::ContentType;
+use lettre::message::header::{ContentType, HeaderName, HeaderValue};
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::{AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
 use serde::Deserialize;
@@ -31,6 +31,10 @@ pub struct OutboundEmail {
     /// thread'de kalmak için `In-Reply-To` ve `References` olarak eklenir.
     #[serde(default)]
     in_reply_to: Option<String>,
+    /// Listeden çıkma bağlantısı (https). Varsa `List-Unsubscribe` ve `List-Unsubscribe-Post` (RFC 8058)
+    /// başlıkları eklenir.
+    #[serde(default)]
+    list_unsubscribe_url: Option<String>,
 }
 
 /// RFC 5322 `Message-ID`: `<uuid@gönderen-domain>`. Domain gönderen adresinden
@@ -82,6 +86,21 @@ pub async fn send_email(smtp: SmtpConfig, message: OutboundEmail) -> Result<Stri
 
     if let Some(parent) = message.in_reply_to.filter(|p| !p.trim().is_empty()) {
         builder = builder.in_reply_to(parent.clone()).references(parent);
+    }
+
+    if let Some(url) = message
+        .list_unsubscribe_url
+        .filter(|u| u.starts_with("https://") && !u.contains(['\r', '\n', '<', '>', ' ']))
+    {
+        builder = builder
+            .raw_header(HeaderValue::new(
+                HeaderName::new_from_ascii_str("List-Unsubscribe"),
+                format!("<{url}>"),
+            ))
+            .raw_header(HeaderValue::new(
+                HeaderName::new_from_ascii_str("List-Unsubscribe-Post"),
+                "List-Unsubscribe=One-Click".to_string(),
+            ));
     }
 
     let email = builder
@@ -149,6 +168,7 @@ mod tests {
                     subject: "smoke".into(),
                     body: "smoke".into(),
                     in_reply_to: None,
+                    list_unsubscribe_url: None,
                 },
             )
             .await;

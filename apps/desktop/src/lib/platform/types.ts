@@ -23,6 +23,8 @@ export interface OutboundEmail {
   body: string;
   /** Cevap e-postalarında müşterinin son mesajının Message-ID'si (aynı thread). */
   in_reply_to?: string | null;
+  /** Listeden çıkma bağlantısı (https); `List-Unsubscribe` başlıklarına yazılır. */
+  list_unsubscribe_url?: string | null;
 }
 
 export interface ImapConfig {

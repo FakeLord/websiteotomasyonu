@@ -33,6 +33,7 @@ işaretleyin; takılan adımın ekran görüntüsünü (anahtar/şifre görünme
 ## 4. Cevabı işle
 - [ ] Test adresinden cevap yazın → gelen kutusu cevabı konuşmaya düşürür, zilde sayaç artar (ses açıksa çalar).
 - [ ] "İlgileniyorum" tipi cevapta niyet doğru; "bir daha yazmayın / unsubscribe" cevabında işletme DNC olur.
+- [ ] Giden e-postanın altında "Listeden çıkmak için tıklayın" bağlantısı var; tıklayınca "Listeden çıkarıldınız" yazar ve işletme DNC olur (Gmail'de başlıkta "Abonelikten çık" da görünür). İkinci tıklamada "zaten çıkarıldınız" yazar.
 - [ ] "Ne oldu?" kutusu ve İlerleme sekmesi: aşama ilerler, takip tarihi konur, Dashboard "Bugünün işleri"nde çıkar.
 
 ## 5. Devret ve kapat

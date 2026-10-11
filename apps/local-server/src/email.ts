@@ -16,6 +16,8 @@ export interface EmailInput {
   subject: string;
   body: string;
   in_reply_to?: string | null | undefined;
+  /** https listeden çıkma bağlantısı: `List-Unsubscribe` + `List-Unsubscribe-Post` (RFC 8058) başlıkları. */
+  list_unsubscribe_url?: string | null | undefined;
 }
 
 const ADDRESS_RE = /^[^\s@<>"',;:\\]+@[^\s@<>"',;:\\]+\.[^\s@<>"',;:\\]+$/;
@@ -82,6 +84,8 @@ export async function sendEmail(
 
   const messageId = buildMessageId(smtp.from_email);
   const parent = message.in_reply_to?.trim();
+  const unsubscribeUrl = message.list_unsubscribe_url?.trim();
+  const validUnsubscribe = unsubscribeUrl && /^https:\/\/[^\s<>]+$/.test(unsubscribeUrl) ? unsubscribeUrl : null;
 
   try {
     await transport.sendMail({
@@ -91,6 +95,9 @@ export async function sendEmail(
       text: message.body,
       messageId,
       ...(parent ? { inReplyTo: parent, references: parent } : {}),
+      ...(validUnsubscribe
+        ? { headers: { "List-Unsubscribe": `<${validUnsubscribe}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" } }
+        : {}),
     });
   } catch (error) {
     // Ham hata sunucu yanıtındaki parametreleri/kimlik bilgilerini içerebilir; yalnızca türü bildirilir.

@@ -85,7 +85,13 @@ async function lastInboundMessageId(conversationId: string): Promise<string | nu
  * E-postanın sonuna gönderen kimliği, posta adresi ve çıkma satırını ekler (ADR 0019). Dil metinden anlaşılır;
  * belirsizse işletmenin ülkesine göre (TR → Türkçe, diğerleri İngilizce) seçilir.
  */
-async function withComplianceFooter(workspaceId: string, businessId: string, body: string, fallbackName: string): Promise<string> {
+async function withComplianceFooter(
+  workspaceId: string,
+  businessId: string,
+  messageId: string,
+  body: string,
+  fallbackName: string,
+): Promise<{ body: string; unsubscribeUrl: string | null }> {
   const [settings, business] = await Promise.all([
     supabase.from("workspace_settings").select("sender_profile").eq("workspace_id", workspaceId).maybeSingle(),
     supabase.from("businesses").select("country_code").eq("id", businessId).maybeSingle(),
@@ -96,12 +102,33 @@ async function withComplianceFooter(workspaceId: string, businessId: string, bod
   const countryCode = (business.data?.country_code as string | undefined) ?? "TR";
   const detected = detectDraftLanguage(body);
   const language = detected === "tr" || detected === "en" ? detected : countryCode === "TR" ? "tr" : "en";
-  return appendComplianceFooter(body, {
-    language,
-    legalName: profile.legalName?.trim() || fallbackName,
-    postalAddress: profile.postalAddress ?? "",
-    countryCode,
-  });
+  const unsubscribeUrl = await issueUnsubscribeUrl(businessId, messageId, language);
+  return {
+    body: appendComplianceFooter(body, {
+      language,
+      legalName: profile.legalName?.trim() || fallbackName,
+      postalAddress: profile.postalAddress ?? "",
+      countryCode,
+      unsubscribeUrl,
+    }),
+    unsubscribeUrl,
+  };
+}
+
+/**
+ * Tek kullanımlık listeden çıkma bağlantısı (ADR 0023). Anahtar üretilemezse (ör. migration henüz yüklenmedi) gönderim
+ * durmaz: "yanıtla çık" satırı zaten vardır; hata günlüğe yazılır.
+ */
+async function issueUnsubscribeUrl(businessId: string, messageId: string, language: string): Promise<string | null> {
+  const base = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.replace(/\/+$/, "");
+  if (!base || !base.startsWith("https://")) return null;
+  try {
+    const token = await rpc<string>("issue_unsubscribe_token", { p_business_id: businessId, p_message_id: messageId });
+    return `${base}/functions/v1/unsubscribe?t=${encodeURIComponent(token)}&lang=${language}`;
+  } catch (error) {
+    platform.logError(`listeden çıkma bağlantısı üretilemedi: ${error instanceof Error ? error.message : String(error)}`);
+    return null;
+  }
 }
 
 async function deliver(workspaceId: string, target: SendTarget, message: SendableMessage): Promise<Delivery> {
@@ -120,6 +147,7 @@ async function deliver(workspaceId: string, target: SendTarget, message: Sendabl
     if (error) throw error;
     if (!channelRow) throw new Error(tr.conversations.noEmailAddress);
     const inReplyTo = await lastInboundMessageId(target.conversationId);
+    const composed = await withComplianceFooter(workspaceId, target.businessId, message.id, message.body, account.fromName);
     const externalMessageId = await platform.sendEmail(
       {
         host: account.smtpHost,
@@ -132,8 +160,9 @@ async function deliver(workspaceId: string, target: SendTarget, message: Sendabl
       {
         to_email: channelRow.value,
         subject: message.subject ?? "",
-        body: await withComplianceFooter(workspaceId, target.businessId, message.body, account.fromName),
+        body: composed.body,
         in_reply_to: inReplyTo,
+        list_unsubscribe_url: composed.unsubscribeUrl,
       },
     );
     return { mode: "SMTP", externalMessageId };

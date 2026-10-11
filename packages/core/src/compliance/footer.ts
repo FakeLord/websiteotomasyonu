@@ -14,11 +14,18 @@ export interface ComplianceFooterInput {
   postalAddress: string;
   /** İşletmenin ülkesi (ISO-2); ABD için ticari ileti ibaresi eklenir. */
   countryCode: string;
+  /** Tek kullanımlık listeden çıkma bağlantısı (ADR 0023); varsa alt bilgiye satır olarak eklenir. */
+  unsubscribeUrl?: string | null | undefined;
 }
 
 const OPT_OUT: Record<FooterLanguage, string> = {
   tr: 'Bu iletileri bir daha almak istemiyorsanız bu e-postayı "çıkmak istiyorum" yazarak yanıtlamanız yeterli; bir daha yazmayacağız.',
   en: 'If you would rather not hear from us again, just reply with "unsubscribe" and we will not contact you again.',
+};
+
+const UNSUBSCRIBE_LINK: Record<FooterLanguage, string> = {
+  tr: "Listeden çıkmak için tıklayın:",
+  en: "To unsubscribe, click:",
 };
 
 const COMMERCIAL: Record<FooterLanguage, string> = {
@@ -35,6 +42,7 @@ export function buildComplianceFooter(input: ComplianceFooterInput): string {
   if (address) lines.push(address);
   if (input.countryCode.toUpperCase() === "US") lines.push(COMMERCIAL[input.language]);
   lines.push(OPT_OUT[input.language]);
+  if (input.unsubscribeUrl) lines.push(`${UNSUBSCRIBE_LINK[input.language]} ${input.unsubscribeUrl}`);
   return `\n\n${lines.join("\n")}`;
 }
 
