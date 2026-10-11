@@ -11,6 +11,7 @@ import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { EmptyState, PageHeader } from "../../components/ui/data-display";
 import { ScoreBadge } from "../../components/domain/badges";
+import { ChannelIcon } from "../../components/domain/channel-icon";
 import { rpc, sendDraftMessage, translateDraftToTurkish, type DraftTranslation } from "../outreach/outreach";
 
 interface PendingDraft {
@@ -74,14 +75,22 @@ function DraftCard({ draft, workspaceId, onChanged }: { draft: PendingDraft; wor
 
   const busy = send.isPending || discard.isPending;
   const name = business?.name ?? "—";
+  const channel = conversation?.channel ?? "EMAIL";
 
   return (
     <Card className="space-y-3 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-text">{name}</p>
-          <p className="text-xs text-muted">
-            {[business?.city, business?.country_code].filter(Boolean).join(" · ")} · {formatRelative(draft.created_at)}
+          <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted">
+            <span className="inline-flex items-center gap-1 font-medium text-text">
+              <ChannelIcon channel={channel} className="h-3.5 w-3.5" />
+              {tr.channels[channel as keyof typeof tr.channels] ?? channel}
+            </span>
+            <span>·</span>
+            <span>
+              {[business?.city, business?.country_code].filter(Boolean).join(" · ")} · {formatRelative(draft.created_at)}
+            </span>
           </p>
         </div>
         {business?.lead_score !== null && business?.lead_score !== undefined && <ScoreBadge score={business.lead_score} />}
@@ -145,7 +154,7 @@ function DraftCard({ draft, workspaceId, onChanged }: { draft: PendingDraft; wor
   );
 }
 
-/** "Onay Bekleyenler" (ADR 0018): AI'ın hazırladığı e-posta taslakları; insan okur, onaylar ve gönderir. */
+/** "Onay Bekleyenler" (ADR 0018): AI'ın hazırladığı taslaklar (her kanal); insan okur, onaylar ve gönderir. */
 export function ReviewPage() {
   const queryClient = useQueryClient();
   const workspaceId = useWorkspaceMembership().data?.workspaceId;

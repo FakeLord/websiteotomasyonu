@@ -193,7 +193,7 @@ export const tr = {
     },
     review: {
       title: "Onay Bekleyenler",
-      subtitle: "AI'ın hazırladığı e-posta taslakları. Okuyun, gerekirse düzenleyin, onaylayıp gönderin.",
+      subtitle: "AI'ın hazırladığı taslaklar (e-posta, Instagram, WhatsApp…). Okuyun, gerekirse düzenleyin, onaylayıp gönderin.",
       empty: "Onay bekleyen taslak yok. Leadler → Fırsatlar'dan \"Taslakları hazırla\" ile başlatın.",
       subject: "Konu",
       send: "Onayla ve gönder",
