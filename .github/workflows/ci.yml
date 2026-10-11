@@ -110,7 +110,8 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-        run: pnpm --filter @lbf/desktop tauri build
+        # CI'da imza anahtarı yoktur; güncelleme paketi (imzalı) yalnızca Release iş akışında üretilir (ADR 0026).
+        run: pnpm --filter @lbf/desktop tauri build --config '{"bundle":{"createUpdaterArtifacts":false}}'
 
       - name: Upload setup.exe artifact
         uses: actions/upload-artifact@v4
