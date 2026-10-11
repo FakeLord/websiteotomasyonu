@@ -211,6 +211,14 @@ describe("tidyOffer", () => {
     expect(tidyOffer("Şişli'de 4.", dm)).toBe("");
   });
 
+  it("'Web sitenizin bulunmaması…' ve 'sizi bulmasını zorlaştırıyor' gibi gözlem tekrarlarını atar", () => {
+    const out = tidyOffer(
+      "Web sitenizin bulunmaması potansiyel hastaların sizi bulmasını zorlaştırıyor. Hostlys'ten ücretsiz örnek tasarım hazırlayabiliriz. Kısa bir görüşme ister misiniz?",
+      dm,
+    );
+    expect(out).toBe("Hostlys'ten ücretsiz örnek tasarım hazırlayabiliriz. Kısa bir görüşme ister misiniz?");
+  });
+
   it("ekli halleri de gözlem tekrarı sayar ('puanla'), vizyon klişesini atar ve soruyla bitirir", () => {
     const out = tidyOffer(
       "Şişli'de 4,9 puanla ilgi görüyor. Hostlys ekibi size özel web çözümleri geliştiriyor. Şirketinizin vizyonuna uygun ücretsiz örnek tasarım hazırlayalım.",
