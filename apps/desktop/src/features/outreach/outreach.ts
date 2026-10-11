@@ -546,10 +546,26 @@ export async function translateDraftToTurkish(
   businessId: string,
   draft: { subject?: string | undefined; body: string; channel: OutreachChannel },
 ): Promise<DraftTranslation> {
-  const request = buildTranslateDraftPrompt(draft);
+  return translateDraft(workspaceId, businessId, draft, "tr");
+}
+
+/**
+ * Taslağı `target` diline çevirir. İngilizceye çeviri gönderilebilir bir metin olacağı için sonuç dili doğrulanır
+ * (model çeviri yerine metni aynen döndürebiliyor). Alan adları sabit olduğundan `translationTr` hedef dildeki metni taşır.
+ */
+export async function translateDraft(
+  workspaceId: string,
+  businessId: string,
+  draft: { subject?: string | undefined; body: string; channel: OutreachChannel },
+  target: "tr" | "en",
+): Promise<DraftTranslation> {
+  const request = buildTranslateDraftPrompt({ ...draft, targetLanguage: target });
   const result = await callAiGateway(workspaceId, request, { entityType: "business", entityId: businessId });
   const parsed = translateDraftOutputSchema.safeParse(result.json);
   if (!parsed.success) throw new Error(tr.draft.translationFailed);
+  if (target === "en" && detectDraftLanguage(parsed.data.translation_tr) === "tr") {
+    throw new Error(tr.draft.translationFailed);
+  }
   return { translationTr: parsed.data.translation_tr, subjectTr: parsed.data.subject_tr };
 }
 

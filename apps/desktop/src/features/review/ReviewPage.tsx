@@ -12,7 +12,8 @@ import { Card } from "../../components/ui/card";
 import { EmptyState, PageHeader } from "../../components/ui/data-display";
 import { ScoreBadge } from "../../components/domain/badges";
 import { ChannelIcon } from "../../components/domain/channel-icon";
-import { rpc, sendDraftMessage, translateDraftToTurkish, type DraftTranslation } from "../outreach/outreach";
+import { detectDraftLanguage } from "@lbf/core";
+import { rpc, sendDraftMessage, translateDraft, type DraftTranslation } from "../outreach/outreach";
 
 interface PendingDraft {
   id: string;
@@ -33,18 +34,31 @@ const PAGE_SIZE = 50;
 function DraftCard({ draft, workspaceId, onChanged }: { draft: PendingDraft; workspaceId: string; onChanged: () => void }) {
   const navigate = useNavigate();
   const [translation, setTranslation] = useState<DraftTranslation | null>(null);
+  const [translationTarget, setTranslationTarget] = useState<"tr" | "en">("tr");
   const [notice, setNotice] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
   const conversation = draft.conversations;
   const business = conversation?.businesses ?? null;
 
+  // Türkçe (veya kısa/belirsiz) taslak İngilizceye, başka dildeki taslak Türkçeye çevrilir.
+  const draftIsTurkish = detectDraftLanguage(draft.body) !== "en";
+  const translateTarget: "tr" | "en" = draftIsTurkish ? "en" : "tr";
+
   const translate = useMutation({
     mutationFn: () =>
-      translateDraftToTurkish(workspaceId, business?.id ?? "", {
-        subject: draft.subject ?? undefined,
-        body: draft.body,
-        channel: (conversation?.channel ?? "EMAIL") as OutreachChannel,
-      }),
-    onSuccess: setTranslation,
+      translateDraft(
+        workspaceId,
+        business?.id ?? "",
+        {
+          subject: draft.subject ?? undefined,
+          body: draft.body,
+          channel: (conversation?.channel ?? "EMAIL") as OutreachChannel,
+        },
+        translateTarget,
+      ),
+    onSuccess: (result) => {
+      setTranslationTarget(translateTarget);
+      setTranslation(result);
+    },
     onError: (err) => setNotice({ tone: "error", text: err instanceof Error ? err.message : tr.draft.translationFailed }),
   });
 
@@ -65,6 +79,23 @@ function DraftCard({ draft, workspaceId, onChanged }: { draft: PendingDraft; wor
       setNotice({ tone: "error", text: err instanceof Error ? err.message : tr.draftQueue.review.sendError });
       onChanged();
     },
+  });
+
+  // İngilizce çeviri onaylanırsa taslağın kendisi değiştirilir (gönderilecek metin budur).
+  const applyTranslation = useMutation({
+    mutationFn: async () => {
+      if (!translation) return;
+      const patch: { body: string; subject?: string } = { body: translation.translationTr };
+      if (draft.subject && translation.subjectTr) patch.subject = translation.subjectTr;
+      const { error } = await supabase.from("messages").update(patch).eq("id", draft.id).eq("status", "DRAFT");
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setTranslation(null);
+      setNotice({ tone: "ok", text: tr.draftQueue.review.applied });
+      onChanged();
+    },
+    onError: (err) => setNotice({ tone: "error", text: err instanceof Error ? err.message : tr.draftQueue.review.applyError }),
   });
 
   const discard = useMutation({
@@ -106,9 +137,19 @@ function DraftCard({ draft, workspaceId, onChanged }: { draft: PendingDraft; wor
 
       {translation && (
         <div className="rounded-lg border border-border p-3 text-sm whitespace-pre-wrap text-muted">
-          <p className="mb-1 text-xs font-medium">{tr.draftQueue.review.translationTitle}</p>
+          <p className="mb-1 text-xs font-medium">
+            {translationTarget === "en" ? tr.draftQueue.review.englishTitle : tr.draftQueue.review.translationTitle}
+          </p>
           {translation.subjectTr && <p className="mb-1 text-text">{translation.subjectTr}</p>}
           {translation.translationTr}
+          {translationTarget === "en" && (
+            <div className="mt-2">
+              <Button size="sm" variant="outline" disabled={applyTranslation.isPending} onClick={() => applyTranslation.mutate()}>
+                {applyTranslation.isPending && <Loader2 className="animate-spin" />}
+                {tr.draftQueue.review.applyEnglish}
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
@@ -136,7 +177,13 @@ function DraftCard({ draft, workspaceId, onChanged }: { draft: PendingDraft; wor
         )}
         {!translation && (
           <Button size="sm" variant="ghost" disabled={translate.isPending || !business} onClick={() => translate.mutate()}>
-            {translate.isPending ? tr.draftQueue.review.translating : tr.draftQueue.review.showTranslation}
+            {translate.isPending
+              ? translateTarget === "en"
+                ? tr.draftQueue.review.translatingToEnglish
+                : tr.draftQueue.review.translating
+              : translateTarget === "en"
+                ? tr.draftQueue.review.translateToEnglish
+                : tr.draftQueue.review.showTranslation}
           </Button>
         )}
         <Button
