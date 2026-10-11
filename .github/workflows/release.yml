@@ -88,8 +88,14 @@ jobs:
           set -euo pipefail
           version="${GITHUB_REF_NAME#v}"
           dir="apps/desktop/src-tauri/target/release/bundle/nsis"
-          installer=$(ls "$dir"/*-setup.exe | head -n 1)
+          # Dosya adında boşluk vardır ("Local Business Finder_0.1.1_x64-setup.exe"); glob + tırnak kullanılır.
+          installer=""
+          for f in "$dir"/*-setup.exe; do installer="$f"; break; done
           sig="$installer.sig"
-          test -f "$installer" && test -f "$sig" || { echo "::error::Kurulum dosyası veya .sig bulunamadı ($dir)"; ls -la "$dir"; exit 1; }
+          if [ ! -f "$installer" ] || [ ! -f "$sig" ]; then
+            echo "::error::Kurulum dosyası veya .sig bulunamadı ($dir)"
+            ls -la "$dir" || true
+            exit 1
+          fi
           notes=$(git log -1 --pretty=%s)
           node scripts/ops/publish-update.mjs --version "$version" --installer "$installer" --sig "$sig" --notes "$notes"
