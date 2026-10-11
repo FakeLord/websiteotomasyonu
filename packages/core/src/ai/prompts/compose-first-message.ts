@@ -251,7 +251,8 @@ const OFFER_LIMITS = { EMAIL: { words: 50, chars: 360 }, DM: { words: 30, chars:
  */
 export function tidyOffer(raw: string, facts: FirstMessageFacts): string {
   const cleaned = cleanOffer(raw).replace(ADDRESS_PREFIX, "");
-  const sentences = cleaned.match(/[^.!?]+[.!?]+|[^.!?]+$/g)?.map((s) => s.trim()).filter(Boolean) ?? [];
+  // Cümle sonu: noktalama + boşluk. '4.9' ve '4,9' gibi sayılar bölünmez.
+  const sentences = cleaned.split(/(?<=[.!?])\s+/).map((s) => s.trim()).filter(Boolean);
   const allowed = [facts.businessName, displayName(facts.businessName), facts.category ?? ""];
   const limit = facts.channel === "EMAIL" ? OFFER_LIMITS.EMAIL : OFFER_LIMITS.DM;
   const kept: string[] = [];
@@ -261,6 +262,7 @@ export function tidyOffer(raw: string, facts: FirstMessageFacts): string {
     if (REPEATS_OBSERVATION.test(sentence) || BUZZ.test(sentence)) continue;
     if (findForeignWords(sentence, facts.language, allowed).length > 0) continue;
     const w = sentence.split(/\s+/).length;
+    if (w < 3) continue;
     if (words + w > limit.words || chars + sentence.length > limit.chars) break;
     kept.push(sentence);
     words += w;

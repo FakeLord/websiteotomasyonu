@@ -204,6 +204,13 @@ describe("tidyOffer", () => {
     expect(tidyOffer("Web siteniz yok. Harika 4,9 puanınız var.", dm)).toBe("");
   });
 
+  it("'4.9' gibi ondalıklı sayıyı cümle sonu sanıp bölmez; kısa artık parça bırakmaz", () => {
+    expect(tidyOffer("Şişli'de 4.9 puanla ilgi görüyor. Hostlys ekibi size özel web çözümleri geliştiriyor.", dm)).toBe(
+      "Hostlys ekibi size özel web çözümleri geliştiriyor. Size kısa bir örnek göndermemizi ister misiniz?",
+    );
+    expect(tidyOffer("Şişli'de 4.", dm)).toBe("");
+  });
+
   it("ekli halleri de gözlem tekrarı sayar ('puanla'), vizyon klişesini atar ve soruyla bitirir", () => {
     const out = tidyOffer(
       "Şişli'de 4,9 puanla ilgi görüyor. Hostlys ekibi size özel web çözümleri geliştiriyor. Şirketinizin vizyonuna uygun ücretsiz örnek tasarım hazırlayalım.",
