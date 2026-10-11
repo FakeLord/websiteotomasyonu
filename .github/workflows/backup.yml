@@ -32,13 +32,25 @@ jobs:
             exit 1
           fi
 
-      - name: Dök (pg_dump 17)
+      # Bağlantı ve kilit sorunları sessizce takılmak yerine açık hata verir (2026-10-11: dökümün 5 dakikadan uzun
+      # takıldığı görüldü).
+      - name: Veritabanına bağlanılabildiğini denetle
+        timeout-minutes: 3
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
           set -euo pipefail
-          docker run --rm -e SUPABASE_DB_URL postgres:17 sh -c \
-            'pg_dump "$SUPABASE_DB_URL" --format=custom --no-owner --no-privileges --schema=public --schema=auth' \
+          docker run --rm -e PGCONNECT_TIMEOUT=30 -e SUPABASE_DB_URL postgres:17 sh -c \
+            'psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -At -c "select 1" -c "select state, count(*) from pg_stat_activity group by 1 order by 2 desc"'
+
+      - name: Dök (pg_dump 17)
+        timeout-minutes: 15
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          docker run --rm -e PGCONNECT_TIMEOUT=30 -e SUPABASE_DB_URL postgres:17 sh -c \
+            'pg_dump "$SUPABASE_DB_URL" --verbose --lock-wait-timeout=120000 --format=custom --no-owner --no-privileges --schema=public --schema=auth' \
             > backup.dump
           test -s backup.dump
 
