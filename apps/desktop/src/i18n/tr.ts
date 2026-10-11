@@ -140,6 +140,10 @@ export const tr = {
     legalNameLabel: "Şirket adı",
     postalAddressLabel: "Posta adresi",
     postalAddressHint: "Sokak, şehir, posta kodu ve ülke. Alıcıya e-postanın sonunda gösterilir.",
+    unsubscribeBaseLabel: "Listeden çıkma bağlantısı adresi (isteğe bağlı)",
+    unsubscribeBaseHint:
+      "Boşken bağlantı Supabase adresinden verilir. Kendi alan adınızdan vermek için sunucunuza yönlendirme dosyasını kurun (docs/ops/cikis-yonlendirme.md) ve adresi buraya yazın. Yalnızca https.",
+    invalidUnsubscribeBase: "Adres https:// ile başlamalı ve bir alan adı içermeli.",
     save: "Kaydet",
     saved: "Gönderen kimliği kaydedildi.",
     error: "Kaydedilemedi.",

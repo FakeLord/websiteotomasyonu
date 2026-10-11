@@ -4,11 +4,13 @@ import { supabase } from "../../lib/supabase-client";
 import { tr } from "../../i18n/tr";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
+import { isValidBrandedBase } from "@lbf/core";
 import { Input, Label, Textarea } from "../../components/ui/input";
 
 interface SenderProfile {
   legalName?: string;
   postalAddress?: string;
+  unsubscribeBaseUrl?: string;
 }
 
 /** Gönderen kimliği (ADR 0019): e-posta alt bilgisinin kaynağı; yalnızca yönetici düzenler. */
@@ -16,6 +18,7 @@ export function SenderProfileSection({ workspaceId }: { workspaceId: string }) {
   const queryClient = useQueryClient();
   const [legalName, setLegalName] = useState("");
   const [postalAddress, setPostalAddress] = useState("");
+  const [unsubscribeBaseUrl, setUnsubscribeBaseUrl] = useState("");
   const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
 
   const query = useQuery({
@@ -35,13 +38,22 @@ export function SenderProfileSection({ workspaceId }: { workspaceId: string }) {
     if (!query.data) return;
     setLegalName(query.data.legalName ?? "");
     setPostalAddress(query.data.postalAddress ?? "");
+    setUnsubscribeBaseUrl(query.data.unsubscribeBaseUrl ?? "");
   }, [query.data]);
 
   const save = useMutation({
     mutationFn: async () => {
+      const base = unsubscribeBaseUrl.trim();
+      if (base && !isValidBrandedBase(base)) throw new Error(tr.senderProfile.invalidUnsubscribeBase);
       const { error } = await supabase
         .from("workspace_settings")
-        .update({ sender_profile: { legalName: legalName.trim(), postalAddress: postalAddress.trim() } })
+        .update({
+          sender_profile: {
+            legalName: legalName.trim(),
+            postalAddress: postalAddress.trim(),
+            ...(base ? { unsubscribeBaseUrl: base } : {}),
+          },
+        })
         .eq("workspace_id", workspaceId);
       if (error) throw error;
     },
@@ -67,6 +79,16 @@ export function SenderProfileSection({ workspaceId }: { workspaceId: string }) {
           <Label>{tr.senderProfile.postalAddressLabel}</Label>
           <Textarea value={postalAddress} onChange={(e) => setPostalAddress(e.target.value)} rows={3} maxLength={300} />
           <p className="mt-1 text-xs text-muted">{tr.senderProfile.postalAddressHint}</p>
+        </div>
+        <div>
+          <Label>{tr.senderProfile.unsubscribeBaseLabel}</Label>
+          <Input
+            value={unsubscribeBaseUrl}
+            onChange={(e) => setUnsubscribeBaseUrl(e.target.value)}
+            placeholder="https://hostlys.com/cikis"
+            maxLength={300}
+          />
+          <p className="mt-1 text-xs text-muted">{tr.senderProfile.unsubscribeBaseHint}</p>
         </div>
       </div>
       <div className="flex items-center gap-3">

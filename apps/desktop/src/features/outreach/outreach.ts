@@ -1,6 +1,7 @@
 import { platform } from "../../lib/platform";
 import {
   appendComplianceFooter,
+  buildUnsubscribeUrls,
   assembleFirstMessage,
   buildDraftFirstMessagePrompt,
   buildTranslateDraftPrompt,
@@ -99,20 +100,21 @@ async function withComplianceFooter(
   ]);
   if (settings.error) throw settings.error;
   if (business.error) throw business.error;
-  const profile = (settings.data?.sender_profile ?? {}) as { legalName?: string; postalAddress?: string };
+  const profile = (settings.data?.sender_profile ?? {}) as { legalName?: string; postalAddress?: string; unsubscribeBaseUrl?: string };
   const countryCode = (business.data?.country_code as string | undefined) ?? "TR";
   const detected = detectDraftLanguage(body);
   const language = detected === "tr" || detected === "en" ? detected : countryCode === "TR" ? "tr" : "en";
-  const unsubscribeUrl = await issueUnsubscribeUrl(businessId, messageId, language);
+  const urls = await issueUnsubscribeUrls(businessId, messageId, language, profile.unsubscribeBaseUrl);
   return {
     body: appendComplianceFooter(body, {
       language,
       legalName: profile.legalName?.trim() || fallbackName,
       postalAddress: profile.postalAddress ?? "",
       countryCode,
-      unsubscribeUrl,
+      // Görünen bağlantı kendi alan adından olabilir; başlıktaki tek tıklama adresi her zaman doğrudan fonksiyondur.
+      unsubscribeUrl: urls?.linkUrl ?? null,
     }),
-    unsubscribeUrl,
+    unsubscribeUrl: urls?.headerUrl ?? null,
   };
 }
 
@@ -120,12 +122,17 @@ async function withComplianceFooter(
  * Tek kullanımlık listeden çıkma bağlantısı (ADR 0023). Anahtar üretilemezse (ör. migration henüz yüklenmedi) gönderim
  * durmaz: "yanıtla çık" satırı zaten vardır; hata günlüğe yazılır.
  */
-async function issueUnsubscribeUrl(businessId: string, messageId: string, language: string): Promise<string | null> {
-  const base = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.replace(/\/+$/, "");
-  if (!base || !base.startsWith("https://")) return null;
+async function issueUnsubscribeUrls(
+  businessId: string,
+  messageId: string,
+  language: string,
+  brandedBaseUrl: string | undefined,
+): Promise<{ headerUrl: string; linkUrl: string } | null> {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+  if (!supabaseUrl?.startsWith("https://")) return null;
   try {
     const token = await rpc<string>("issue_unsubscribe_token", { p_business_id: businessId, p_message_id: messageId });
-    return `${base}/functions/v1/unsubscribe?t=${encodeURIComponent(token)}&lang=${language}`;
+    return buildUnsubscribeUrls({ supabaseUrl, brandedBaseUrl, token, language });
   } catch (error) {
     platform.logError(`listeden çıkma bağlantısı üretilemedi: ${error instanceof Error ? error.message : String(error)}`);
     return null;
