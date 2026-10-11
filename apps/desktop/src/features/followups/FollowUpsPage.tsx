@@ -2,12 +2,10 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarClock, Clock, Eye, Loader2, MoreHorizontal, Send, SkipForward, Sparkles } from "lucide-react";
-import { buildFollowupDraftPrompt } from "@lbf/core";
-import { followupDraftOutputSchema } from "@lbf/contracts";
+import { composeFollowUp, detectDraftLanguage, type OutreachChannel } from "@lbf/core";
 import { supabase } from "../../lib/supabase-client";
 import { useWorkspaceMembership } from "../../lib/use-workspace-membership";
 import { useWorkspaceMembers } from "../../lib/use-workspace-members";
-import { callAiGateway } from "../../lib/ai-gateway-client";
 import { formatDateTime, formatRelative } from "../../lib/format";
 import { tr } from "../../i18n/tr";
 import { cn } from "../../lib/cn";
@@ -123,12 +121,15 @@ export function FollowUpsPage() {
         .limit(1)
         .maybeSingle();
       if (firstError) throw firstError;
-      const result = await callAiGateway(
-        workspaceId,
-        buildFollowupDraftPrompt({ firstMessageBody: first?.body ?? "", stepNumber: row.step, businessName: row.businesses?.name ?? "" }),
-        { entityType: "follow_up", entityId: row.id },
-      );
-      const parsed = followupDraftOutputSchema.parse(result.json);
+      // Takip metni model çağrılmadan, kalıplardan kodla yazılır; dil ilk mesajdan anlaşılır.
+      const language = detectDraftLanguage(first?.body ?? "") === "en" ? "en" : "tr";
+      const body = composeFollowUp({
+        language,
+        channel: (row.conversations?.channel ?? "EMAIL") as OutreachChannel,
+        step: row.step,
+        totalSteps,
+        businessName: row.businesses?.name ?? "",
+      });
       const subject = row.conversations?.channel === "EMAIL" && first?.subject ? `Re: ${first.subject as string}` : null;
       const { data: message, error } = await supabase
         .from("messages")
@@ -138,7 +139,7 @@ export function FollowUpsPage() {
           direction: "OUT",
           status: "DRAFT",
           subject,
-          body: parsed.body,
+          body,
           author_type: "AI",
         })
         .select("id")
