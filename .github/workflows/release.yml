@@ -76,7 +76,7 @@ jobs:
           releaseDraft: true
           prerelease: false
           # Güncelleme bildirimi GitHub'da değil Supabase kovasında tutulur (depo özel).
-          includeUpdaterJson: false
+          uploadUpdaterJson: false
 
       - name: Güncelleme dosyalarını yayınla (Supabase Storage)
         shell: bash
