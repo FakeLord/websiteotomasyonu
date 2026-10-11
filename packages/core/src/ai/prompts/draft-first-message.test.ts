@@ -126,7 +126,7 @@ describe("buildDraftFirstMessagePrompt — uzunluk, biçim, sürüm", () => {
     }
   });
 
-  it("önbelleğin eski taslakları vermemesi için prompt sürümü 9'dur", () => {
-    expect(buildDraftFirstMessagePrompt(base).promptVersion).toBe(9);
+  it("önbelleğin eski taslakları vermemesi için prompt sürümü 10'dur", () => {
+    expect(buildDraftFirstMessagePrompt(base).promptVersion).toBe(10);
   });
 });

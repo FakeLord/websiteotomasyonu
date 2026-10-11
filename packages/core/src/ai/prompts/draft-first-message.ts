@@ -46,6 +46,8 @@ interface PromptText {
   language: string;
   length: (isEmail: boolean) => string;
   composition: string;
+  /** Biçim örneği: küçük modeller soyut kuraldan çok kalıbı taklit eder. İçerik uydurmaya yol açmasın diye yer tutuculu. */
+  shape: string;
   guardrail: string;
   channel: (channel: OutreachChannel) => string;
   labels: {
@@ -77,6 +79,10 @@ const TEXT: Record<OutreachLanguage, PromptText> = {
       "sade cümlelerinle anlat; 'premium', 'canlı hissiyatlı', 'yeni nesil' gibi süslü ifadeleri olduğu gibi yapıştırma. " +
       "(2) ŞİRKET BİLGİSİ'ndeki teklifi bu işletmeye uyarlayarak sun. (3) Cevaplaması kolay tek bir soruyla bitir. " +
       "Hazır gözlemi tekrar etme; selamlama, imza veya konu yazma. Yüzde, oran veya istatistik yazma; % işareti kullanma.",
+    shape:
+      "Biçim örneği (köşeli parantezleri ŞİRKET BİLGİSİ'ne göre doldur; örnekteki kelimeleri kopyalama): " +
+      "\"Biz [şirket adı]; [ne yaptığımız, tek sade cümle]. [ŞİRKET BİLGİSİ'ndeki teklif, tek somut adım]. [Evet/hayır ya da gün/saat soran tek soru]?\" " +
+      "Her cümle tek başına anlamlı olsun; anlamsız fiil-nesne birleşimleri kurma (ör. 'siteyi tasarımla tanıştıralım').",
     guardrail:
       "Şirketi ve teklifi yalnızca ŞİRKET BİLGİSİ'nden al; orada olmayan hizmet, fiyat, süre, referans veya teklif uydurma. " +
       "Bilmediğin bir şeyi ekip arkadaşımın netleştireceğini söyle. Sayı veya sonuç vaat etme. Mesajda başka dilden tek bir " +
@@ -112,6 +118,10 @@ const TEXT: Record<OutreachLanguage, PromptText> = {
       "(2) Present the offer from COMPANY INFO, tailored to this business. (3) End with one easy-to-answer question. " +
       "Do not repeat the ready observation; do not write a greeting, signature or subject. Do not write percentages, " +
       "ratios or statistics; never use the % sign.",
+    shape:
+      "Shape example (fill the brackets from COMPANY INFO; do not copy the example words): " +
+      "\"We are [company name]; [what we do, one simple sentence]. [The offer from COMPANY INFO, one concrete step]. [One yes/no or day/time question]?\" " +
+      "Every sentence must make sense on its own; avoid odd verb-object pairings.",
     guardrail:
       "Take the company and its offer ONLY from COMPANY INFO; never invent services, prices, timelines, references or offers " +
       "that are not there. If something is unknown, say a teammate will clarify it. Do not promise numbers or results. " +
@@ -161,6 +171,7 @@ export function buildDraftFirstMessagePrompt(input: DraftFirstMessageInput): AIP
     text.language,
     text.length(isEmail),
     text.composition,
+    text.shape,
     text.guardrail,
     text.channel(input.channel),
   ].join(" ");
@@ -186,7 +197,7 @@ export function buildDraftFirstMessagePrompt(input: DraftFirstMessageInput): AIP
   return {
     operation: "draft_first_message",
     // 9: iskelet kodda, model yalnızca teklif paragrafını yazar (kalite turu, 2026-10-11).
-    promptVersion: 9,
+    promptVersion: 10,
     system,
     messages: [{ role: "user", content: context }],
     jsonSchema: jsonSchema(false),
