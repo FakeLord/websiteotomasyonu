@@ -9,12 +9,18 @@ import { buildFollowupDraftPrompt } from "./followup-draft";
 const EXTRA = { city: null, rating: null, reviewCount: null, language: "tr" as const, companyFacts: "Biz bir yazılım şirketiyiz." };
 
 describe("buildDraftFirstMessagePrompt", () => {
-  it("includes at most 3 website issues and mentions the channel", () => {
+  it("mentions the channel and writes at most two real website problems into the ready observation", () => {
     const req = buildDraftFirstMessagePrompt({
       businessName: "ABC Diş Kliniği",
       category: "Diş Kliniği",
       district: "Kadıköy",
-      websiteIssues: ["a", "b", "c", "d", "e"],
+      websiteIssues: [
+        "Site HTTPS kullanmıyor (güvenli değil).",
+        "Mobil uyum etiketi yok.",
+        "Randevu sistemi bulunamadı.",
+        "Sayfa yanıt süresi 3 saniyeden uzun.",
+      ],
+      websiteStatus: "LOW_QUALITY_WEBSITE",
       channel: "EMAIL",
       ...EXTRA,
       relevantPackages: [],
@@ -24,11 +30,12 @@ describe("buildDraftFirstMessagePrompt", () => {
     expect(req.system).toContain("EMAIL");
     expect(req.system).toContain("uydurma");
     const userMessage = req.messages[0]?.content ?? "";
-    expect(userMessage).toContain("a; b; c");
-    expect(userMessage).not.toMatch(/a; b; c; d/);
+    expect(userMessage).toContain("güvenli bağlantının (HTTPS) bulunmaması");
+    expect(userMessage).toContain("mobil cihazlarda düzgün görünmemesi");
+    expect(userMessage).not.toMatch(/randevu alınabilecek/);
   });
 
-  it("mentions 'website bulunamadı' when there are no issues (NO_WEBSITE case)", () => {
+  it("says the business has no website when the status is NO_WEBSITE", () => {
     const req = buildDraftFirstMessagePrompt({
       businessName: "XYZ",
       category: null,
@@ -39,7 +46,7 @@ describe("buildDraftFirstMessagePrompt", () => {
       relevantPackages: [],
       salesRulesSummary: "",
     });
-    expect(req.messages[0]?.content).toContain("Website bulunamadı");
+    expect(req.messages[0]?.content).toMatch(/web sitesi bulunmuyor|web siteniz yok/);
   });
 });
 
@@ -66,8 +73,9 @@ describe("buildDraftFirstMessagePrompt — imza ve bot engeli", () => {
     });
     const text = req.messages[0]?.content ?? "";
     expect(text).not.toContain("403");
-    expect(text).not.toMatch(/Website bulunamadı/);
-    expect(text).toMatch(/analiz edilemedi/i);
+    // Site muhtemelen açılıyor: ne "site yok" ne "site bozuk" iddia edilir; gözlem yalnızca işletme görünürlüğüne dairdir.
+    expect(text).not.toMatch(/web sitesi bulunmuyor|sayfa açılmadı|eksik/);
+    expect(text).toMatch(/internetteki görünürlüğünü/);
   });
 
   it("eski kayıtlardaki ipucusuz 401/403/429 metinlerini de eler, gerçek sorunları korur", () => {
@@ -77,12 +85,13 @@ describe("buildDraftFirstMessagePrompt — imza ve bot engeli", () => {
     });
     const text = req.messages[0]?.content ?? "";
     expect(text).not.toContain("429");
-    expect(text).toContain("Site HTTPS kullanmıyor.");
+    expect(text).toContain("güvenli bağlantının (HTTPS) bulunmaması");
   });
 
   it("404 gibi gerçek hataları korur (site gerçekten yok)", () => {
     const req = buildDraftFirstMessagePrompt({ ...base, websiteIssues: ["Site HTTP 404 döndürdü."] });
-    expect(req.messages[0]?.content).toContain("404");
+    // Gerçek hata: site açılmıyor. Ham HTTP kodu işletmeye söylenmez, ama gözlem "sayfa açılmadı" der.
+    expect(req.messages[0]?.content).toMatch(/sayfa açılmadı/);
   });
 });
 

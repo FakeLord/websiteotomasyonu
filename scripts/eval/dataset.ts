@@ -15,6 +15,7 @@ export interface DraftCase {
   rating: number | null;
   reviewCount: number | null;
   websiteIssues: string[];
+  websiteStatus: string;
 }
 
 export interface ReplyCase {
@@ -26,11 +27,16 @@ export interface ReplyCase {
 }
 
 // Site analizinin gerçekte ürettiği sorun metinleriyle aynı biçim (Türkçe, ekip için).
-const NO_SITE = ["Web sitesi yok"];
-const BROKEN = ["Site açılmıyor"];
-const OLD = ["Site HTTPS kullanmıyor", "Mobilde düzgün görünmüyor"];
-const SLOW = ["Sayfa çok yavaş yükleniyor", "Online randevu veya iletişim formu yok"];
-const WEAK = ["Mobilde düzgün görünmüyor", "Online randevu veya iletişim formu yok", "Site HTTPS kullanmıyor"];
+// Gerçek analizde sitesi olmayan işletmenin sorun listesi boştur (website-analyzer).
+const NO_SITE: string[] = [];
+const BROKEN = ["Site açılamadı: bağlantı zaman aşımı"];
+const OLD = ["Site HTTPS kullanmıyor (güvenli değil).", "Mobil uyum etiketi yok."];
+const SLOW = ["Sayfa yanıt süresi 3 saniyeden uzun.", "Randevu sistemi bulunamadı."];
+const WEAK = [
+  "Mobil uyum etiketi yok.",
+  "Sitede telefon, e-posta, WhatsApp linki veya iletişim formu bulunamadı.",
+  "Site HTTPS kullanmıyor (güvenli değil).",
+];
 
 type DraftRow = [name: string, category: string, district: string | null, city: string, rating: number | null, reviews: number | null, issues: string[]];
 
@@ -111,6 +117,8 @@ const toCases = (rows: DraftRow[], language: EvalLanguage): DraftCase[] =>
     rating,
     reviewCount,
     websiteIssues,
+    websiteStatus:
+      websiteIssues.length === 0 ? "NO_WEBSITE" : websiteIssues.some((i) => /açılamadı/.test(i)) ? "BROKEN_WEBSITE" : "LOW_QUALITY_WEBSITE",
   }));
 
 export const DRAFT_CASES: DraftCase[] = [...toCases(TR_ROWS, "tr"), ...toCases(EN_ROWS, "en")];

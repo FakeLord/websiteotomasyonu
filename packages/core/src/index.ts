@@ -98,6 +98,16 @@ export { stripSignOff } from "./ai/strip-sign-off";
 export { findForeignWords } from "./ai/foreign-words";
 export { retryRejected, type CheckedDraft } from "./ai/retry-rejected";
 export {
+  assembleFirstMessage,
+  cleanOffer,
+  classifySite,
+  composeObservation,
+  composeShortObservation,
+  composeSubject,
+  type FirstMessageFacts,
+  type SiteKind,
+} from "./ai/prompts/compose-first-message";
+export {
   summarizeClassifyEval,
   summarizeDraftEval,
   type ClassifyEvalResult,

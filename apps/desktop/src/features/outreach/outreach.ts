@@ -1,7 +1,9 @@
 import { platform } from "../../lib/platform";
 import {
   appendComplianceFooter,
+  assembleFirstMessage,
   buildDraftFirstMessagePrompt,
+  cleanOffer,
   buildTranslateDraftPrompt,
   computeFollowUpDueDate,
   detectDraftLanguage,
@@ -405,7 +407,7 @@ export async function generateFirstMessageDraft(
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle(),
-    supabase.from("businesses").select("rating, review_count").eq("id", business.id).maybeSingle(),
+    supabase.from("businesses").select("rating, review_count, website_status").eq("id", business.id).maybeSingle(),
     loadSalesContext(workspaceId),
   ]);
   if (analysisError) throw analysisError;
@@ -413,7 +415,7 @@ export async function generateFirstMessageDraft(
   // Şirket tanıtımı olmadan model hizmet uydurur; bu yüzden hiç çağırmadan açık hata veririz.
   if (!context.companyFacts.trim()) throw new Error(tr.draft.noCompanyProfile);
 
-  const request = buildDraftFirstMessagePrompt({
+  const promptInput = {
     businessName: business.name,
     category: business.category,
     district: business.district,
@@ -421,12 +423,14 @@ export async function generateFirstMessageDraft(
     rating: (reputation?.rating as number | null | undefined) ?? null,
     reviewCount: (reputation?.review_count as number | null | undefined) ?? null,
     websiteIssues: ((analysis?.issues ?? []) as string[]).slice(0, 3),
+    websiteStatus: (reputation?.website_status as string | null | undefined) ?? null,
     channel,
     language,
     companyFacts: context.companyFacts,
     relevantPackages: context.packages,
     salesRulesSummary: context.salesRulesSummary,
-  });
+  };
+  const request = buildDraftFirstMessagePrompt(promptInput);
 
   // Kontrolden geçemeyen taslak kullanıcıya gösterilmeden yeniden üretilir (en çok 3 deneme).
   return retryRejected((attempt) => draftOnce(attempt > 0 || options?.fresh === true));
@@ -437,9 +441,28 @@ export async function generateFirstMessageDraft(
   if (!parsed.success) {
     return { ok: false, body: "", reasons: ["INVALID_SHAPE"], channel };
   }
-  // Modelin uydurduğu imza (unvan/isim) atılır; hem referans kontrolünü tetikliyor hem yanlış rol bilgisi taşıyor.
+  // Model yalnızca teklif paragrafını yazar; selamlama, işletmeye özel gözlem, konu ve kapanış kodla eklenir
+  // (ücretsiz küçük modelin serbest yazdığı Türkçe bozuk çıkıyordu). Modelin uydurduğu imza atılır.
   // Yalnızca GÖNDERİLECEK metin doğrulanır; Türkçe çeviri ayrı çağrıyla gelir ve gönderilmediği için kontrol edilmez.
-  const body = stripSignOff(parsed.data.body);
+  const offer = stripSignOff(parsed.data.body);
+  const assembled = assembleFirstMessage(
+    {
+      language,
+      channel,
+      businessName: business.name,
+      category: business.category,
+      rating: promptInput.rating,
+      reviewCount: promptInput.reviewCount,
+      websiteIssues: promptInput.websiteIssues,
+      websiteStatus: promptInput.websiteStatus,
+    },
+    offer,
+  );
+  // Model boş/yalnızca selamlama döndürdüyse teklif paragrafı yoktur: geçersiz biçim sayılır ve yeniden denenir.
+  if (cleanOffer(offer).length === 0) {
+    return { ok: false, body: "", reasons: ["INVALID_SHAPE"], channel };
+  }
+  const body = assembled.body;
   // Model seçilen dili yok sayabiliyor (İngilizce istenip Türkçe yazıldı); yanlış dildeki taslak gösterilmez.
   const written = detectDraftLanguage(body);
   if (written !== "unknown" && written !== language) {
@@ -464,7 +487,7 @@ export async function generateFirstMessageDraft(
 
   return {
     ok: validation.ok,
-    subject: parsed.data.subject,
+    subject: assembled.subject,
     body,
     reasons: validation.reasons,
     channel,

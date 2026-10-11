@@ -1,5 +1,5 @@
 import type { AIPromptRequest, OutreachChannel, ServicePackageInfo } from "../types";
-import { isAutomationBlockedIssue } from "../../website-analyzer/automation-blocked";
+import { composeObservation, composeShortObservation, type FirstMessageFacts } from "./compose-first-message";
 
 /** İlk mesajın yazılacağı dil. Bilerek varsayılanı yoktur: ekip her taslakta seçer. */
 export type OutreachLanguage = "tr" | "en";
@@ -20,6 +20,8 @@ export interface DraftFirstMessageInput {
   companyFacts: string;
   relevantPackages: ServicePackageInfo[];
   salesRulesSummary: string;
+  /** `businesses.website_status`; verilirse gözlem cümlesi gerçek duruma göre yazılır (analiz yoksa iddia edilmez). */
+  websiteStatus?: string | null | undefined;
 }
 
 function jsonSchema(withSubject: boolean) {
@@ -35,8 +37,9 @@ function jsonSchema(withSubject: boolean) {
 }
 
 /**
+ * İlk mesajın iskeleti kodda yazılır (`compose-first-message.ts`); model YALNIZCA araya girecek teklif paragrafını yazar.
  * Komut metni hedef dilde yazılır: Türkçe bir komutun içindeki tek "İngilizce yaz" cümlesini model yok sayıp
- * Türkçe yazıyordu. Uzunluk kısa ama yeterlidir (e-posta 60–80, DM 35–45 kelime): temel bilgi, tekrar yok.
+ * Türkçe yazıyordu. Paragraf kısa tutulur: yalnızca şirket + teklif + tek soru.
  */
 interface PromptText {
   intro: string;
@@ -50,9 +53,7 @@ interface PromptText {
     category: string;
     location: string;
     rating: (rating: number, reviewCount: number | null) => string;
-    issues: string;
-    blocked: string;
-    noWebsite: string;
+    observation: string;
     company: string;
     packages: string;
     salesRules: string;
@@ -63,35 +64,31 @@ interface PromptText {
 
 const TEXT: Record<OutreachLanguage, PromptText> = {
   tr: {
-    intro: "Bir yazılım şirketi adına işletmelere ilk mesajı yazıyorsun.",
-    language: "Mesajın tamamını (konu dahil) doğal, samimi ama profesyonel bir Türkçeyle yaz.",
+    intro:
+      "Bir yazılım şirketi adına işletmelere gidecek ilk mesajın TEKLİF paragrafını yazıyorsun. Mesajın selamlaması, işletmeye " +
+      "özel gözlem cümleleri ve kapanışı hazır; sen yalnızca araya girecek TEK paragrafı yaz.",
+    language: "Paragrafı doğal, sade ve düzgün bir Türkçeyle yaz; kısa cümleler kur.",
     length: (isEmail) =>
       isEmail
-        ? "Mesaj gövdesi 60–80 kelime (en çok 600 karakter) olsun: üç kısa paragraf."
-        : "Mesaj 35–45 kelime (en çok 350 karakter) olsun; kısa bir DM gibi akıcı yaz.",
+        ? "Paragraf 2–3 kısa cümle ve en çok 45 kelime (en çok 330 karakter) olsun."
+        : "Paragraf 1–2 kısa cümle ve en çok 25 kelime (en çok 200 karakter) olsun.",
     composition:
-      "Şirketin kim olduğunu ve teklifini yalnızca ŞİRKET BİLGİSİ bölümünden al; orada olmayan hizmet, fiyat, süre, " +
-      "referans veya teklif uydurma. Mesajı bu işletmeye özel kur; kalıp cümle yazma. Yapı: (1) işletme verisinden " +
-      "bir veya iki somut gözlem (sektörü, sitesinin durumu, Google puanı ve yorum sayısı, konumu), (2) şirketin tek " +
-      "cümlelik tanıtımı ve bu işletmeye somut faydası, (3) teklif ve tek net bir çağrı. Gereksiz övgü ve tekrar yazma. " +
-      "Sayı veya sonuç vaat etme. Yüzde, oran veya istatistik yazma; % işareti kullanma.",
+      "Sırayla: (1) 'Biz' veya 'ekibimiz' diyerek şirketin ne yaptığını, yalnızca ŞİRKET BİLGİSİ bölümündeki bilgilerle, kendi " +
+      "sade cümlelerinle anlat; 'premium', 'canlı hissiyatlı', 'yeni nesil' gibi süslü ifadeleri olduğu gibi yapıştırma. " +
+      "(2) ŞİRKET BİLGİSİ'ndeki teklifi bu işletmeye uyarlayarak sun. (3) Cevaplaması kolay tek bir soruyla bitir. " +
+      "Hazır gözlemi tekrar etme; selamlama, imza veya konu yazma. Yüzde, oran veya istatistik yazma; % işareti kullanma.",
     guardrail:
-      "Yalnızca BAĞLAM bölümündeki bilgileri kullan. Bilmediğin bir şey sorulursa bunu ekip arkadaşımın " +
-      "netleştireceğini söyle. Fiyat, indirim, tarih, referans uydurma. Karşı taraf istemiyorsa ısrar etme. " +
-      "Mesajın sonuna isim, unvan veya rol imzası ekleme; yalnızca \"Saygılarımla\" gibi kısa bir kapanış yaz. " +
-      "İşletmenin adını yazacaksan İşletme satırındaki yazımı harfi harfine kullan; adı değiştirme, kişi adı türetme. " +
-      "Mesajda başka dilden tek bir kelime bile kullanma; düzgün, akıcı ve doğal Türkçe cümleler kur, çeviri gibi duran " +
-      "veya devrik cümle yazma.",
-    channel: (channel) => `Kanal: ${channel}. Yalnızca istenen JSON şemasında cevap ver.`,
+      "Şirketi ve teklifi yalnızca ŞİRKET BİLGİSİ'nden al; orada olmayan hizmet, fiyat, süre, referans veya teklif uydurma. " +
+      "Bilmediğin bir şeyi ekip arkadaşımın netleştireceğini söyle. Sayı veya sonuç vaat etme. Mesajda başka dilden tek bir " +
+      "kelime bile kullanma; çeviri gibi duran veya devrik cümle yazma. Gözlemde olmayan site sorunları ekleme.",
+    channel: (channel) => `Kanal: ${channel}. Yalnızca {"body": "..."} biçiminde JSON şemasında cevap ver.`,
     labels: {
       business: "İşletme",
       category: "Kategori",
       location: "Konum",
       rating: (rating, reviewCount) =>
         `Google puanı: ${rating.toLocaleString("tr-TR")}${reviewCount !== null ? ` (${reviewCount} yorum)` : ""}`,
-      issues: "Website sorunları",
-      blocked: "Website otomatik olarak analiz edilemedi; siteyle ilgili sorun veya yorum belirtme.",
-      noWebsite: "Website bulunamadı.",
+      observation: "Hazır gözlem (tekrar etme)",
       company: "ŞİRKET BİLGİSİ",
       packages: "İlgili paketler",
       salesRules: "Satış kuralları",
@@ -99,55 +96,63 @@ const TEXT: Record<OutreachLanguage, PromptText> = {
     closing: null,
   },
   en: {
-    intro: "You write the first outreach message to a business on behalf of a software company.",
+    intro:
+      "You write the OFFER paragraph of a first outreach message to a business on behalf of a software company. The greeting, " +
+      "the business-specific observation and the closing are already written; you write ONLY the single paragraph that goes between them.",
     language:
-      "Write the ENTIRE message (subject and body) in natural, friendly, professional English. " +
-      "The context below is in Turkish: understand it, but never copy Turkish text into the message.",
+      "Write the paragraph in natural, simple, fluent English with short sentences. " +
+      "The context below is in Turkish: understand it, but never copy Turkish text into the paragraph.",
     length: (isEmail) =>
       isEmail
-        ? "Keep the body to 60–80 words (max 600 characters) in three short paragraphs."
-        : "Keep it to 35–45 words (max 350 characters); write it like a short, natural DM.",
+        ? "Keep it to 2–3 short sentences and at most 45 words (max 330 characters)."
+        : "Keep it to 1–2 short sentences and at most 25 words (max 200 characters).",
     composition:
-      "Take who the company is and what it offers ONLY from the COMPANY INFO section; never invent services, prices, " +
-      "timelines, references or offers that are not there. Make the message specific to this business; no boilerplate. " +
-      "Structure: (1) one or two concrete observations from the business data (industry, website status, Google rating " +
-      "and review count, location), (2) a one-sentence introduction of the company and the concrete benefit for this " +
-      "business, (3) the offer and a single clear call to action. No filler praise or repetition. Do not promise " +
-      "numbers or results. Do not write percentages, ratios or statistics; never use the % sign.",
+      "In order: (1) say who the company is and what it does using 'we' or 'our team', ONLY with facts from the COMPANY INFO " +
+      "section, in your own simple sentences; do not paste buzzwords such as 'premium' or 'next-generation' as they are. " +
+      "(2) Present the offer from COMPANY INFO, tailored to this business. (3) End with one easy-to-answer question. " +
+      "Do not repeat the ready observation; do not write a greeting, signature or subject. Do not write percentages, " +
+      "ratios or statistics; never use the % sign.",
     guardrail:
-      "Use only the information in the context. If something is unknown, say a teammate will clarify it. Never invent " +
-      "prices, discounts, dates or references. Do not push if they are not interested. Do not add a name, title or role " +
-      "signature at the end; finish with a short closing such as \"Best regards\". If you mention the business name, " +
-      "copy its spelling exactly from the Business line; never alter it or derive a person's name from it. " +
-      "Do not use even a single word from another language; write fluent, natural English.",
-    channel: (channel) => `Channel: ${channel}. Reply only in the requested JSON schema.`,
+      "Take the company and its offer ONLY from COMPANY INFO; never invent services, prices, timelines, references or offers " +
+      "that are not there. If something is unknown, say a teammate will clarify it. Do not promise numbers or results. " +
+      "Do not use even a single word from another language; do not mention website problems that are not in the observation.",
+    channel: (channel) => `Channel: ${channel}. Reply only in the requested JSON schema as {"body": "..."}.`,
     labels: {
       business: "Business",
       category: "Category",
       location: "Location",
       rating: (rating, reviewCount) =>
         `Google rating: ${rating.toLocaleString("en-US")}${reviewCount !== null ? ` (${reviewCount} reviews)` : ""}`,
-      issues: "Website issues",
-      blocked: "The website could not be analyzed automatically; do not mention any problem or opinion about the site.",
-      noWebsite: "No website found.",
+      observation: "Ready observation (do not repeat)",
       company: "COMPANY INFO",
       packages: "Relevant packages",
       salesRules: "Sales rules",
     },
-    closing: "Write the subject and body in English only.",
+    closing: "Write the paragraph in English only.",
   },
 };
 
+/** İstemin kullandığı girdiyi iskelet bileşenlerinin beklediği biçime çevirir. */
+export function toFacts(input: DraftFirstMessageInput): FirstMessageFacts {
+  return {
+    language: input.language,
+    channel: input.channel,
+    businessName: input.businessName,
+    category: input.category,
+    rating: input.rating,
+    reviewCount: input.reviewCount,
+    websiteIssues: input.websiteIssues,
+    websiteStatus: input.websiteStatus,
+  };
+}
+
 /**
- * J.2 `draft_first_message` operasyonu için context+prompt derleyicisi.
- * Website analizi ve skor burada tekrar hesaplanmaz (deterministik koddan
- * gelir); AI yalnızca bunları satış mesajına çevirir (SPEC.md → J.2).
- * Türkçe çeviri bu çağrıda istenmez; ayrı çağrıyla (translate-draft) arka planda gelir.
+ * J.2 `draft_first_message` operasyonu için context+prompt derleyicisi. Website analizi ve skor burada tekrar
+ * hesaplanmaz (deterministik koddan gelir). Model yalnızca teklif paragrafını döndürür; selamlama, gözlem, konu ve
+ * kapanış `assembleFirstMessage` ile eklenir. Türkçe çeviri bu çağrıda istenmez (translate-draft ayrı çağrı).
  */
 export function buildDraftFirstMessagePrompt(input: DraftFirstMessageInput): AIPromptRequest {
   const text = TEXT[input.language];
-  const blocked = input.websiteIssues.filter(isAutomationBlockedIssue);
-  const issues = input.websiteIssues.filter((issue) => !isAutomationBlockedIssue(issue)).slice(0, 3);
   const packagesText = input.relevantPackages.map((p) => `- ${p.name}: ${p.summary}`).join("\n");
   const isEmail = input.channel === "EMAIL";
 
@@ -161,17 +166,15 @@ export function buildDraftFirstMessagePrompt(input: DraftFirstMessageInput): AIP
   ].join(" ");
 
   const location = [input.district, input.city].filter(Boolean).join(", ");
+  const facts = toFacts(input);
+  const observation = isEmail ? composeObservation(facts) : composeShortObservation(facts);
 
   const context = [
     `${text.labels.business}: ${input.businessName}`,
     input.category ? `${text.labels.category}: ${input.category}` : null,
     location ? `${text.labels.location}: ${location}` : null,
     input.rating !== null ? text.labels.rating(input.rating, input.reviewCount) : null,
-    issues.length > 0
-      ? `${text.labels.issues}: ${issues.join("; ")}`
-      : blocked.length > 0
-        ? text.labels.blocked
-        : text.labels.noWebsite,
+    `${text.labels.observation}: ${observation}`,
     `${text.labels.company}: ${input.companyFacts}`,
     packagesText ? `${text.labels.packages}:\n${packagesText}` : null,
     input.salesRulesSummary ? `${text.labels.salesRules}: ${input.salesRulesSummary}` : null,
@@ -182,11 +185,12 @@ export function buildDraftFirstMessagePrompt(input: DraftFirstMessageInput): AIP
 
   return {
     operation: "draft_first_message",
-    promptVersion: 8,
+    // 9: iskelet kodda, model yalnızca teklif paragrafını yazar (kalite turu, 2026-10-11).
+    promptVersion: 9,
     system,
     messages: [{ role: "user", content: context }],
-    jsonSchema: jsonSchema(isEmail),
-    maxTokens: 350,
-    temperature: 0.6,
+    jsonSchema: jsonSchema(false),
+    maxTokens: 220,
+    temperature: 0.4,
   };
 }

@@ -24,6 +24,8 @@ import {
   normalizeAiConfig,
   retryRejected,
   stripSignOff,
+  assembleFirstMessage,
+  cleanOffer,
   summarizeClassifyEval,
   summarizeDraftEval,
   validateDraft,
@@ -167,6 +169,7 @@ async function evaluateDraft(
     rating: testCase.rating,
     reviewCount: testCase.reviewCount,
     websiteIssues: testCase.websiteIssues,
+    websiteStatus: testCase.websiteStatus,
     channel: "EMAIL",
     language: testCase.language,
     companyFacts: EVAL_COMPANY_FACTS,
@@ -188,8 +191,24 @@ async function evaluateDraft(
         last = { body: typeof raw.__unparseable === "string" ? `[JSON DEĞİL] ${raw.__unparseable}` : "" };
         return { ok: false, reasons: ["INVALID_SHAPE"] };
       }
-      const body = stripSignOff(raw.body);
-      last = { ...(typeof raw.subject === "string" ? { subject: raw.subject } : {}), body };
+      // Uygulamadaki gibi: model yalnızca teklif paragrafını yazar; iskelet kodla eklenir.
+      const offer = stripSignOff(raw.body);
+      if (cleanOffer(offer).length === 0) return { ok: false, reasons: ["INVALID_SHAPE"] };
+      const assembled = assembleFirstMessage(
+        {
+          language: testCase.language,
+          channel: "EMAIL",
+          businessName: testCase.businessName,
+          category: testCase.category,
+          rating: testCase.rating,
+          reviewCount: testCase.reviewCount,
+          websiteIssues: testCase.websiteIssues,
+          websiteStatus: testCase.websiteStatus,
+        },
+        offer,
+      );
+      const body = assembled.body;
+      last = { subject: assembled.subject, body };
       const written = detectDraftLanguage(body);
       if (written !== "unknown" && written !== testCase.language) return { ok: false, reasons: ["WRONG_LANGUAGE"] };
       const leaked = findForeignWords(body, testCase.language, [testCase.businessName, testCase.category, testCase.district ?? "", testCase.city]);
