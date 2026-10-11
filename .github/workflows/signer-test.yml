@@ -1,0 +1,39 @@
+name: Imza denemesi
+
+# Elle çalıştırılır. Güncelleme imza anahtarı ve parolasıyla küçük bir dosyayı imzalamayı dener (Linux ve Windows);
+# derleme yapmaz (hızlıdır). Hiçbir sır değeri yazdırılmaz.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sign:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Yalnızca masaüstü paketinin bağımlılıkları
+        run: pnpm install --frozen-lockfile --filter @lbf/desktop...
+
+      - name: Küçük bir dosyayı imzala
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          echo "deneme" > deneme.txt
+          pnpm --filter @lbf/desktop exec tauri signer sign "$GITHUB_WORKSPACE/deneme.txt"
+          test -f deneme.txt.sig && echo "IMZA BASARILI (${{ matrix.os }})"
