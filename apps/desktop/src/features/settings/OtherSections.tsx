@@ -19,7 +19,7 @@ import { Switch } from "../../components/ui/primitives";
 /* ---------- Genel ---------- */
 
 /** Oturum açık kullanıcının şifresini değiştirir (en az 12 karakter; kural davet/sıfırlama ekranıyla aynıdır). */
-function ChangePasswordCard() {
+export function ChangePasswordCard() {
   const [done, setDone] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const {
@@ -113,7 +113,8 @@ function WorkspaceNameRow({ workspaceId, name, canEdit }: { workspaceId: string;
   );
 }
 
-export function GeneralSection() {
+/** Oturum açık kullanıcının profili: ad soyad (düzenlenebilir), e-posta ve rol. Ayarlar ve Profilim sayfasında kullanılır. */
+export function ProfileCard() {
   const queryClient = useQueryClient();
   const { userId, email } = useMyProfile();
   const membership = useWorkspaceMembership().data;
@@ -130,16 +131,6 @@ export function GeneralSection() {
     },
   });
 
-  const workspace = useQuery({
-    queryKey: ["workspace", membership?.workspaceId],
-    enabled: !!membership?.workspaceId,
-    queryFn: async () => {
-      const { data, error } = await supabase.from("workspaces").select("name, created_at").eq("id", membership?.workspaceId as string).single();
-      if (error) throw error;
-      return data as { name: string; created_at: string };
-    },
-  });
-
   useEffect(() => {
     const current = profile.data?.full_name ?? "";
     setName(current.includes("@") ? "" : current);
@@ -153,36 +144,56 @@ export function GeneralSection() {
     onSuccess: () => {
       setSaved(true);
       void queryClient.invalidateQueries({ queryKey: ["my-profile"] });
+      void queryClient.invalidateQueries({ queryKey: ["my-profile-edit"] });
       void queryClient.invalidateQueries({ queryKey: ["workspace-members"] });
     },
   });
 
   return (
+    <Card>
+      <CardHeader title={tr.settings.profile} icon={<UserRound className="size-4 text-primary" />} />
+      <CardBody className="space-y-3">
+        <div>
+          <Label>{tr.settings.fullName}</Label>
+          <Input
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value);
+              setSaved(false);
+            }}
+            placeholder={tr.settings.fullNamePlaceholder}
+          />
+          <p className="mt-1 text-xs text-subtle">{tr.settings.fullNameHint}</p>
+        </div>
+        <KeyValue label={tr.auth.email}>{email}</KeyValue>
+        <KeyValue label={tr.team.role}>{membership ? tr.team.roles[membership.role] : "—"}</KeyValue>
+        <div className="flex items-center gap-3">
+          <Button disabled={!name.trim() || save.isPending} onClick={() => save.mutate()}>
+            {tr.settings.saveButton}
+          </Button>
+          {saved && <span className="text-xs text-success">{tr.settings.saveSuccess}</span>}
+        </div>
+      </CardBody>
+    </Card>
+  );
+}
+
+export function GeneralSection() {
+  const membership = useWorkspaceMembership().data;
+
+  const workspace = useQuery({
+    queryKey: ["workspace", membership?.workspaceId],
+    enabled: !!membership?.workspaceId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("workspaces").select("name, created_at").eq("id", membership?.workspaceId as string).single();
+      if (error) throw error;
+      return data as { name: string; created_at: string };
+    },
+  });
+
+  return (
     <div className="grid gap-4 xl:grid-cols-2">
-      <Card>
-        <CardHeader title={tr.settings.profile} icon={<UserRound className="size-4 text-primary" />} />
-        <CardBody className="space-y-3">
-          <div>
-            <Label>{tr.settings.fullName}</Label>
-            <Input
-              value={name}
-              onChange={(e) => {
-                setName(e.target.value);
-                setSaved(false);
-              }}
-              placeholder={tr.settings.fullNamePlaceholder}
-            />
-            <p className="mt-1 text-xs text-subtle">{tr.settings.fullNameHint}</p>
-          </div>
-          <KeyValue label={tr.auth.email}>{email}</KeyValue>
-          <div className="flex items-center gap-3">
-            <Button disabled={!name.trim() || save.isPending} onClick={() => save.mutate()}>
-              {tr.settings.saveButton}
-            </Button>
-            {saved && <span className="text-xs text-success">{tr.settings.saveSuccess}</span>}
-          </div>
-        </CardBody>
-      </Card>
+      <ProfileCard />
       <ChangePasswordCard />
       <Card>
         <CardHeader title={tr.settings.workspace} />

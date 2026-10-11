@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Bell, CalendarClock, ChevronDown, Handshake, LogOut, MapPin, MessagesSquare, Search, Settings, Volume2, VolumeX } from "lucide-react";
+import { Bell, CalendarClock, ChevronDown, Handshake, LogOut, MapPin, MessagesSquare, Search, Settings, UserRound, Volume2, VolumeX } from "lucide-react";
 import { tr } from "../i18n/tr";
 import { isNotifySoundEnabled, playNotifySound, setNotifySoundEnabled, shouldNotify } from "../lib/notify-sound";
 import { supabase } from "../lib/supabase-client";
@@ -268,6 +268,10 @@ function UserMenu() {
       <DropdownMenuContent className="w-56">
         <DropdownMenuLabel className="truncate">{email}</DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={() => navigate("/profile")}>
+          <UserRound />
+          {tr.shell.myProfile}
+        </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => navigate("/settings")}>
           <Settings />
           {tr.shell.profile}

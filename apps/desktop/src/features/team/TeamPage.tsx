@@ -17,6 +17,7 @@ import { Card, CardHeader } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { Avatar, PageHeader, Table, Td, Th, Tr } from "../../components/ui/data-display";
 import { Dialog, DialogContent } from "../../components/ui/primitives";
+import { CreateUserDialog } from "./CreateUserDialog";
 
 const ROLES: WorkspaceRole[] = ["ADMIN", "MEMBER", "AGENT"];
 const ROLE_TONES = { ADMIN: "navy", MEMBER: "blue", AGENT: "blue" } as const;
@@ -38,6 +39,7 @@ export function TeamPage() {
   const myId = useAuthStore((state) => state.session?.user.id);
   const { members } = useWorkspaceMembers();
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
   const [inviteCode, setInviteCode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -145,15 +147,22 @@ export function TeamPage() {
         description={tr.team.description}
         actions={
           isAdmin && (
-            <Button
-              onClick={() => {
-                setInviteCode(null);
-                setInviteOpen(true);
-              }}
-            >
-              <UserPlus />
-              {tr.team.invite}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button onClick={() => setCreateOpen(true)}>
+                <UserPlus />
+                {tr.team.createUser.open}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setInviteCode(null);
+                  setInviteOpen(true);
+                }}
+              >
+                <Mail />
+                {tr.team.invite}
+              </Button>
+            </div>
           )
         }
       />
@@ -291,6 +300,8 @@ export function TeamPage() {
       )}
 
       {!isAdmin && <p className="text-sm text-muted">{tr.team.adminOnlyInvites}</p>}
+
+      {workspaceId && <CreateUserDialog workspaceId={workspaceId} open={createOpen} onOpenChange={setCreateOpen} />}
 
       <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
         <DialogContent title={tr.team.inviteTitle} description={tr.team.inviteDescription}>

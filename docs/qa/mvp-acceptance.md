@@ -63,3 +63,9 @@ işaretleyin; takılan adımın ekran görüntüsünü (anahtar/şifre görünme
 > bağlantısı (ilk tıklama, ikinci tıklama, POST; işletme DNC, log düştü); Bölüm 6 → kalıcı silmede dosya kovadan da kalktı;
 > Bölüm 7 → hesap ekleme, yenileme uyarısı, belge yükleme/indirme, .exe ve 10 MB üstü reddi; Onay Bekleyenler kanal etiketi.
 > Gerçek bulut, SMTP/IMAP, NVIDIA ve GitHub yedeği bu turda denenemedi; kutular işaretsiz bırakıldı.
+
+## 9. Ekip: kullanıcı oluşturma ve profil
+- [ ] Ekip → **Kullanıcı Oluştur**: e-posta + rol gir, şifre boş bırak → hesap oluşur, üretilen şifre bir kez gösterilir; o e-posta ve şifreyle (başka bilgisayarda/tarayıcıda) giriş yapılır, davet kodu istenmez.
+- [ ] Aynı e-postayla ikinci kez oluşturmak "zaten kayıtlı" der (davet yolunu önerir).
+- [ ] Yönetici olmayan üye "Kullanıcı Oluştur"u görmez.
+- [ ] Üst sağdaki kullanıcı menüsü → **Profilim**: ad soyad değiştirilir, şifre değiştirilir.

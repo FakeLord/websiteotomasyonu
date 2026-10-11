@@ -20,6 +20,7 @@ import { SettingsPage } from "../features/settings/SettingsPage";
 import { PipelinePage } from "../features/pipeline/PipelinePage";
 import { CustomersPage } from "../features/customers/CustomersPage";
 import { CustomerDetailPage } from "../features/customers/CustomerDetailPage";
+import { ProfilePage } from "../features/profile/ProfilePage";
 import { CampaignsPage } from "../features/campaigns/CampaignsPage";
 import { CampaignDetailPage } from "../features/campaigns/CampaignDetailPage";
 import { ReportsPage } from "../features/reports/ReportsPage";
@@ -59,6 +60,7 @@ export const router = createHashRouter([
           { path: "/team", element: <TeamPage /> },
           { path: "/knowledge-base", element: <KnowledgeBasePage /> },
           { path: "/settings", element: <SettingsPage /> },
+          { path: "/profile", element: <ProfilePage /> },
         ],
       },
     ],
