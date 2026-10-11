@@ -160,7 +160,7 @@ export function CustomersPage() {
               {filtered.map((row) => {
                 const deal = dealOf(row);
                 return (
-                  <Tr key={row.id} className="cursor-pointer" onClick={() => navigate(`/leads/${row.id}`)}>
+                  <Tr key={row.id} className="cursor-pointer" onClick={() => navigate(`/customers/${row.id}`)}>
                     <Td>
                       <div className="flex items-center gap-3">
                         <Avatar name={row.name} size="sm" />

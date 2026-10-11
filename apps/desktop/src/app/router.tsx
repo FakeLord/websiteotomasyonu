@@ -19,6 +19,7 @@ import { KnowledgeBasePage } from "../features/knowledge-base/KnowledgeBasePage"
 import { SettingsPage } from "../features/settings/SettingsPage";
 import { PipelinePage } from "../features/pipeline/PipelinePage";
 import { CustomersPage } from "../features/customers/CustomersPage";
+import { CustomerDetailPage } from "../features/customers/CustomerDetailPage";
 import { CampaignsPage } from "../features/campaigns/CampaignsPage";
 import { CampaignDetailPage } from "../features/campaigns/CampaignDetailPage";
 import { ReportsPage } from "../features/reports/ReportsPage";
@@ -50,6 +51,7 @@ export const router = createHashRouter([
           { path: "/follow-ups", element: <FollowUpsPage /> },
           { path: "/pipeline", element: <PipelinePage /> },
           { path: "/customers", element: <CustomersPage /> },
+          { path: "/customers/:businessId", element: <CustomerDetailPage /> },
           { path: "/campaigns", element: <CampaignsPage /> },
           { path: "/campaigns/:campaignId", element: <CampaignDetailPage /> },
           { path: "/reports", element: <ReportsPage /> },

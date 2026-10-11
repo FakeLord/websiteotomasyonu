@@ -85,6 +85,7 @@ Durum: ☐ bekliyor · ◐ sürüyor · ☑ bitti. Bir madde bitince buradan iş
 | Taslak kuyruğu + Onay Bekleyenler (ADR 0018; ADR 0014 Adım 2) | G3 ☑ kod 2026-10-10, bulutta denenmedi |
 | Kurumsal tasarım sistemi + Dashboard analiz kutuları (ADR 0021) | ☑ 2026-10-11 |
 | İlk mesaj taslağı kalite turu: iskelet kodda, teklif paragrafı modelde (ADR 0022) | ☑ 2026-10-11; gerçek model ölçümü bekliyor |
+| Müşteri detay sayfası: hesaplar/hizmetler (+ ekle), paket içeriği, belge/fatura yükleme (ADR 0024) | ☑ kod 2026-10-11, bulutta denenmedi |
 | Takip mesajları modelsiz kalıplardan; cevap taslağı v2 (dil, kısalık, yabancı kelime kontrolü + yeniden deneme); Bilgi Bankası'nda `Hazır teklif:` satırı | ☑ 2026-10-11 |
 | Ülke kuralları (soğuk e-posta durumu, alt bilgi, yerel saat) | G5 ☑ kod 2026-10-10 (ADR 0019; listeden çıkma bağlantısı hariç) |
 | Listeden çıkma bağlantısı (`List-Unsubscribe`, ADR 0023) | G5 ☑ kod 2026-10-11, bulutta denenmedi |
