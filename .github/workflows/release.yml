@@ -14,6 +14,11 @@ on:
   push:
     tags:
       - "v*"
+  # Etiket atmadan da (Actions → Release → Run workflow) main'den çalıştırılabilir; sürüm tauri.conf.json'dan alınır.
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   release:
@@ -26,8 +31,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          tag="${GITHUB_REF_NAME#v}"
           conf=$(node -p "require('./apps/desktop/src-tauri/tauri.conf.json').version")
+          echo "Sürüm: $conf"
+          # Elle çalıştırmada (etiket yok) karşılaştırma yapılmaz.
+          if [ "$GITHUB_REF_TYPE" != "tag" ]; then exit 0; fi
+          tag="${GITHUB_REF_NAME#v}"
           if [ "$tag" != "$conf" ]; then
             echo "::error::Etiket v$tag ama tauri.conf.json sürümü $conf. Önce sürümü güncelleyin (docs/ops/surum-yayinlama.md)."
             exit 1
@@ -71,7 +79,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: apps/desktop
-          tagName: __VERSION__
+          tagName: v__VERSION__
           releaseName: "Local Business Finder v__VERSION__"
           releaseDraft: true
           prerelease: false
@@ -85,7 +93,7 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           set -euo pipefail
-          version="${GITHUB_REF_NAME#v}"
+          version=$(node -p "require('./apps/desktop/src-tauri/tauri.conf.json').version")
           dir="apps/desktop/src-tauri/target/release/bundle/nsis"
           # Dosya adında boşluk vardır ("Local Business Finder_0.1.1_x64-setup.exe"); glob + tırnak kullanılır.
           installer=""
