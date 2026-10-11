@@ -57,8 +57,8 @@ Durum: ☐ bekliyor · ◐ sürüyor · ☑ bitti. Bir madde bitince buradan iş
 | 23 | Otomatik e-posta gönderimi (sunucu tarafı, limitli) | G7 | ☐ |
 | 24 | WhatsApp Cloud API (ücretli, isteğe bağlı) | G8 | ☐ |
 | 25 | Jarvis'in işlem yapabilmesi | G9 | ☐ |
-| 26 | Otomatik güncelleme, kod imzalama (G10) · otomatik DB yedeği (G1) | G1 / G10 | ☐ |
-| 27 | Yedekten geri yükleme | G10 | ☐ |
+| 26 | Otomatik güncelleme, kod imzalama (G10) · otomatik DB yedeği (G1) | G1 / G10 | ◐ 2026-10-11 güncelleme: kod ve yayın akışı hazır (ADR 0026, bulutta denenmedi); Windows kod imzalama bilerek yapılmadı (ücretli) |
+| 27 | Yedekten geri yükleme | G10 | ◐ 2026-10-11 betik + belge + storage yedeği hazır, yerelde gerçek dökümle prova geçti; bulut projesinde prova bekliyor (`docs/ops/geri-yukleme.md`) |
 
 ### D. Üretim ve kullanım
 | # | Madde | Faz | Durum |

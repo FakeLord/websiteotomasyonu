@@ -14,6 +14,8 @@ pub fn run() {
                 let _ = window.set_focus();
             }
         }));
+        // Otomatik güncelleme (ADR 0026): imzalı sürümü Supabase Storage'daki latest.json'dan kontrol eder.
+        builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
     }
 
     builder

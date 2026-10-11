@@ -1,5 +1,15 @@
 name: Release
 
+# ADR 0026. `v0.1.1` gibi bir etiket itildiğinde: imzalı Windows kurulum dosyası üretilir, GitHub'da TASLAK sürüm olarak
+# saklanır ve güncelleme dosyaları herkese açık Supabase kovasına (app-updates) yayınlanır; kurulu uygulamalar kendiliğinden
+# günceller. Depo özel olduğu için güncelleme adresi GitHub Releases değil Supabase Storage'dır.
+#
+# Gerekli depo sırları (Settings → Secrets and variables → Actions):
+#   VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY   uygulamaya gömülen (herkese açık) Supabase adresi ve anon anahtarı
+#   TAURI_SIGNING_PRIVATE_KEY                   güncelleme imza anahtarı (docs/ops/surum-yayinlama.md)
+#   TAURI_SIGNING_PRIVATE_KEY_PASSWORD          anahtarın parolası
+#   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY     güncelleme dosyalarını kovaya yazmak için (yalnızca burada durur)
+
 on:
   push:
     tags:
@@ -7,10 +17,35 @@ on:
 
 jobs:
   release:
-    name: Build and draft release (windows-latest)
+    name: Build, sign and publish (windows-latest)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Etiket sürümü tauri.conf.json ile aynı olmalı
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME#v}"
+          conf=$(node -p "require('./apps/desktop/src-tauri/tauri.conf.json').version")
+          if [ "$tag" != "$conf" ]; then
+            echo "::error::Etiket v$tag ama tauri.conf.json sürümü $conf. Önce sürümü güncelleyin (docs/ops/surum-yayinlama.md)."
+            exit 1
+          fi
+
+      - name: Gerekli sırlar tanımlı mı
+        shell: bash
+        env:
+          K1: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          K2: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          K3: ${{ secrets.SUPABASE_URL }}
+          K4: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          K5: ${{ secrets.VITE_SUPABASE_URL }}
+          K6: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: |
+          for v in K1 K2 K3 K4 K5 K6; do
+            if [ -z "${!v}" ]; then echo "::error::Eksik depo sırrı (docs/ops/surum-yayinlama.md bölüm 2)."; exit 1; fi
+          done
 
       - uses: pnpm/action-setup@v4
         with:
@@ -33,9 +68,28 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: apps/desktop
           tagName: __VERSION__
           releaseName: "Local Business Finder v__VERSION__"
           releaseDraft: true
           prerelease: false
+          # Güncelleme bildirimi GitHub'da değil Supabase kovasında tutulur (depo özel).
+          includeUpdaterJson: false
+
+      - name: Güncelleme dosyalarını yayınla (Supabase Storage)
+        shell: bash
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          dir="apps/desktop/src-tauri/target/release/bundle/nsis"
+          installer=$(ls "$dir"/*-setup.exe | head -n 1)
+          sig="$installer.sig"
+          test -f "$installer" && test -f "$sig" || { echo "::error::Kurulum dosyası veya .sig bulunamadı ($dir)"; ls -la "$dir"; exit 1; }
+          notes=$(git log -1 --pretty=%s)
+          node scripts/ops/publish-update.mjs --version "$version" --installer "$installer" --sig "$sig" --notes "$notes"

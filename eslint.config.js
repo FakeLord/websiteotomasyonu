@@ -16,6 +16,13 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   eslintConfigPrettier,
   {
+    // Node betikleri (yedek/yayın araçları): tarayıcı olmayan küresel değişkenler.
+    files: ["scripts/ops/**/*.mjs"],
+    languageOptions: {
+      globals: { console: "readonly", process: "readonly", fetch: "readonly", Buffer: "readonly" },
+    },
+  },
+  {
     rules: {
       "@typescript-eslint/no-explicit-any": "error",
       "@typescript-eslint/no-unused-vars": [

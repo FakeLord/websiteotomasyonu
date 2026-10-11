@@ -47,6 +47,18 @@ export interface ImapFetchResult {
   messages: Array<{ uid: number; raw_base64: string }>;
 }
 
+export interface AppUpdateInfo {
+  version: string;
+  notes: string | null;
+}
+
+export interface AppUpdates {
+  /** Yeni sürüm varsa bilgisini döner; yoksa (veya web kipinde) null. Ağ/uç hatasında hata fırlatır. */
+  check(): Promise<AppUpdateInfo | null>;
+  /** Son `check()` ile bulunan sürümü indirip kurar. Windows'ta uygulama kapanır, kurulumdan sonra yeniden açılır. */
+  install(): Promise<void>;
+}
+
 export interface Platform {
   kind: "tauri" | "web";
   /** Windows Credential Manager (parçalı; Supabase oturumu ve kişisel SMTP/IMAP şifreleri). */
@@ -58,6 +70,8 @@ export interface Platform {
   /** SMTP ile gönderir; üretilen `Message-ID`'yi döner. */
   sendEmail(smtp: SmtpConfig, message: OutboundEmail): Promise<string>;
   imapFetch(imap: ImapConfig, options: ImapFetchOptions): Promise<ImapFetchResult>;
+  /** Otomatik güncelleme (ADR 0026): yalnızca kurulu masaüstü uygulamasında gerçektir. */
+  updates: AppUpdates;
   fetchPage(url: string): Promise<WebsiteFetchResult>;
   /** Harici bir adresi (ig.me, wa.me, reklam kütüphanesi…) varsayılan tarayıcıda açar. */
   openExternal(url: string): Promise<void>;

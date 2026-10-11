@@ -4,7 +4,7 @@
 // Ortam:     SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (yalnızca GitHub Actions sırlarında; istemciye girmez)
 //            BACKUP_BUCKET (isteğe bağlı, varsayılan customer-files)
 import { mkdir, writeFile } from "node:fs/promises";
-import { dirname, join, normalize, resolve, sep } from "node:path";
+import { dirname, normalize, resolve, sep } from "node:path";
 
 const url = process.env.SUPABASE_URL?.replace(/\/+$/, "");
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;

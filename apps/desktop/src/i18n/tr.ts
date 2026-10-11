@@ -5,6 +5,13 @@ export const tr = {
   app: {
     name: "Global Business Finder",
   },
+  updater: {
+    available: (version: string) => `Yeni sürüm hazır: v${version}`,
+    install: "Şimdi güncelle",
+    installing: "Güncelleme indiriliyor ve kuruluyor…",
+    later: "Sonra",
+    error: "Güncelleme kurulamadı. Birazdan tekrar deneyin.",
+  },
   nav: {
     dashboard: "Dashboard",
     discover: "İşletme Bul",

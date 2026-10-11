@@ -1,6 +1,6 @@
 # ADR 0026 — Otomatik güncelleme, kod imzalama ve yedekten geri yükleme provası
 
-**Durum:** Kabul · 2026-10-11 (kullanıcı kararı: .exe kurulum sihirbazı ile dağıtım, uygulama kurulduğu bilgisayarda yerel kullanılacak). Bölüm 1 uygulandı (yerelde doğrulandı); Bölüm 2 kapsam dışı; Bölüm 3 sürüyor
+**Durum:** Kabul · 2026-10-11 (kullanıcı kararı: .exe kurulum sihirbazı ile dağıtım, uygulama kurulduğu bilgisayarda yerel kullanılacak). Bölüm 1 uygulandı (yerelde doğrulandı); Bölüm 2 kapsam dışı; Bölüm 3 uygulandı (bulutta denenmedi); Windows kod imzalama (3.4) bilerek ertelendi
 **İlgili:** `docs/phases/PHASE-22.md` (G10), BACKLOG #26 ve #27, ADR 0009 (web kipi), ADR 0011 (yedek)
 
 ## Mevcut durum (kodda doğrulandı)

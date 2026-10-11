@@ -56,6 +56,13 @@ export function createWebPlatform(fetchImpl: FetchLike = (input, init) => fetch(
     },
     imapFetch: (imap, options) => call<ImapFetchResult>("imap/fetch", { imap, options }),
     fetchPage: (url) => call<WebsiteFetchResult>("website/fetch", { url }),
+    updates: {
+      // Tarayıcı kipinde güncelleme `baslat.cmd` ile yapılır; uygulama içi güncelleme yoktur.
+      check: async () => null,
+      install: async () => {
+        throw new Error("Güncelleme yalnızca kurulu masaüstü uygulamasında çalışır.");
+      },
+    },
     async openExternal(url) {
       window.open(url, "_blank", "noopener,noreferrer");
     },
