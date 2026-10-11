@@ -10,6 +10,7 @@ import {
   composeShortObservation,
   composeSubject,
   displayName,
+  extractReadyOffer,
   tidyOffer,
   type FirstMessageFacts,
 } from "./compose-first-message";
@@ -233,5 +234,29 @@ describe("tidyOffer", () => {
       dm,
     );
     expect(out).toBe("Hostlys ekibi size özel web çözümleri geliştiriyor. Size kısa bir örnek göndermemizi ister misiniz?");
+  });
+});
+
+describe("extractReadyOffer / trusted offer", () => {
+  const kb = [
+    "Şirket: Hostlys web sitesi hazırlar.",
+    "Hazır teklif: Size özel ücretsiz bir örnek tasarım hazırlayıp 15 dakikalık bir görüşmede paylaşmak isteriz. Bu hafta uygun musunuz?",
+    "Ref: yok",
+  ].join("\n");
+
+  it("dile göre hazır teklifi bulur; yoksa veya çok kısaysa null döner", () => {
+    expect(extractReadyOffer(kb, "tr")).toBe(
+      "Size özel ücretsiz bir örnek tasarım hazırlayıp 15 dakikalık bir görüşmede paylaşmak isteriz. Bu hafta uygun musunuz?",
+    );
+    expect(extractReadyOffer(kb, "en")).toBeNull();
+    expect(extractReadyOffer("Ready offer: We prepare a free sample design for you.", "en")).toBe("We prepare a free sample design for you.");
+    expect(extractReadyOffer("Hazır teklif: kısa", "tr")).toBeNull();
+  });
+
+  it("güvenilen teklif süzülmez ve soru eklenmez", () => {
+    const offer = "Yorumlarınız harika; bu yüzden size özel ücretsiz bir örnek tasarım hazırlamak isteriz.";
+    const out = assembleFirstMessage(facts({ channel: "WHATSAPP" }), offer, { trusted: true });
+    expect(out.offer).toBe(offer);
+    expect(out.body.endsWith(offer)).toBe(true);
   });
 });

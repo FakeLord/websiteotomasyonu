@@ -278,12 +278,25 @@ export function tidyOffer(raw: string, facts: FirstMessageFacts): string {
   return kept.join(" ");
 }
 
+/**
+ * Bilgi Bankası'nda kullanıcının kendi yazdığı hazır teklif cümleleri: "Hazır teklif: ..." (Türkçe mesajlar) ve
+ * "Ready offer: ..." (İngilizce mesajlar). Varsa model hiç çağrılmaz; metin olduğu gibi kullanılır.
+ */
+export function extractReadyOffer(companyFacts: string, language: OutreachLanguage): string | null {
+  const pattern = language === "tr" ? /Hazır teklif\s*:\s*([^\n]+)/iu : /Ready offer\s*:\s*([^\n]+)/iu;
+  const match = pattern.exec(companyFacts);
+  const value = match?.[1]?.trim() ?? "";
+  return value.length >= 10 ? value : null;
+}
+
 /** Selamlama + gözlem + (modelin) teklif paragrafı + kapanış. DM'de selamlama kısa, kapanış yoktur. */
 export function assembleFirstMessage(
   facts: FirstMessageFacts,
   offer: string,
+  /** `trusted`: kullanıcının kendi yazdığı hazır teklif; süzülmez, kısaltılmaz. */
+  options: { trusted?: boolean } = {},
 ): { subject: string; body: string; offer: string } {
-  const cleaned = tidyOffer(offer, facts);
+  const cleaned = options.trusted ? cleanOffer(offer) : tidyOffer(offer, facts);
   const tr = facts.language === "tr";
   const subject = composeSubject(facts);
   if (facts.channel === "EMAIL") {

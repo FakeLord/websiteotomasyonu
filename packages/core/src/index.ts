@@ -101,6 +101,7 @@ export {
   assembleFirstMessage,
   cleanOffer,
   displayName,
+  extractReadyOffer,
   tidyOffer,
   classifySite,
   composeObservation,

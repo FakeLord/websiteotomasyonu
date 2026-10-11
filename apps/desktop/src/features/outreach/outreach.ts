@@ -6,6 +6,7 @@ import {
   buildTranslateDraftPrompt,
   computeFollowUpDueDate,
   detectDraftLanguage,
+  extractReadyOffer,
   findForeignWords,
   retryRejected,
   stripSignOff,
@@ -435,15 +436,22 @@ export async function generateFirstMessageDraft(
   return retryRejected((attempt) => draftOnce(attempt > 0 || options?.fresh === true));
 
   async function draftOnce(fresh: boolean): Promise<FirstMessageDraft> {
-  const result = await callAiGateway(workspaceId, request, { entityType: "business", entityId: business.id }, { fresh });
-  const parsed = draftFirstMessageOutputSchema.safeParse(result.json);
-  if (!parsed.success) {
-    return { ok: false, body: "", reasons: ["INVALID_SHAPE"], channel };
+  // Kullanıcı Bilgi Bankası'na "Hazır teklif: ..." yazdıysa model çağrılmaz; cümle olduğu gibi kullanılır.
+  const readyOffer = extractReadyOffer(context.companyFacts, language);
+  let offer: string;
+  if (readyOffer !== null) {
+    offer = readyOffer;
+  } else {
+    const result = await callAiGateway(workspaceId, request, { entityType: "business", entityId: business.id }, { fresh });
+    const parsed = draftFirstMessageOutputSchema.safeParse(result.json);
+    if (!parsed.success) {
+      return { ok: false, body: "", reasons: ["INVALID_SHAPE"], channel };
+    }
+    offer = stripSignOff(parsed.data.body);
   }
   // Model yalnızca teklif paragrafını yazar; selamlama, işletmeye özel gözlem, konu ve kapanış kodla eklenir
   // (ücretsiz küçük modelin serbest yazdığı Türkçe bozuk çıkıyordu). Modelin uydurduğu imza atılır.
   // Yalnızca GÖNDERİLECEK metin doğrulanır; Türkçe çeviri ayrı çağrıyla gelir ve gönderilmediği için kontrol edilmez.
-  const offer = stripSignOff(parsed.data.body);
   const assembled = assembleFirstMessage(
     {
       language,
@@ -456,6 +464,7 @@ export async function generateFirstMessageDraft(
       websiteStatus: promptInput.websiteStatus,
     },
     offer,
+    { trusted: readyOffer !== null },
   );
   // Model boş/yalnızca selamlama döndürdüyse teklif paragrafı yoktur: geçersiz biçim sayılır ve yeniden denenir.
   if (assembled.offer.length === 0) {
