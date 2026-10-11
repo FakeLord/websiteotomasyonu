@@ -95,6 +95,21 @@ const GREETING_WORDS = new Set(
   ].map(foldName),
 );
 
+/** Hitap ekleri ("Hakan Bey") ve platform adları ("Google", "Instagram") müşteri/marka referansı değildir. */
+const NON_NAME_WORDS = new Set(
+  [
+    "bey", "hanım", "hanımefendi", "bay", "bayan", "mr", "mrs", "ms", "dr", "doktor", "doç", "prof",
+    "google", "maps", "haritalar", "instagram", "facebook", "whatsapp", "linkedin", "tiktok", "youtube", "messenger",
+  ].map(foldName),
+);
+
+/** "Şirketinizin", "Kliniğiniz" gibi ikinci kişi iyelik ekli kelimeler özel ad değil, alıcıya hitaptır. */
+const SECOND_PERSON_POSSESSIVE = /(?:iniz|ınız|unuz|ünüz)(?:in|ın|un|ün|e|a|de|da|den|dan|i|ı|u|ü)?$/;
+
+function isNonNameWord(word: string): boolean {
+  return GREETING_WORDS.has(word) || NON_NAME_WORDS.has(word) || (word.length > 6 && SECOND_PERSON_POSSESSIVE.test(word));
+}
+
 function findReferenceCandidates(body: string): string[] {
   // İki veya daha fazla ardışık Büyük-Harf-Başlangıçlı kelimeyi olası
   // müşteri/marka adı adayı sayar (basit bir sezgi — gerçek NER değildir).
@@ -157,7 +172,7 @@ export function validateDraft(input: ValidateDraftInput): ValidateDraftResult {
     // Cümle başındaki selamlama kelimeleri ("Merhaba Dişhekimi Tenzil") adaya karışır.
     const words = lower(candidate)
       .split(/\s+/)
-      .filter((word) => !GREETING_WORDS.has(word));
+      .filter((word) => !isNonNameWord(word));
     if (words.length < 2 || words.every((word) => isOwnWord(word, ownWords))) continue;
     const candidateLower = words.join(" ");
     if (GENERIC_ROLE_TITLES.has(candidateLower)) continue;

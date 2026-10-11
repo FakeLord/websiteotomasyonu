@@ -265,3 +265,19 @@ describe("validateDraft", () => {
     expect(result.reasons).toContainEqual(expect.stringContaining("UNVERIFIED_REFERENCE"));
   });
 });
+
+describe("validateDraft — hitap ve platform adları", () => {
+  const refs = (body: string) =>
+    validateDraft({ ...baseInput, body, channel: "WHATSAPP", recipientBusinessName: "Hakan Kaymaz | Osteopat Fizyoterapist" }).reasons.filter((r) =>
+      r.startsWith("UNVERIFIED_REFERENCE"),
+    );
+
+  it("'Hakan Bey' gibi hitapları ve 'Şirketinizin Google' gibi platform/ikinci kişi ifadelerini referans saymaz", () => {
+    expect(refs("Hakan Bey, merhaba. Şirketinizin Google profilinde güzel yorumlar görüyoruz.")).toEqual([]);
+    expect(refs("Selam Ayşe Hanım, Instagram hesabınızı inceledik.")).toEqual([]);
+  });
+
+  it("gerçek bir marka adını yine yakalar", () => {
+    expect(refs("Daha önce Mavi Gülüş Kliniği için de çalıştık.")).toHaveLength(1);
+  });
+});
