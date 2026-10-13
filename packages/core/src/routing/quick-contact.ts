@@ -1,3 +1,4 @@
+import { whatsappUrlWithText } from "../outreach/message-template";
 import { phoneLineType } from "./reachability";
 
 export interface QuickContactChannel {
@@ -51,14 +52,22 @@ const cleanPhone = (phone: string) => phone.replace(/[^\d+]/g, "");
  * Geçersiz/geri dönmüş kanallar ve tekrarlar atlanır. WhatsApp yalnızca kayıtlı bir WhatsApp kanalı varsa
  * veya telefon cep numarasıysa listelenir; her telefon ayrıca "ara" seçeneği olarak gelir.
  */
-export function contactOptions(channels: QuickContactChannel[], primaryPhoneE164: string | null | undefined): ContactOption[] {
+export function contactOptions(
+  channels: QuickContactChannel[],
+  primaryPhoneE164: string | null | undefined,
+  options: { /** WhatsApp sohbeti bu metin yazılmış olarak açılır (kullanıcı yalnızca gönder'e basar). */ whatsappText?: string } = {},
+): ContactOption[] {
   const usable = channels.filter((row) => row.status !== "INVALID" && row.status !== "BOUNCED");
-  const options: ContactOption[] = [];
+  const result: ContactOption[] = [];
   const seen = new Set<string>();
   const add = (option: ContactOption) => {
     if (seen.has(option.url)) return;
     seen.add(option.url);
-    options.push(option);
+    result.push(option);
+  };
+  const addWhatsapp = (phone: string) => {
+    const url = whatsappUrlWithText(phone, options.whatsappText ?? "");
+    if (url) add({ channel: "WHATSAPP", display: cleanPhone(phone), url });
   };
 
   for (const row of usable) {
@@ -67,8 +76,8 @@ export function contactOptions(channels: QuickContactChannel[], primaryPhoneE164
       if (url) add({ channel: row.channel as Social, display: `@${handleOf(row)}`, url });
     } else if (row.channel === "EMAIL" && row.value.trim()) {
       add({ channel: "EMAIL", display: row.value.trim(), url: `mailto:${row.value.trim()}` });
-    } else if (row.channel === "WHATSAPP" && digitsOf(row.normalizedValue).length >= 7) {
-      add({ channel: "WHATSAPP", display: cleanPhone(row.normalizedValue), url: `https://wa.me/${digitsOf(row.normalizedValue)}` });
+    } else if (row.channel === "WHATSAPP") {
+      addWhatsapp(row.normalizedValue);
     }
   }
 
@@ -76,11 +85,11 @@ export function contactOptions(channels: QuickContactChannel[], primaryPhoneE164
     .map(cleanPhone)
     .filter((phone) => digitsOf(phone).length >= 7);
   for (const phone of phones) {
-    if (phoneLineType(phone) === "MOBILE") add({ channel: "WHATSAPP", display: phone, url: `https://wa.me/${digitsOf(phone)}` });
+    if (phoneLineType(phone) === "MOBILE") addWhatsapp(phone);
     add({ channel: "PHONE", display: phone, url: `tel:${phone}` });
   }
 
-  return options
+  return result
     .map((option, index) => ({ option, index }))
     .sort((a, b) => ORDER.indexOf(a.option.channel) - ORDER.indexOf(b.option.channel) || a.index - b.index)
     .map(({ option }) => option);

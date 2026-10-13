@@ -145,6 +145,19 @@ export const tr = {
     usageLine: (used: number, cap: number | null) =>
       cap === null ? `Bu ay ${used.toLocaleString("tr-TR")} çağrı (sınır tanımlı değil)` : `Bu ay ${used.toLocaleString("tr-TR")} / ${cap.toLocaleString("tr-TR")} çağrı`,
   },
+  messageTemplates: {
+    title: "WhatsApp mesaj şablonu",
+    description:
+      "Bir işletmede İletişime geç → WhatsApp'ı seçince bu mesaj yazılmış olarak açılır; siz yalnızca Enter'a basıp gönderirsiniz. Metin her işletmede aynıdır, yalnızca yer tutucular değişir. Türkiye veya Türkçe işletmeye Türkçe, diğerlerine İngilizce şablon gider.",
+    placeholders: "Yer tutucular:",
+    placeholdersHint: "(işletme adı otomatik kısaltılır ve düzgün yazıma çevrilir; {sirket} Gönderen kimliğindeki şirket adıdır)",
+    languages: { tr: "Türkçe şablon", en: "İngilizce şablon" },
+    reset: "Varsayılana dön",
+    preview: "Önizleme (örnek işletme: \"ECESU BEAUTY STUDIO | Güzellik Salonu\")",
+    unknown: (tokens: string) => `Tanınmayan yer tutucu: ${tokens}. Yalnızca {isletme}, {sirket}, {kategori}, {sehir} kullanılabilir.`,
+    senderMissing: "Şablonda {sirket} var ama Gönderen kimliğinde şirket adı boş; mesajda şirket adı görünmez. Yukarıdaki Gönderen kimliği bölümünden doldurun.",
+    saved: "Şablon kaydedildi.",
+  },
   senderProfile: {
     title: "Gönderen kimliği",
     description:

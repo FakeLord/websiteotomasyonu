@@ -8,13 +8,17 @@ import {
   chooseChannel,
   contactOptions,
   googleMapsUrl,
+  renderMessageTemplate,
+  shortBusinessName,
+  templateLanguageFor,
   type ContactOption,
   type BusinessStage,
   type Channel,
   type OutreachChannel,
   type RoutingChannelCandidate,
 } from "@lbf/core";
-import { getCountryProfile } from "@lbf/core";
+import { DEFAULT_MESSAGE_TEMPLATES, getCountryProfile } from "@lbf/core";
+import { useMessageTemplates } from "../../lib/use-message-templates";
 import { formatLocalTime } from "../../lib/format";
 import { platform } from "../../lib/platform";
 import { supabase } from "../../lib/supabase-client";
@@ -253,6 +257,7 @@ export function LeadDetailPage() {
   const businessQuery = useBusiness(businessId);
   const channelsQuery = useContactChannels(businessId);
   const settings = useWorkspaceSettings().data;
+  const templateSettings = useMessageTemplates().data;
   const [draftOpen, setDraftOpen] = useState(false);
   // "İletişime geç → E-posta" taslak penceresini e-posta kanalı seçili açar (posta programı boş açılmaz).
   const [draftChannel, setDraftChannel] = useState<OutreachChannel | null>(null);
@@ -279,9 +284,18 @@ export function LeadDetailPage() {
     city: business.city,
     googlePlaceId: business.google_place_id,
   });
+  // WhatsApp, işletmenin adıyla yazılmış sabit şablonla açılır; kullanıcı yalnızca gönderir.
+  const templateLanguage = templateLanguageFor({ language: business.language, countryCode: business.country_code });
+  const whatsappText = renderMessageTemplate((templateSettings?.templates ?? DEFAULT_MESSAGE_TEMPLATES)[templateLanguage], {
+    isletme: shortBusinessName(business.name, templateLanguage),
+    sirket: templateSettings?.senderName ?? "",
+    kategori: business.category ?? "",
+    sehir: business.city ?? "",
+  });
   const contacts = contactOptions(
     channels.map((c) => ({ channel: c.channel, value: c.value, normalizedValue: c.normalized_value, status: c.status })),
     business.primary_phone_e164,
+    { whatsappText },
   );
   const openLink = (url: string) => {
     // mailto: yeni sekme açmadan e-posta uygulamasına gitsin.

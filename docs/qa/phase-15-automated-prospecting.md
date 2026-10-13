@@ -61,3 +61,15 @@ Bulutta elle:
 - [ ] Ekip: üye çıkar → onun işletmeleri "Atanmamış" olur; bekleyen daveti "Yeniden gönder" → yeni kod gösterilir.
 - [ ] Ayarlar → Genel: şifre değiştir (12+ karakter); yönetici çalışma alanı adını değiştirir, üye göremez.
 - [ ] Kampanya: düzenle / sil; mesaj gönderilmiş kampanyada "silmek yerine Tamamlandı yapın" uyarısı.
+
+## WhatsApp'a hazır yazılmış mesaj (2026-10-14)
+Sabit şablon: **İletişime geç → WhatsApp** seçilince sohbet, işletme adı doldurulmuş mesajla açılır; kullanıcı yalnızca Enter'a basar.
+Otomatik: `message-template.test.ts` (22), `quick-contact.test.ts`, pgTAP `message_templates` (7). Gerçek yerel işletme verisiyle
+`contactOptions` çalıştırıldı (büyük harfli, parantezli, virgüllü adlar düzgün çıktı). **Tarayıcıdan tıklanarak denenmedi**
+(oturum Windows kasasında; kullanıcının bulut oturumunu bozmamak için).
+
+Bulutta elle (`db push` sonrası; migration `20261014100000_message_templates`):
+- [ ] Ayarlar → Genel → "WhatsApp mesaj şablonu": Türkçe/İngilizce şablonu gör, düzenle, kaydet; önizleme güncellenir.
+- [ ] Ayarlar → Gönderen kimliği → Şirket adı dolu olmalı (şablondaki `{sirket}` için).
+- [ ] Cep numarası olan bir işletme → İletişime geç → WhatsApp: WhatsApp açılır, mesaj kutusunda işletme adıyla yazılmış metin hazır.
+- [ ] Türkçe işletmede Türkçe, yabancı işletmede İngilizce şablon gelir. Büyük harfli adlar düzgün yazılır.

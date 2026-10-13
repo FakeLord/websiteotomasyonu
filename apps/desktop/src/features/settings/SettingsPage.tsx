@@ -7,6 +7,7 @@ import { PageHeader } from "../../components/ui/data-display";
 import { Card } from "../../components/ui/card";
 import { ScoringSettingsSection } from "./ScoringSettingsSection";
 import { SenderProfileSection } from "./SenderProfileSection";
+import { MessageTemplatesSection } from "./MessageTemplatesSection";
 import { EmailAccountSection } from "./EmailAccountSection";
 import { DataExportSection } from "./DataExportSection";
 import { AiProvidersSection } from "./AiProvidersSection";
@@ -64,6 +65,7 @@ export function SettingsPage() {
                   <>
                     <GeneralSection />
                     {isAdmin && <SenderProfileSection workspaceId={workspaceId} />}
+                    {isAdmin && <MessageTemplatesSection workspaceId={workspaceId} />}
                   </>
                 )}
                 {active === "api" && <AiProvidersSection workspaceId={workspaceId} />}

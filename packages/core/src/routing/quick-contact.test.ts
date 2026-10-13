@@ -68,6 +68,34 @@ describe("contactOptions", () => {
   });
 });
 
+describe("contactOptions — WhatsApp için hazır mesaj", () => {
+  const text = "Merhaba Opak Dent ekibi";
+  const encoded = "Merhaba%20Opak%20Dent%20ekibi";
+
+  it("kayıtlı WhatsApp kanalının bağlantısına mesajı ekler", () => {
+    const options = contactOptions([ch("WHATSAPP", "+905321112233")], null, { whatsappText: text });
+
+    expect(options[0]?.url).toBe(`https://wa.me/905321112233?text=${encoded}`);
+  });
+
+  it("cep telefonundan türetilen WhatsApp seçeneğine de ekler; aynı numara tek seçenek kalır", () => {
+    const options = contactOptions([ch("PHONE", "+905321112233")], "+905321112233", { whatsappText: text });
+
+    expect(options.filter((o) => o.channel === "WHATSAPP").map((o) => o.url)).toEqual([`https://wa.me/905321112233?text=${encoded}`]);
+  });
+
+  it("mesaj verilmezse eskisi gibi yalnızca sohbeti açar", () => {
+    expect(contactOptions([ch("WHATSAPP", "+905321112233")], null)[0]?.url).toBe("https://wa.me/905321112233");
+  });
+
+  it("diğer kanalların bağlantısı değişmez; telefon araması mesaj taşımaz", () => {
+    const options = contactOptions([ch("EMAIL", "info@a.com"), ch("PHONE", "+905321112233")], null, { whatsappText: text });
+
+    expect(options.find((o) => o.channel === "EMAIL")?.url).toBe("mailto:info@a.com");
+    expect(options.find((o) => o.channel === "PHONE")?.url).toBe("tel:+905321112233");
+  });
+});
+
 describe("googleMapsUrl", () => {
   it("place_id varsa işletmenin kendi Maps sayfasını açar", () => {
     const url = googleMapsUrl({ name: "Windy Hair & Co", address: "12 Main St, Austin", googlePlaceId: "ChIJabc" });

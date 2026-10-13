@@ -48,6 +48,19 @@ export {
   type TilePoint,
 } from "./discovery/tiling";
 export { PlacesQuotaError, scanTile, type ScanTileOutcome, type ScanTileResult } from "./discovery/scan-tile";
+export {
+  DEFAULT_MESSAGE_TEMPLATES,
+  PLACEHOLDERS,
+  renderMessageTemplate,
+  shortBusinessName,
+  templateLanguageFor,
+  unknownPlaceholders,
+  whatsappUrlWithText,
+  type MessageTemplates,
+  type Placeholder,
+  type TemplateLanguage,
+  type TemplateVars,
+} from "./outreach/message-template";
 export { CONTACT_OUTCOMES, stagePathForOutcome, type ContactOutcome } from "./pipeline/contact-outcome";
 export {
   buildBusinessPatch,
