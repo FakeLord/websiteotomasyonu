@@ -116,13 +116,15 @@ function isNonNameWord(word: string): boolean {
  * doğrulanmış bilgidir: oradaki adlar ("Hostlys Bilişim") mesajda geçince başka bir müşteri referansı sayılmamalıdır.
  */
 export function properNameWords(text: string): string[] {
-  return [...new Set(text.match(/[A-ZÇĞİÖŞÜ][\wçğıöşü]+/g) ?? [])];
+  return [...new Set(text.match(/\p{Lu}[\p{L}\p{N}_]+/gu) ?? [])];
 }
 
 function findReferenceCandidates(body: string): string[] {
   // İki veya daha fazla ardışık Büyük-Harf-Başlangıçlı kelimeyi olası
   // müşteri/marka adı adayı sayar (basit bir sezgi — gerçek NER değildir).
-  const matches = body.match(/(?:[A-ZÇĞİÖŞÜ][\wçğıöşü]+\s){1,3}[A-ZÇĞİÖŞÜ][\wçğıöşü]+/g) ?? [];
+  // Unicode harf sınıfları: `\w` yalnızca ASCII'dir ve büyük İ/Ğ/Ş/Ö/Ü/Ç'yi kelime sayıp kaçırır; "MERSİN OPAK DENT" gibi
+  // büyük harfli işletme adı "MERS", "İN OPAK DENT" diye parçalanıp sahte referans üretiyordu.
+  const matches = body.match(/(?:\p{Lu}[\p{L}\p{N}_]+\s){1,3}\p{Lu}[\p{L}\p{N}_]+/gu) ?? [];
   return [...new Set(matches.map((m) => m.trim()))];
 }
 

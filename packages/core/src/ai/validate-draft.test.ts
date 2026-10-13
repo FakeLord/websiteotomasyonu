@@ -299,3 +299,37 @@ describe("validateDraft — gönderenin kendi adı ve 'Biz'", () => {
     expect(run("Yazılım Atölyesi olarak size yardımcı olabiliriz.", names)).toHaveLength(1);
   });
 });
+
+describe("validateDraft — büyük harfli ve Türkçe karakterli işletme adları", () => {
+  const unverified = (input: Partial<ValidateDraftInput>) =>
+    validateDraft({ ...baseInput, ...input }).reasons.filter((r) => r.startsWith("UNVERIFIED_REFERENCE"));
+  const name = "MERSİN OPAK DENT AĞIZ VE DİŞ SAĞLIĞI POLİKLİNİĞİ";
+
+  it("BÜYÜK HARFLE yazılmış kendi adını (İ, Ğ, Ş, Ö, Ü, Ç dahil) parçalayıp referans saymaz (gerçek vaka)", () => {
+    const body = "Merhaba, MERSİN OPAK DENT AĞIZ VE DİŞ SAĞLIĞI POLİKLİNİĞİ için hazırladığımız örnek tasarımı paylaşmak isteriz.";
+
+    expect(unverified({ body, recipientBusinessName: name })).toEqual([]);
+  });
+
+  it("aynı adı Başlık Biçiminde yazmak da referans sayılmaz", () => {
+    const body = "Merhaba, Mersin Opak Dent Ağız ve Diş Sağlığı Polikliniği için hazırladığımız örnek tasarımı paylaşmak isteriz.";
+
+    expect(unverified({ body, recipientBusinessName: name })).toEqual([]);
+  });
+
+  it("adın ortasındaki büyük Türkçe harfler ('SAĞLIĞI', 'POLİKLİNİĞİ') aday bölmez", () => {
+    const body = "Sayın AĞIZ VE DİŞ SAĞLIĞI POLİKLİNİĞİ yetkilisi, Mersin Opak Dent ekibine selamlar.";
+
+    expect(unverified({ body, recipientBusinessName: name })).toEqual([]);
+  });
+
+  it("büyük harfli ama farklı bir marka adı yine yakalanır", () => {
+    const body = "Daha önce ÇANKAYA ÖZEL ŞİFA POLİKLİNİĞİ için de site yaptık.";
+
+    expect(unverified({ body, recipientBusinessName: name }).length).toBeGreaterThan(0);
+  });
+
+  it("properNameWords büyük harfli Türkçe karakterleri kelimeyi bölmeden toplar", () => {
+    expect(properNameWords("Hostlys Bilişim ve ÇİÇEK ŞİRKETİ")).toEqual(["Hostlys", "Bilişim", "ÇİÇEK", "ŞİRKETİ"]);
+  });
+});
